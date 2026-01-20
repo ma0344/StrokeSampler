@@ -1,0 +1,379 @@
+﻿<Page x:Class="StrokeSampler.MainPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="using:StrokeSampler"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      mc:Ignorable="d"
+      x:Name="thisPage"
+      d:Width="2100"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+      >
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <CommandBar Grid.Row="0"
+                    Grid.Column="0"
+                    IsOpen="True">
+            <AppBarButton x:Name="GenerateButton"
+                          Icon="Edit"
+                          Label="生成"
+                          Click="GenerateButton_Click" />
+            <AppBarButton x:Name="ClearButton"
+                          Icon="Delete"
+                          Label="クリア"
+                          Click="ClearButton_Click" />
+            <AppBarSeparator />
+            <AppBarButton x:Name="ExportMaterialButton"
+                          Icon="Save"
+                          Label="素材用PNG（透過）"
+                          Click="ExportMaterialButton_Click" />
+            <AppBarButton x:Name="ExportPreviewButton"
+                          Icon="Save"
+                          Label="確認用PNG（白+ラベル）"
+                          Click="ExportPreviewButton_Click" />
+        </CommandBar>
+        <Grid Grid.Row="1"
+              Grid.Column="0"
+              HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <ScrollViewer 
+                          Grid.Column="0"
+                          ZoomMode="Enabled"
+                          MinZoomFactor="1"
+                          MaxZoomFactor="255"
+                          VerticalScrollBarVisibility="Visible"
+                          HorizontalScrollBarVisibility="Visible"
+                          Margin="0">
+            
+                <Grid Background="White">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <InkToolbar x:Name="InkToolbar"
+                                Grid.Row="0"
+                                TargetInkCanvas="{x:Bind InkCanvasControl}"
+                                Grid.ColumnSpan="2"
+                                VerticalAlignment="Stretch"/>
+                    <InkCanvas x:Name="InkCanvasControl"
+                               Grid.Row="1"
+                               Grid.ColumnSpan="2" 
+                               VerticalAlignment="Stretch"/>
+                </Grid>
+            </ScrollViewer>
+         </Grid>
+        <StackPanel Grid.Row="2"
+                    Grid.Column="0"
+                    Orientation="Vertical"
+                    HorizontalAlignment="Stretch">
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
+            <TextBlock Text="Pressure段階:"
+                       VerticalAlignment="Center" />
+            <TextBlock Text="0.2 / 0.5 / 0.8 / 1.0"
+                       VerticalAlignment="Center" />
+
+            <TextBlock Text="Stroke幅:"
+                       VerticalAlignment="Center" />
+            <TextBlock Text="InkToolbarの選択値"
+                       VerticalAlignment="Center" />
+
+            <TextBlock Text="出力幅:"
+                       VerticalAlignment="Center" />
+            <TextBox x:Name="ExportWidthTextBox"
+                     Width="100"
+                     Text="4096"
+                     IsReadOnly="False" />
+
+            <TextBlock Text="出力高:"
+                       VerticalAlignment="Center" />
+            <TextBox x:Name="ExportHeightTextBox"
+                     Width="100"
+                     Text="4096"
+                     IsReadOnly="False" />
+
+            <AppBarSeparator />
+
+            <TextBlock Text="重ね塗りPressure:"
+                       VerticalAlignment="Center" />
+            <TextBox x:Name="OverwritePressureTextBox"
+                     Width="80"
+                     Text="0.5"
+                     IsReadOnly="False" />
+
+            <TextBlock Text="Max Overwrite:"
+                       VerticalAlignment="Center" />
+            <TextBox x:Name="MaxOverwriteTextBox"
+                     Width="80"
+                     Text="10"
+                     IsReadOnly="False" />
+
+            <Button x:Name="GenerateOverwriteSamplesButton"
+                    Content="重ね塗り生成"
+                    Click="GenerateOverwriteSamplesButton_Click" />
+
+            <AppBarSeparator />
+
+                <TextBlock Text="Dot間隔:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="DotGridSpacingTextBox"
+                         Width="80"
+                         Text="120"
+                         IsReadOnly="False" />
+
+                <Button x:Name="GenerateDotGridButton"
+                        Content="Dotグリッド生成"
+                        Click="GenerateDotGridButton_Click" />
+
+                <AppBarSeparator />
+
+                <TextBlock Text="半径bin(px):"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="RadialBinSizeTextBox"
+                         Width="60"
+                         Text="1"
+                         IsReadOnly="False" />
+
+                <Button x:Name="ExportRadialAlphaCsvButton"
+                        Content="半径αCSV"
+                        Click="ExportRadialAlphaCsvButton_Click" />
+
+                <AppBarSeparator />
+
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
+                <TextBlock Text="Dot512 Pressure:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Dot512PressureTextBox"
+                         Width="80"
+                         Text="1.0"
+                         IsReadOnly="False" />
+
+                <TextBlock Text="Dot512 N:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Dot512OverwriteTextBox"
+                         Width="70"
+                         Text="1"
+                         IsReadOnly="False" />
+
+                <TextBlock Text="Dot512 Size:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Dot512SizeTextBox"
+                         Width="70"
+                         Text=""
+                         PlaceholderText="(tool)"
+                         IsReadOnly="False" />
+
+                <Button x:Name="ExportDot512MaterialButton"
+                        Content="Dot512(透過)"
+                        Click="ExportDot512MaterialButton_Click" />
+
+                <Button x:Name="ExportDot512PreviewButton"
+                        Content="Dot512(白+ラベル)"
+                        Click="ExportDot512PreviewButton_Click" />
+
+                <AppBarSeparator />
+
+                <TextBlock Text="Dot512 枚数:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Dot512BatchCountTextBox"
+                         Width="70"
+                         Text="30"
+                         IsReadOnly="False" />
+
+                <TextBlock Text="Dot512 Prefix:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Dot512BatchPrefixTextBox"
+                         Width="160"
+                         Text="dot512"
+                         IsReadOnly="False" />
+
+                <TextBlock Text="Jitter±px:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Dot512BatchJitterTextBox"
+                         Width="70"
+                         Text="0.5"
+                         IsReadOnly="False" />
+
+                <TextBlock Text="Sizes:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Dot512BatchSizesTextBox"
+                         Width="160"
+                         Text="24,48,96"
+                         IsReadOnly="False" />
+
+                <TextBlock Text="Step(px):"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Dot512SlideStepTextBox"
+                         Width="70"
+                         Text="1.0"
+                         IsReadOnly="False" />
+
+                <TextBlock Text="Frames:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Dot512SlideFramesTextBox"
+                         Width="70"
+                         Text="16"
+                         IsReadOnly="False" />
+
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
+
+                <Button x:Name="ExportDot512BatchMaterialButton"
+                        Content="Dot512一括(透過)"
+                        Click="ExportDot512BatchMaterialButton_Click" />
+
+                <Button x:Name="ExportDot512BatchPreviewButton"
+                        Content="Dot512一括(白)"
+                        Click="ExportDot512BatchPreviewButton_Click" />
+
+                <Button x:Name="ExportDot512BatchMaterialSizesButton"
+                        Content="Dot512一括S(透過)"
+                        Click="ExportDot512BatchMaterialSizesButton_Click" />
+
+                <Button x:Name="ExportDot512BatchPreviewSizesButton"
+                        Content="Dot512一括S(白)"
+                        Click="ExportDot512BatchPreviewSizesButton_Click" />
+
+                <Button x:Name="ExportDot512SlideMaterialButton"
+                        Content="Dot512Slide(透過)"
+                        Click="ExportDot512SlideMaterialButton_Click" />
+
+                <Button x:Name="ExportDot512SlidePreviewButton"
+                        Content="Dot512Slide(白)"
+                        Click="ExportDot512SlidePreviewButton_Click" />
+
+                <AppBarSeparator />
+                <Button x:Name="ExportEstimatedPaperNoiseButton"
+                        Content="紙目推定PNG"
+                        Click="ExportEstimatedPaperNoiseButton_Click" />
+
+                <Button x:Name="ExportS200LineMaterialButton"
+                        Content="S200線(透過)"
+                        Click="ExportS200LineMaterialButton_Click" />
+
+                <Button x:Name="ExportS200LinePreviewButton"
+                        Content="S200線(白)"
+                        Click="ExportS200LinePreviewButton_Click" />
+
+                <AppBarSeparator />
+
+                <TextBlock Text="Crop dx:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="PaperNoiseCropDxTextBox"
+                         Width="70"
+                         Text="32"
+                         IsReadOnly="False" />
+
+                <TextBlock Text="dy:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="PaperNoiseCropDyTextBox"
+                         Width="70"
+                         Text="0"
+                         IsReadOnly="False" />
+
+                <Button x:Name="ExportPaperNoiseCrop24Button"
+                        Content="紙目24x24切抜"
+                        Click="ExportPaperNoiseCrop24Button_Click" />
+
+                <Button x:Name="ComparePaperNoiseModelsButton"
+                        Content="紙目モデル比較"
+                        Click="ComparePaperNoiseModelsButton_Click" />
+
+                <Button x:Name="ExportRadialFalloffCsvButton"
+                        Content="距離減衰CSV"
+                        Click="ExportRadialFalloffCsvButton_Click" />
+
+                <AppBarSeparator />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
+
+
+                <TextBlock Text="F(r)一括 Sizes(&lt;=200):"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="RadialFalloffBatchSizesTextBox"
+                         Width="180"
+                         Text="50,100,150,200"
+                         IsReadOnly="False" />
+                <Button x:Name="ExportRadialFalloffBatchButton"
+                        Content="距離減衰CSV一括"
+                        Click="ExportRadialFalloffBatchButton_Click" />
+
+                <AppBarSeparator />
+
+                <TextBlock Text="正規化基準 S0(px):"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="NormalizedFalloffS0TextBox"
+                         Width="70"
+                         Text="200"
+                         IsReadOnly="False" />
+                <Button x:Name="ExportNormalizedFalloffButton"
+                        Content="正規化mean/stddev"
+                        Click="ExportNormalizedFalloffButton_Click" />
+
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
+
+
+                <TextBlock Text="N一覧:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="RadialFalloffBatchNsTextBox"
+                         Width="140"
+                         Text="1,2,3,5,10"
+                         IsReadOnly="False" />
+                <Button x:Name="ExportRadialFalloffBatchSizesNsButton"
+                        Content="距離減衰CSV一括(S×N)"
+                        Click="ExportRadialFalloffBatchSizesNsButton_Click" />
+
+                <AppBarSeparator />
+
+                <TextBlock Text="P一覧:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="RadialFalloffBatchPsTextBox"
+                         Width="260"
+                         Text="0.05,0.1,0.25,0.5,0.65,0.77,0.85,1.0"
+                         IsReadOnly="False" />
+                <Button x:Name="ExportRadialFalloffBatchPsSizesNsButton"
+                        Content="距離減衰CSV一括(P×S×N)"
+                        Click="ExportRadialFalloffBatchPsSizesNsButton_Click" />
+
+                <Button x:Name="ExportCenterAlphaSummaryButton"
+                        Content="中心αサマリCSV"
+                        Click="ExportCenterAlphaSummaryButton_Click" />
+
+                <TextBlock Text="半径一覧:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="RadialSampleRsTextBox"
+                         Width="220"
+                         Text="0,1,2,5,10,20,50,100"
+                         IsReadOnly="False" />
+                <Button x:Name="ExportRadialSamplesSummaryButton"
+                        Content="半径別サマリCSV"
+                        Click="ExportRadialSamplesSummaryButton_Click" />
+
+                <AppBarSeparator />
+
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Page>
