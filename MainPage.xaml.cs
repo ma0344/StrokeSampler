@@ -1036,12 +1036,15 @@ namespace StrokeSampler
             _lastDotGridSpacing = null;
             _lastWasDotGrid = false;
 
-            for (var i = 0; i < PressurePreset.Length; i++)
+            foreach (var stroke in PencilPressurePresetGenerator.Generate(
+                attributes,
+                PressurePreset,
+                DefaultStartX,
+                DefaultEndX,
+                DefaultStartY,
+                DefaultSpacingY,
+                CreatePencilStroke))
             {
-                var pressure = PressurePreset[i];
-                var y = DefaultStartY + (i * DefaultSpacingY);
-
-                var stroke = CreatePencilStroke(DefaultStartX, DefaultEndX, y, pressure, attributes);
                 InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(stroke);
             }
         }

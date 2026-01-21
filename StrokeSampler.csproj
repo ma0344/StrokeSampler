@@ -124,6 +124,7 @@
     </Compile>
     <Compile Include="PencilDotGridGenerator.cs" />
     <Compile Include="PencilOverwriteSampleGenerator.cs" />
+    <Compile Include="PencilPressurePresetGenerator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

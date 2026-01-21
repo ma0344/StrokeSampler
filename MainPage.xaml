@@ -17,8 +17,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <CommandBar Grid.Row="0"
-                    Grid.Column="0"
-                    IsOpen="True">
+                    Grid.Column="0">
             <AppBarButton x:Name="GenerateButton"
                           Icon="Edit"
                           Label="生成"
