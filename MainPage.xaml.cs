@@ -541,165 +541,18 @@ namespace StrokeSampler
 
         private async void ExportRadialFalloffBatchButton_Click(object sender, RoutedEventArgs e)
         {
-            var sizes = UIHelpers.GetRadialFalloffBatchSizes(this);
-            if (sizes.Count == 0)
-            {
-                var dlg = new ContentDialog
-                {
-                    Title = "距離減衰CSV一括",
-                    Content = "Sizes が空です。例: 50,100,150,200",
-                    CloseButtonText = "OK"
-                };
-                await dlg.ShowAsync();
-                return;
-            }
-
-            var folderPicker = new FolderPicker
-            {
-                SuggestedStartLocation = PickerLocationId.PicturesLibrary
-            };
-            folderPicker.FileTypeFilter.Add(".png");
-
-            var folder = await folderPicker.PickSingleFolderAsync();
-            if (folder is null)
-            {
-                return;
-            }
-
-            var pressure = UIHelpers.GetDot512Pressure(this);
-            var n = UIHelpers.GetDot512Overwrite(this);
-
-            var device = CanvasDevice.GetSharedDevice();
-
-            foreach (var size in sizes)
-            {
-                var attributes = Helpers.CreatePencilAttributesFromToolbarBestEffort(this);
-                attributes.Size = new Size(size, size);
-
-                var cx = (Dot512Size - 1) / 2f;
-                var cy = (Dot512Size - 1) / 2f;
-
-                // dot512-material 相当（透過/ラベル無し）を生成して保存
-                var pngName = $"dot512-material-S{size:0.##}-P{pressure:0.###}-N{n}.png";
-                var pngFile = await folder.CreateFileAsync(pngName, CreationCollisionOption.ReplaceExisting);
-
-                using (IRandomAccessStream stream = await pngFile.OpenAsync(FileAccessMode.ReadWrite))
-                using (var target = new CanvasRenderTarget(device, Dot512Size, Dot512Size, Dot512Dpi))
-                {
-                    using (var ds = target.CreateDrawingSession())
-                    {
-                        ds.Clear(Color.FromArgb(0, 0, 0, 0));
-
-                        for (var i = 0; i < n; i++)
-                        {
-                            var dot = Helpers.CreatePencilDot(cx, cy, pressure, attributes);
-                            ds.DrawInk(new[] { dot });
-                        }
-                    }
-
-                    await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
-                }
-
-                // 距離減衰CSVを生成して保存
-                byte[] dotBytes;
-                using (var s = await pngFile.OpenAsync(FileAccessMode.Read))
-                using (var bmp = await CanvasBitmap.LoadAsync(device, s))
-                {
-                    dotBytes = bmp.GetPixelBytes();
-                }
-
-                var fr = Helpers.ComputeRadialMeanAlphaD(dotBytes, Dot512Size, Dot512Size);
-                var csv = Helpers.BuildRadialFalloffCsv(fr);
-
-                var csvName = $"radial-falloff-S{size:0.##}-P{pressure:0.###}-N{n}.csv";
-                var csvFile = await folder.CreateFileAsync(csvName, CreationCollisionOption.ReplaceExisting);
-                await FileIO.WriteTextAsync(csvFile, csv, Windows.Storage.Streams.UnicodeEncoding.Utf8);
-            }
-
-            var done = new ContentDialog
-            {
-                Title = "距離減衰CSV一括",
-                Content = $"完了: {sizes.Count} サイズ出力しました。",
-                CloseButtonText = "OK"
-            };
-            await done.ShowAsync();
+            await RadialFalloffExportService.ExportRadialFalloffBatchAsync(this);
         }
 
         private async void ExportMaterialButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportPngAsync(
-                mp: this,
-                isTransparentBackground: true,
-                includeLabels: false,
-                suggestedFileName: "pencil-material");
+            await ExportHelpers.ExportPngAsync(mp: this,isTransparentBackground: true,includeLabels: false,suggestedFileName: "pencil-material");
         }
 
         private async void ExportPreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportPngAsync(
-                mp: this,
-                isTransparentBackground: false,
-                includeLabels: true,
-                suggestedFileName: "pencil-preview");
+            await ExportHelpers.ExportPngAsync(mp: this,isTransparentBackground: false,includeLabels: true,suggestedFileName: "pencil-preview");
         }
-
-        private async void ExportRadialAlphaCsvButton_Click(object sender, RoutedEventArgs e)
-        {
-            var sourcePicker = new FileOpenPicker
-            {
-                SuggestedStartLocation = PickerLocationId.PicturesLibrary
-            };
-            sourcePicker.FileTypeFilter.Add(".png");
-
-            var sourceFile = await sourcePicker.PickSingleFileAsync();
-            if (sourceFile is null)
-            {
-                return;
-            }
-
-            var binSize = UIHelpers.GetRadialBinSize(this);
- 
-            var savePicker = new FileSavePicker
-            {
-                SuggestedStartLocation = PickerLocationId.PicturesLibrary,
-                SuggestedFileName = $"radial-alpha-{sourceFile.DisplayName}"
-            };
-            savePicker.FileTypeChoices.Add("CSV", new List<string> { ".csv" });
-
-            var saveFile = await savePicker.PickSaveFileAsync();
-            if (saveFile is null)
-            {
-                return;
-            }
-
-            var device = CanvasDevice.GetSharedDevice();
-
-            using (var sourceStream = await sourceFile.OpenAsync(FileAccessMode.Read))
-            using (var bitmap = await CanvasBitmap.LoadAsync(device, sourceStream))
-            {
-                var bytes = bitmap.GetPixelBytes();
-                var width = (int)bitmap.SizeInPixels.Width;
-                var height = (int)bitmap.SizeInPixels.Height;
-
-                var analysis = RadialAlphaBinAnalyzer.Analyze(
-                    bytes,
-                    width,
-                    height,
-                    binSize,
-                    RadialAlphaThresholds);
-
-                var csv = RadialAlphaCsvBuilder.Build(
-                    analysis.Bins,
-                    binSize,
-                    RadialAlphaThresholds,
-                    analysis.Total,
-                    analysis.SumAlpha,
-                    analysis.Hits);
-
-                await FileIO.WriteTextAsync(saveFile, csv, Windows.Storage.Streams.UnicodeEncoding.Utf8);
-            }
-        }
-
         private async void ExportDot512MaterialButton_Click(object sender, RoutedEventArgs e)
         {
             await ExportHelpers.ExportDot512Async(this,isTransparentBackground: true, includeLabels: false, suggestedFileName: "dot512-material");
@@ -1013,6 +866,66 @@ namespace StrokeSampler
                 await FileIO.WriteTextAsync(saveFile, csv, Windows.Storage.Streams.UnicodeEncoding.Utf8);
             }
         }
+
+
+        private async void ExportRadialAlphaCsvButton_Click(object sender, RoutedEventArgs e)
+        {
+            var sourcePicker = new FileOpenPicker
+            {
+                SuggestedStartLocation = PickerLocationId.PicturesLibrary
+            };
+            sourcePicker.FileTypeFilter.Add(".png");
+
+            var sourceFile = await sourcePicker.PickSingleFileAsync();
+            if (sourceFile is null)
+            {
+                return;
+            }
+
+            var binSize = UIHelpers.GetRadialBinSize(this);
+
+            var savePicker = new FileSavePicker
+            {
+                SuggestedStartLocation = PickerLocationId.PicturesLibrary,
+                SuggestedFileName = $"radial-alpha-{sourceFile.DisplayName}"
+            };
+            savePicker.FileTypeChoices.Add("CSV", new List<string> { ".csv" });
+
+            var saveFile = await savePicker.PickSaveFileAsync();
+            if (saveFile is null)
+            {
+                return;
+            }
+
+            var device = CanvasDevice.GetSharedDevice();
+
+            using (var sourceStream = await sourceFile.OpenAsync(FileAccessMode.Read))
+            using (var bitmap = await CanvasBitmap.LoadAsync(device, sourceStream))
+            {
+                var bytes = bitmap.GetPixelBytes();
+                var width = (int)bitmap.SizeInPixels.Width;
+                var height = (int)bitmap.SizeInPixels.Height;
+
+                var analysis = RadialAlphaBinAnalyzer.Analyze(
+                    bytes,
+                    width,
+                    height,
+                    binSize,
+                    RadialAlphaThresholds);
+
+                var csv = RadialAlphaCsvBuilder.Build(
+                    analysis.Bins,
+                    binSize,
+                    RadialAlphaThresholds,
+                    analysis.Total,
+                    analysis.SumAlpha,
+                    analysis.Hits);
+
+                await FileIO.WriteTextAsync(saveFile, csv, Windows.Storage.Streams.UnicodeEncoding.Utf8);
+            }
+        }
+
+
 
         private async void ExportNormalizedFalloffButton_Click(object sender, RoutedEventArgs e)
         {
