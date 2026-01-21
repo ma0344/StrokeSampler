@@ -133,6 +133,7 @@
     <Compile Include="RadialAlphaBinAnalyzer.cs" />
     <Compile Include="RadialAlphaCsvBuilder.cs" />
     <Compile Include="Helpers\UIHelpers.cs" />
+    <Compile Include="Helpers\RadialFalloffExportService.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">

@@ -572,5 +572,12 @@ namespace StrokeSampler
             return a + (b - a) * t;
         }
         
+        internal static Task ExportNormalizedFalloffAsync(MainPage mp)
+            => ExportHelpers.ExportNormalizedFalloffAsync(mp);
+        
+
+        internal static Task ExportRadialFalloffBatchAsync(MainPage mp)
+            => ExportHelpers.ExportRadialFalloffBatchAsync(mp);
+        
     }
 }
