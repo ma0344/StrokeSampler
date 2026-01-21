@@ -98,8 +98,8 @@ namespace StrokeSampler
             var attributes = Helpers.CreatePencilAttributesFromToolbarBestEffort(this);
             _lastGeneratedAttributes = attributes;
 
-            var pressure = Helpers.GetOverwritePressure(this);
-            var maxOverwrite = Helpers.GetMaxOverwrite(this);
+            var pressure = UIHelpers.GetOverwritePressure(this);
+            var maxOverwrite = UIHelpers.GetMaxOverwrite(this);
             _lastOverwritePressure = pressure;
             _lastMaxOverwrite = maxOverwrite;
 
@@ -129,8 +129,8 @@ namespace StrokeSampler
 
             _lastGeneratedAttributes = attributes;
 
-            var maxOverwrite = Helpers.GetMaxOverwrite(this);
-            var spacing = Helpers.GetDotGridSpacing(this);
+            var maxOverwrite = UIHelpers.GetMaxOverwrite(this);
+            var spacing = UIHelpers.GetDotGridSpacing(this);
 
             _lastOverwritePressure = null;
             _lastMaxOverwrite = maxOverwrite;
@@ -163,7 +163,7 @@ namespace StrokeSampler
 
         private async void ExportRadialSamplesSummaryButton_Click(object sender, RoutedEventArgs e)
         {
-            var rs = Helpers.GetRadialSampleRs(this);
+            var rs = UIHelpers.GetRadialSampleRs(this);
             if (rs.Count == 0)
             {
                 var dlg = new ContentDialog
@@ -292,9 +292,9 @@ namespace StrokeSampler
 
         private async void ExportRadialFalloffBatchSizesNsButton_Click(object sender, RoutedEventArgs e)
         {
-            var ps = Helpers.GetRadialFalloffBatchPs(this);
-            var sizes = Helpers.GetRadialFalloffBatchSizes(this);
-            var ns = Helpers.GetRadialFalloffBatchNs(this);
+            var ps = UIHelpers.GetRadialFalloffBatchPs(this);
+            var sizes = UIHelpers.GetRadialFalloffBatchSizes(this);
+            var ns = UIHelpers.GetRadialFalloffBatchNs(this);
 
             if (ps.Count == 0 || sizes.Count == 0 || ns.Count == 0)
             {
@@ -385,9 +385,9 @@ namespace StrokeSampler
 
         private async void ExportRadialFalloffBatchPsSizesNsButton_Click(object sender, RoutedEventArgs e)
         {
-            var ps = Helpers.GetRadialFalloffBatchPs(this);
-            var sizes = Helpers.GetRadialFalloffBatchSizes(this);
-            var ns = Helpers.GetRadialFalloffBatchNs(this);
+            var ps = UIHelpers.GetRadialFalloffBatchPs(this);
+            var sizes = UIHelpers.GetRadialFalloffBatchSizes(this);
+            var ns = UIHelpers.GetRadialFalloffBatchNs(this);
 
             if (ps.Count == 0 || sizes.Count == 0 || ns.Count == 0)
             {
@@ -541,7 +541,7 @@ namespace StrokeSampler
 
         private async void ExportRadialFalloffBatchButton_Click(object sender, RoutedEventArgs e)
         {
-            var sizes = Helpers.GetRadialFalloffBatchSizes(this);
+            var sizes = UIHelpers.GetRadialFalloffBatchSizes(this);
             if (sizes.Count == 0)
             {
                 var dlg = new ContentDialog
@@ -566,8 +566,8 @@ namespace StrokeSampler
                 return;
             }
 
-            var pressure = Helpers.GetDot512Pressure(this);
-            var n = Helpers.GetDot512Overwrite(this);
+            var pressure = UIHelpers.GetDot512Pressure(this);
+            var n = UIHelpers.GetDot512Overwrite(this);
 
             var device = CanvasDevice.GetSharedDevice();
 
@@ -627,7 +627,7 @@ namespace StrokeSampler
 
         private async void ExportMaterialButton_Click(object sender, RoutedEventArgs e)
         {
-            await Helpers.ExportPngAsync(
+            await ExportHelpers.ExportPngAsync(
                 mp: this,
                 isTransparentBackground: true,
                 includeLabels: false,
@@ -636,7 +636,7 @@ namespace StrokeSampler
 
         private async void ExportPreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            await Helpers.ExportPngAsync(
+            await ExportHelpers.ExportPngAsync(
                 mp: this,
                 isTransparentBackground: false,
                 includeLabels: true,
@@ -657,7 +657,7 @@ namespace StrokeSampler
                 return;
             }
 
-            var binSize = Helpers.GetRadialBinSize(this);
+            var binSize = UIHelpers.GetRadialBinSize(this);
  
             var savePicker = new FileSavePicker
             {
@@ -702,42 +702,42 @@ namespace StrokeSampler
 
         private async void ExportDot512MaterialButton_Click(object sender, RoutedEventArgs e)
         {
-            await Helpers.ExportDot512Async(this,isTransparentBackground: true, includeLabels: false, suggestedFileName: "dot512-material");
+            await ExportHelpers.ExportDot512Async(this,isTransparentBackground: true, includeLabels: false, suggestedFileName: "dot512-material");
         }
 
         private async void ExportDot512PreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            await Helpers.ExportDot512Async(mp: this,isTransparentBackground: false, includeLabels: true, suggestedFileName: "dot512-preview");
+            await ExportHelpers.ExportDot512Async(mp: this,isTransparentBackground: false, includeLabels: true, suggestedFileName: "dot512-preview");
         }
 
         private async void ExportDot512BatchMaterialButton_Click(object sender, RoutedEventArgs e)
         {
-            await Helpers.ExportDot512BatchAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
+            await ExportHelpers.ExportDot512BatchAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
         }
 
         private async void ExportDot512BatchPreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            await Helpers.ExportDot512BatchAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
+            await ExportHelpers.ExportDot512BatchAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
         }
 
         private async void ExportDot512BatchMaterialSizesButton_Click(object sender, RoutedEventArgs e)
         {
-            await Helpers.ExportDot512BatchSizesAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
+            await ExportHelpers.ExportDot512BatchSizesAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
         }
 
         private async void ExportDot512BatchPreviewSizesButton_Click(object sender, RoutedEventArgs e)
         {
-            await Helpers.ExportDot512BatchSizesAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
+            await ExportHelpers.ExportDot512BatchSizesAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
         }
 
         private async void ExportDot512SlideMaterialButton_Click(object sender, RoutedEventArgs e)
         {
-            await Helpers.ExportDot512SlideAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
+            await ExportHelpers.ExportDot512SlideAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
         }
 
         private async void ExportDot512SlidePreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            await Helpers.ExportDot512SlideAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
+            await ExportHelpers.ExportDot512SlideAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
         }
 
         private async void ExportEstimatedPaperNoiseButton_Click(object sender, RoutedEventArgs e)
@@ -878,7 +878,7 @@ namespace StrokeSampler
                 _lastDotGridSpacing = this._lastDotGridSpacing,
                 _lastWasDotGrid = this._lastWasDotGrid
             };
-            await Helpers.ExportS200LineAsync(mp: this,_lp: _lp, isTransparentBackground: true,
+            await ExportHelpers.ExportS200LineAsync(mp: this,_lp: _lp, isTransparentBackground: true,
                 includeLabels: false,
                 suggestedFileName: "pencil-material-line-s200");
         }
@@ -894,7 +894,7 @@ namespace StrokeSampler
                 _lastWasDotGrid = this._lastWasDotGrid
             };
 
-            await Helpers.ExportS200LineAsync(mp: this,_lp: _lp, isTransparentBackground: false,
+            await ExportHelpers.ExportS200LineAsync(mp: this,_lp: _lp, isTransparentBackground: false,
                 includeLabels: true,
                 suggestedFileName: "pencil-preview-line-s200");
         }
@@ -910,8 +910,8 @@ namespace StrokeSampler
                 return;
             }
 
-            var dx = Helpers.GetPaperNoiseCropDx(this);
-            var dy = Helpers.GetPaperNoiseCropDy(this);
+            var dx = UIHelpers.GetPaperNoiseCropDx(this);
+            var dy = UIHelpers.GetPaperNoiseCropDy(this);
 
             var savePicker = new FileSavePicker
             {
@@ -971,7 +971,7 @@ namespace StrokeSampler
                 return;
             }
 
-            var binSize = Helpers.GetRadialBinSize(this);
+            var binSize = UIHelpers.GetRadialBinSize(this);
  
             var savePicker = new FileSavePicker
             {
@@ -1016,7 +1016,7 @@ namespace StrokeSampler
 
         private async void ExportNormalizedFalloffButton_Click(object sender, RoutedEventArgs e)
         {
-            await Helpers.ExportNormalizedFalloffAsync(this);
+            await ExportHelpers.ExportNormalizedFalloffAsync(this);
         }
     }
 }
