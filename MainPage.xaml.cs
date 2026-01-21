@@ -292,7 +292,7 @@ namespace StrokeSampler
 
         private async void ExportRadialFalloffBatchSizesNsButton_Click(object sender, RoutedEventArgs e)
         {
-            var ps = Helpers.GetRadialFalloffBatchNs(this);
+            var ps = Helpers.GetRadialFalloffBatchPs(this);
             var sizes = Helpers.GetRadialFalloffBatchSizes(this);
             var ns = Helpers.GetRadialFalloffBatchNs(this);
 
@@ -373,73 +373,19 @@ namespace StrokeSampler
                     }
                 }
             }
-        }
 
-        private async void ExportCenterAlphaSummaryButton_Click(object sender, RoutedEventArgs e)
-        {
-            // 中心αサマリCSVの収集・生成処理は `CenterAlphaSummaryCsvBuilder` に共通化している。
-            var folderPicker = new FolderPicker
+            var done = new ContentDialog
             {
-                SuggestedStartLocation = PickerLocationId.PicturesLibrary
-            };
-            folderPicker.FileTypeFilter.Add(".csv");
-            var folder = await folderPicker.PickSingleFolderAsync();
-            if (folder is null)
-            {
-                return;
-            }
-
-            var result = await CenterAlphaSummaryCsvBuilder.BuildFromFolderAsync(
-                folder,
-                isTargetCsvFile: name =>
-                    name.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
-                    && name.StartsWith("radial-falloff-", StringComparison.OrdinalIgnoreCase),
-                tryParseKey: name =>
-                {
-                    if (!Helpers.TryParseFalloffFilename(name, out var s, out var p, out var n))
-                    {
-                        return (false, default, default, default);
-                    }
-
-                    return (true, s, p, n);
-                },
-                tryReadCenterAlpha: text =>
-                {
-                    if (!Helpers.TryReadCenterAlphaFromFalloffCsv(text, out var centerAlpha))
-                    {
-                        return (false, default);
-                    }
-
-                    return (true, centerAlpha);
-                });
-
-            if (result.Rows == 0)
-            {
-                var dlg0 = new ContentDialog
-                {
-                    Title = "中心αサマリCSV",
-                    Content = "対象CSVが見つかりませんでした（radial-falloff-S*-P*-N*.csv）。",
-                    CloseButtonText = "OK"
-                };
-                await dlg0.ShowAsync();
-                return;
-            }
-
-            var outName = "center-alpha-vs-N-vs-P.csv";
-            await CenterAlphaSummaryCsvBuilder.SaveAsUtf8Async(folder, outName, result.CsvText);
-
-            var dlg = new ContentDialog
-            {
-                Title = "中心αサマリCSV",
-                Content = $"完了: {result.Rows}行を書き出しました。スキップ={result.Skipped}件。\n出力={outName}",
+                Title = "距離減衰CSV一括(P×S×N)",
+                Content = $"完了: {doneCount}/{total} 個出力しました。",
                 CloseButtonText = "OK"
             };
-            await dlg.ShowAsync();
+            await done.ShowAsync();
         }
 
         private async void ExportRadialFalloffBatchPsSizesNsButton_Click(object sender, RoutedEventArgs e)
         {
-            var ps = Helpers.GetRadialFalloffBatchNs(this);
+            var ps = Helpers.GetRadialFalloffBatchPs(this);
             var sizes = Helpers.GetRadialFalloffBatchSizes(this);
             var ns = Helpers.GetRadialFalloffBatchNs(this);
 
@@ -531,10 +477,9 @@ namespace StrokeSampler
             await done.ShowAsync();
         }
 
-        private async void ExportNormalizedFalloffButton_Click(object sender, RoutedEventArgs e)
+        private async void ExportCenterAlphaSummaryButton_Click(object sender, RoutedEventArgs e)
         {
-            var s0 = Helpers.GetNormalizedFalloffS0(this);
-
+            // 中心αサマリCSVの収集・生成処理は `CenterAlphaSummaryCsvBuilder` に共通化している。
             var folderPicker = new FolderPicker
             {
                 SuggestedStartLocation = PickerLocationId.PicturesLibrary
@@ -546,137 +491,52 @@ namespace StrokeSampler
                 return;
             }
 
-            var files = await folder.GetFilesAsync();
-            var samples = new List<(double s, double p, int n, double[] fr)>();
+            var result = await CenterAlphaSummaryCsvBuilder.BuildFromFolderAsync(
+                folder,
+                isTargetCsvFile: name =>
+                    name.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
+                    && name.StartsWith("radial-falloff-", StringComparison.OrdinalIgnoreCase),
+                tryParseKey: name =>
+                {
+                    if (!Helpers.TryParseFalloffFilename(name, out var s, out var p, out var n))
+                    {
+                        return (false, default, default, default);
+                    }
 
-            var skipped = 0;
-            foreach (var f in files)
+                    return (true, s, p, n);
+                },
+                tryReadCenterAlpha: text =>
+                {
+                    if (!Helpers.TryReadCenterAlphaFromFalloffCsv(text, out var centerAlpha))
+                    {
+                        return (false, default);
+                    }
+
+                    return (true, centerAlpha);
+                });
+
+            if (result.Rows == 0)
             {
-                if (!f.Name.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                var dlg0 = new ContentDialog
                 {
-                    continue;
-                }
-                if (!f.Name.StartsWith("radial-falloff-", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (!Helpers.TryParseFalloffFilename(f.Name, out var s, out var p, out var n))
-                {
-                    skipped++;
-                    continue;
-                }
-
-                var text = await FileIO.ReadTextAsync(f);
-                if (!Helpers.TryParseFalloffCsv(text, out var fr))
-                {
-                    skipped++;
-                    continue;
-                }
-
-                // S上限200前提（念のため）
-                if (s <= 0 || s > 200)
-                {
-                    skipped++;
-                    continue;
-                }
-
-                samples.Add((s, p, n, fr));
-            }
-
-            if (samples.Count == 0)
-            {
-                var dlg = new ContentDialog
-                {
-                    Title = "正規化mean/stddev",
+                    Title = "中心αサマリCSV",
                     Content = "対象CSVが見つかりませんでした（radial-falloff-S*-P*-N*.csv）。",
                     CloseButtonText = "OK"
                 };
-                await dlg.ShowAsync();
+                await dlg0.ShowAsync();
                 return;
             }
 
-            // P/Nが混在していると平均に意味が無いので、最多の(P,N)だけを採用する
-            var groupCounts = new Dictionary<(double p, int n), int>();
-            foreach (var s in samples)
+            var outName = "center-alpha-vs-N-vs-P.csv";
+            await CenterAlphaSummaryCsvBuilder.SaveAsUtf8Async(folder, outName, result.CsvText);
+
+            var dlg = new ContentDialog
             {
-                var key = (s.p, s.n);
-                groupCounts.TryGetValue(key, out var c);
-                groupCounts[key] = c + 1;
-            }
-
-            (double p, int n) selected = default;
-            var bestCount = -1;
-            foreach (var kv in groupCounts)
-            {
-                if (kv.Value > bestCount)
-                {
-                    bestCount = kv.Value;
-                    selected = kv.Key;
-                }
-            }
-
-            var filtered = new List<(double s, double[] fr)>();
-            foreach (var s in samples)
-            {
-                if (s.p == selected.p && s.n == selected.n)
-                {
-                    filtered.Add((s.s, s.fr));
-                }
-            }
-
-            if (filtered.Count == 0)
-            {
-                var dlg = new ContentDialog
-                {
-                    Title = "正規化mean/stddev",
-                    Content = "集計対象が空です。",
-                    CloseButtonText = "OK"
-                };
-                await dlg.ShowAsync();
-                return;
-            }
-
-            // r_norm軸は整数pxとして 0..(S0/2) を採用（dotの有効範囲を想定）
-            var rMax = Math.Max(1, s0 / 2);
-            var sum = new double[rMax + 1];
-            var sumSq = new double[rMax + 1];
-
-            foreach (var (s, fr) in filtered)
-            {
-                var scale = (double)s0 / s; // r_norm = r * scale
-
-                for (var rNorm = 0; rNorm <= rMax; rNorm++)
-                {
-                    var r = rNorm / scale; // 元CSV半径に戻す
-                    var v = Helpers.SampleLinear(fr, r);
-                    sum[rNorm] += v;
-                    sumSq[rNorm] += v * v;
-                }
-            }
-
-            var mean = new double[rMax + 1];
-            var stddev = new double[rMax + 1];
-            for (var i = 0; i <= rMax; i++)
-            {
-                var m = sum[i] / filtered.Count;
-                var v = sumSq[i] / filtered.Count - m * m;
-                mean[i] = m;
-                stddev[i] = Math.Sqrt(Math.Max(0.0, v));
-            }
-
-            var csv = Helpers.BuildNormalizedFalloffCsv(mean, stddev, filtered.Count, s0, selected.p, selected.n);
-            var outName = $"normalized-falloff-S0{s0}-P{selected.p:0.###}-N{selected.n}.csv";
-            var outFile = await folder.CreateFileAsync(outName, CreationCollisionOption.ReplaceExisting);
-            await FileIO.WriteTextAsync(outFile, csv, Windows.Storage.Streams.UnicodeEncoding.Utf8);
-
-            var done = new ContentDialog
-            {
-                Title = "正規化mean/stddev",
-                Content = $"完了: {filtered.Count}件を集計しました。スキップ={skipped}件。\n出力={outName}",
+                Title = "中心αサマリCSV",
+                Content = $"完了: {result.Rows}行を書き出しました。スキップ={result.Skipped}件。\n出力={outName}",
                 CloseButtonText = "OK"
             };
-            await done.ShowAsync();
+            await dlg.ShowAsync();
         }
 
         private async void ExportRadialFalloffBatchButton_Click(object sender, RoutedEventArgs e)
@@ -1152,6 +1012,11 @@ namespace StrokeSampler
 
                 await FileIO.WriteTextAsync(saveFile, csv, Windows.Storage.Streams.UnicodeEncoding.Utf8);
             }
+        }
+
+        private async void ExportNormalizedFalloffButton_Click(object sender, RoutedEventArgs e)
+        {
+            await Helpers.ExportNormalizedFalloffAsync(this);
         }
     }
 }
