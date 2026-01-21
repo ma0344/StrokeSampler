@@ -246,6 +246,92 @@ namespace StrokeSampler
             await dialog.ShowAsync();
         }
 
+        private async void ExportRadialFalloffBatchSizesNsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var ps = GetRadialFalloffBatchPs();
+            var sizes = GetRadialFalloffBatchSizes();
+            var ns = GetRadialFalloffBatchNs();
+
+            if (ps.Count == 0 || sizes.Count == 0 || ns.Count == 0)
+            {
+                var dlg = new ContentDialog
+                {
+                    Title = "距離減衰CSV一括(P×S×N)",
+                    Content = "P一覧 / Sizes / N一覧 のいずれかが空です。例: P=0.05,0.1,...  Sizes=5,12,...  N=1,2,...",
+                    CloseButtonText = "OK"
+                };
+                await dlg.ShowAsync();
+                return;
+            }
+
+            var folderPicker = new FolderPicker
+            {
+                SuggestedStartLocation = PickerLocationId.PicturesLibrary
+            };
+            folderPicker.FileTypeFilter.Add(".png");
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder is null)
+            {
+                return;
+            }
+
+            var device = CanvasDevice.GetSharedDevice();
+
+            var cx = (Dot512Size - 1) / 2f;
+            var cy = (Dot512Size - 1) / 2f;
+
+            var total = ps.Count * sizes.Count * ns.Count;
+            var doneCount = 0;
+
+            foreach (var p in ps)
+            {
+                foreach (var size in sizes)
+                {
+                    var attributes = CreatePencilAttributesFromToolbarBestEffort();
+                    attributes.Size = new Size(size, size);
+
+                    foreach (var n in ns)
+                    {
+                        var pngName = $"dot512-material-S{size:0.##}-P{p:0.####}-N{n}.png";
+                        var pngFile = await folder.CreateFileAsync(pngName, CreationCollisionOption.ReplaceExisting);
+
+                        using (IRandomAccessStream stream = await pngFile.OpenAsync(FileAccessMode.ReadWrite))
+                        using (var target = new CanvasRenderTarget(device, Dot512Size, Dot512Size, Dot512Dpi))
+                        {
+                            using (var ds = target.CreateDrawingSession())
+                            {
+                                ds.Clear(Color.FromArgb(0, 0, 0, 0));
+
+                                for (var i = 0; i < n; i++)
+                                {
+                                    var dot = CreatePencilDot(cx, cy, p, attributes);
+                                    ds.DrawInk(new[] { dot });
+                                }
+                            }
+
+                            await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
+                        }
+
+                        byte[] dotBytes;
+                        using (var s = await pngFile.OpenAsync(FileAccessMode.Read))
+                        using (var bmp = await CanvasBitmap.LoadAsync(device, s))
+                        {
+                            dotBytes = bmp.GetPixelBytes();
+                        }
+
+                        var fr = ComputeRadialMeanAlphaD(dotBytes, Dot512Size, Dot512Size);
+                        var csv = BuildRadialFalloffCsv(fr);
+
+                        var csvName = $"radial-falloff-S{size:0.##}-P{p:0.####}-N{n}.csv";
+                        var csvFile = await folder.CreateFileAsync(csvName, CreationCollisionOption.ReplaceExisting);
+                        await FileIO.WriteTextAsync(csvFile, csv, Windows.Storage.Streams.UnicodeEncoding.Utf8);
+
+                        doneCount++;
+                    }
+                }
+            }
+        }
+
         private async void ExportCenterAlphaSummaryButton_Click(object sender, RoutedEventArgs e)
         {
             var folderPicker = new FolderPicker
@@ -374,6 +460,42 @@ namespace StrokeSampler
             }
 
             return true;
+        }
+
+        private IReadOnlyList<int> GetRadialFalloffBatchNs()
+        {
+            if (RadialFalloffBatchNsTextBox is null)
+            {
+                return Array.Empty<int>();
+            }
+
+            var raw = RadialFalloffBatchNsTextBox.Text;
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return Array.Empty<int>();
+            }
+
+            var set = new HashSet<int>();
+            var list = new List<int>();
+
+            var parts = raw.Split(new[] { ',', ';', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in parts)
+            {
+                if (!int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
+                {
+                    continue;
+                }
+
+                // 実行時間の暴走を避けるため上限を設ける
+                n = Math.Clamp(n, 1, 200);
+                if (set.Add(n))
+                {
+                    list.Add(n);
+                }
+            }
+
+            list.Sort();
+            return list;
         }
 
         private async void ExportRadialFalloffBatchPsSizesNsButton_Click(object sender, RoutedEventArgs e)
@@ -1491,89 +1613,22 @@ namespace StrokeSampler
                 var width = (int)bitmap.SizeInPixels.Width;
                 var height = (int)bitmap.SizeInPixels.Height;
 
-                var cx = (width - 1) / 2.0;
-                var cy = (height - 1) / 2.0;
+                var analysis = RadialAlphaBinAnalyzer.Analyze(
+                    bytes,
+                    width,
+                    height,
+                    binSize,
+                    RadialAlphaThresholds);
 
-                var maxR = Math.Sqrt(cx * cx + cy * cy);
-                var bins = (int)Math.Floor(maxR / binSize) + 1;
+                var csv = RadialAlphaCsvBuilder.Build(
+                    analysis.Bins,
+                    binSize,
+                    RadialAlphaThresholds,
+                    analysis.Total,
+                    analysis.SumAlpha,
+                    analysis.Hits);
 
-                var total = new int[bins];
-                var sumAlpha = new long[bins];
-                var hits = new int[RadialAlphaThresholds.Length][];
-                for (var i = 0; i < RadialAlphaThresholds.Length; i++)
-                {
-                    hits[i] = new int[bins];
-                }
-
-                for (var y = 0; y < height; y++)
-                {
-                    for (var x = 0; x < width; x++)
-                    {
-                        var dx = x - cx;
-                        var dy = y - cy;
-                        var r = Math.Sqrt((dx * dx) + (dy * dy));
-                        var bin = (int)Math.Floor(r / binSize);
-                        if ((uint)bin >= (uint)bins)
-                        {
-                            continue;
-                        }
-
-                        var idx = (y * width + x) * 4;
-                        var a = bytes[idx + 3];
-
-                        total[bin]++;
-                        sumAlpha[bin] += a;
-
-                        for (var tIndex = 0; tIndex < RadialAlphaThresholds.Length; tIndex++)
-                        {
-                            if (a >= RadialAlphaThresholds[tIndex])
-                            {
-                                hits[tIndex][bin]++;
-                            }
-                        }
-                    }
-                }
-
-                var sb = new StringBuilder(capacity: 1024 * 1024);
-                sb.Append("r_bin,px_from,px_to,total,mean_alpha");
-                for (var i = 0; i < RadialAlphaThresholds.Length; i++)
-                {
-                    sb.Append(",p_ge_");
-                    sb.Append(RadialAlphaThresholds[i]);
-                }
-                sb.AppendLine();
-
-                for (var bin = 0; bin < bins; bin++)
-                {
-                    var n = total[bin];
-                    if (n <= 0)
-                    {
-                        continue;
-                    }
-
-                    var mean = (double)sumAlpha[bin] / n;
-
-                    sb.Append(bin);
-                    sb.Append(',');
-                    sb.Append((bin * binSize).ToString(CultureInfo.InvariantCulture));
-                    sb.Append(',');
-                    sb.Append(((bin + 1) * binSize).ToString(CultureInfo.InvariantCulture));
-                    sb.Append(',');
-                    sb.Append(n);
-                    sb.Append(',');
-                    sb.Append(mean.ToString("0.###", CultureInfo.InvariantCulture));
-
-                    for (var tIndex = 0; tIndex < RadialAlphaThresholds.Length; tIndex++)
-                    {
-                        var rate = (double)hits[tIndex][bin] / n;
-                        sb.Append(',');
-                        sb.Append(rate.ToString("0.######", CultureInfo.InvariantCulture));
-                    }
-
-                    sb.AppendLine();
-                }
-
-                await FileIO.WriteTextAsync(saveFile, sb.ToString(), Windows.Storage.Streams.UnicodeEncoding.Utf8);
+                await FileIO.WriteTextAsync(saveFile, csv, Windows.Storage.Streams.UnicodeEncoding.Utf8);
             }
         }
 
@@ -2436,7 +2491,10 @@ namespace StrokeSampler
 
         private async void ExportRadialFalloffCsvButton_Click(object sender, RoutedEventArgs e)
         {
-            var sourcePicker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.PicturesLibrary };
+            var sourcePicker = new FileOpenPicker
+            {
+                SuggestedStartLocation = PickerLocationId.PicturesLibrary
+            };
             sourcePicker.FileTypeFilter.Add(".png");
 
             var sourceFile = await sourcePicker.PickSingleFileAsync();
@@ -2445,10 +2503,12 @@ namespace StrokeSampler
                 return;
             }
 
+            var binSize = GetRadialBinSize();
+ 
             var savePicker = new FileSavePicker
             {
                 SuggestedStartLocation = PickerLocationId.PicturesLibrary,
-                SuggestedFileName = $"radial-falloff-{sourceFile.DisplayName}"
+                SuggestedFileName = $"radial-alpha-{sourceFile.DisplayName}"
             };
             savePicker.FileTypeChoices.Add("CSV", new List<string> { ".csv" });
 
@@ -2459,149 +2519,35 @@ namespace StrokeSampler
             }
 
             var device = CanvasDevice.GetSharedDevice();
-            double[] fr;
 
-            using (var s = await sourceFile.OpenAsync(FileAccessMode.Read))
-            using (var bmp = await CanvasBitmap.LoadAsync(device, s))
+            using (var sourceStream = await sourceFile.OpenAsync(FileAccessMode.Read))
+            using (var bitmap = await CanvasBitmap.LoadAsync(device, sourceStream))
             {
-                var w = (int)bmp.SizeInPixels.Width;
-                var h = (int)bmp.SizeInPixels.Height;
-                var bytes = bmp.GetPixelBytes();
-                fr = ComputeRadialMeanAlphaD(bytes, w, h);
-            }
+                var bytes = bitmap.GetPixelBytes();
+                var width = (int)bitmap.SizeInPixels.Width;
+                var height = (int)bitmap.SizeInPixels.Height;
 
-            var csv = BuildRadialFalloffCsv(fr);
-            await FileIO.WriteTextAsync(saveFile, csv, Windows.Storage.Streams.UnicodeEncoding.Utf8);
+                var analysis = RadialAlphaBinAnalyzer.Analyze(
+                    bytes,
+                    width,
+                    height,
+                    binSize,
+                    RadialAlphaThresholds);
+
+                var csv = RadialAlphaCsvBuilder.Build(
+                    analysis.Bins,
+                    binSize,
+                    RadialAlphaThresholds,
+                    analysis.Total,
+                    analysis.SumAlpha,
+                    analysis.Hits);
+
+                await FileIO.WriteTextAsync(saveFile, csv, Windows.Storage.Streams.UnicodeEncoding.Utf8);
+            }
         }
 
-        private IReadOnlyList<int> GetRadialFalloffBatchNs()
-        {
-            if (RadialFalloffBatchNsTextBox is null)
-            {
-                return Array.Empty<int>();
-            }
 
-            var raw = RadialFalloffBatchNsTextBox.Text;
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return Array.Empty<int>();
-            }
 
-            var set = new HashSet<int>();
-            var list = new List<int>();
 
-            var parts = raw.Split(new[] { ',', ';', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var part in parts)
-            {
-                if (!int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
-                {
-                    continue;
-                }
-
-                // 実行時間の暴走を避けるため上限を設ける
-                n = Math.Clamp(n, 1, 200);
-                if (set.Add(n))
-                {
-                    list.Add(n);
-                }
-            }
-
-            list.Sort();
-            return list;
-        }
-
-        private async void ExportRadialFalloffBatchSizesNsButton_Click(object sender, RoutedEventArgs e)
-        {
-            var ps = GetRadialFalloffBatchPs();
-            var sizes = GetRadialFalloffBatchSizes();
-            var ns = GetRadialFalloffBatchNs();
-
-            if (ps.Count == 0 || sizes.Count == 0 || ns.Count == 0)
-            {
-                var dlg = new ContentDialog
-                {
-                    Title = "距離減衰CSV一括(P×S×N)",
-                    Content = "P一覧 / Sizes / N一覧 のいずれかが空です。例: P=0.05,0.1,...  Sizes=5,12,...  N=1,2,...",
-                    CloseButtonText = "OK"
-                };
-                await dlg.ShowAsync();
-                return;
-            }
-
-            var folderPicker = new FolderPicker
-            {
-                SuggestedStartLocation = PickerLocationId.PicturesLibrary
-            };
-            folderPicker.FileTypeFilter.Add(".png");
-            var folder = await folderPicker.PickSingleFolderAsync();
-            if (folder is null)
-            {
-                return;
-            }
-
-            var device = CanvasDevice.GetSharedDevice();
-
-            var cx = (Dot512Size - 1) / 2f;
-            var cy = (Dot512Size - 1) / 2f;
-
-            var total = ps.Count * sizes.Count * ns.Count;
-            var doneCount = 0;
-
-            foreach (var p in ps)
-            {
-                foreach (var size in sizes)
-                {
-                    var attributes = CreatePencilAttributesFromToolbarBestEffort();
-                    attributes.Size = new Size(size, size);
-
-                    foreach (var n in ns)
-                    {
-                        var pngName = $"dot512-material-S{size:0.##}-P{p:0.####}-N{n}.png";
-                        var pngFile = await folder.CreateFileAsync(pngName, CreationCollisionOption.ReplaceExisting);
-
-                        using (IRandomAccessStream stream = await pngFile.OpenAsync(FileAccessMode.ReadWrite))
-                        using (var target = new CanvasRenderTarget(device, Dot512Size, Dot512Size, Dot512Dpi))
-                        {
-                            using (var ds = target.CreateDrawingSession())
-                            {
-                                ds.Clear(Color.FromArgb(0, 0, 0, 0));
-
-                                for (var i = 0; i < n; i++)
-                                {
-                                    var dot = CreatePencilDot(cx, cy, p, attributes);
-                                    ds.DrawInk(new[] { dot });
-                                }
-                            }
-
-                            await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
-                        }
-
-                        byte[] dotBytes;
-                        using (var s = await pngFile.OpenAsync(FileAccessMode.Read))
-                        using (var bmp = await CanvasBitmap.LoadAsync(device, s))
-                        {
-                            dotBytes = bmp.GetPixelBytes();
-                        }
-
-                        var fr = ComputeRadialMeanAlphaD(dotBytes, Dot512Size, Dot512Size);
-                        var csv = BuildRadialFalloffCsv(fr);
-
-                        var csvName = $"radial-falloff-S{size:0.##}-P{p:0.####}-N{n}.csv";
-                        var csvFile = await folder.CreateFileAsync(csvName, CreationCollisionOption.ReplaceExisting);
-                        await FileIO.WriteTextAsync(csvFile, csv, Windows.Storage.Streams.UnicodeEncoding.Utf8);
-
-                        doneCount++;
-                    }
-                }
-            }
-
-            var done = new ContentDialog
-            {
-                Title = "距離減衰CSV一括(P×S×N)",
-                Content = $"完了: {doneCount}/{total} 個出力しました。",
-                CloseButtonText = "OK"
-            };
-            await done.ShowAsync();
-        }
     }
 }

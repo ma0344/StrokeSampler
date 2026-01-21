@@ -126,6 +126,8 @@
     <Compile Include="PencilOverwriteSampleGenerator.cs" />
     <Compile Include="PencilPressurePresetGenerator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RadialAlphaBinAnalyzer.cs" />
+    <Compile Include="RadialAlphaCsvBuilder.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">
