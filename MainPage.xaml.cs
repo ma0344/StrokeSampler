@@ -980,7 +980,7 @@ namespace StrokeSampler
         // Dot512の端切れ防止は`GetDot512SizeOrNull`等で別途行う。
         private const double PencilStrokeWidthMax = 510.0;
 
-        private static readonly float[] PressurePreset = { 0.01f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
+        private static readonly float[] PressurePreset = {0.01f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
 
         private const float DefaultOverwritePressure = 0.5f;
         private const int DefaultMaxOverwrite = 10;
@@ -1061,15 +1061,17 @@ namespace StrokeSampler
             _lastDotGridSpacing = null;
             _lastWasDotGrid = false;
 
-            for (var overwriteCount = 1; overwriteCount <= maxOverwrite; overwriteCount++)
+            foreach (var stroke in PencilOverwriteSampleGenerator.Generate(
+                attributes,
+                pressure,
+                maxOverwrite,
+                DefaultStartX,
+                DefaultEndX,
+                DefaultStartY,
+                DefaultSpacingY,
+                CreatePencilStroke))
             {
-                var y = DefaultStartY + ((overwriteCount - 1) * DefaultSpacingY);
-
-                for (var i = 0; i < overwriteCount; i++)
-                {
-                    var stroke = CreatePencilStroke(DefaultStartX, DefaultEndX, y, pressure, attributes);
-                    InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(stroke);
-                }
+                InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(stroke);
             }
         }
 
@@ -1090,22 +1092,16 @@ namespace StrokeSampler
             _lastDotGridSpacing = spacing;
             _lastWasDotGrid = true;
 
-            // Columns = pressure, Rows = overwrite count
-            for (var row = 1; row <= maxOverwrite; row++)
+            foreach (var dot in PencilDotGridGenerator.Generate(
+                attributes,
+                DotGridPressurePreset,
+                maxOverwrite,
+                spacing,
+                DefaultDotGridStartX,
+                DefaultDotGridStartY,
+                CreatePencilDot))
             {
-                var y = DefaultDotGridStartY + ((row - 1) * spacing);
-
-                for (var col = 0; col < DotGridPressurePreset.Length; col++)
-                {
-                    var pressure = DotGridPressurePreset[col];
-                    var x = DefaultDotGridStartX + (col * spacing);
-
-                    for (var n = 0; n < row; n++)
-                    {
-                        var dot = CreatePencilDot(x, y, pressure, attributes);
-                        InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(dot);
-                    }
-                }
+                InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(dot);
             }
         }
 
@@ -1204,28 +1200,28 @@ namespace StrokeSampler
                 ds.DrawText($"DotSpacing={dotSpacing}", 16, 128, Colors.Black, format);
             }
             else if (_lastMaxOverwrite is int maxOverwrite && _lastOverwritePressure is float pressure)
-            {
-                ds.DrawText($"Mode=OverwriteSamples", 16, 44, Colors.Black, format);
-                ds.DrawText($"Pressure={pressure:0.###}", 16, 72, Colors.Black, format);
-                ds.DrawText($"MaxOverwrite={maxOverwrite}", 16, 100, Colors.Black, format);
-            }
-            else
-            {
-                ds.DrawText($"Mode=PressurePreset", 16, 44, Colors.Black, format);
-                ds.DrawText($"Pressure={string.Join("/", PressurePreset)}", 16, 72, Colors.Black, format);
-            }
+             {
+                 ds.DrawText($"Mode=OverwriteSamples", 16, 44, Colors.Black, format);
+                 ds.DrawText($"Pressure={pressure:0.###}", 16, 72, Colors.Black, format);
+                 ds.DrawText($"MaxOverwrite={maxOverwrite}", 16, 100, Colors.Black, format);
+             }
+             else
+             {
+                 ds.DrawText($"Mode=PressurePreset", 16, 44, Colors.Black, format);
+                 ds.DrawText($"Pressure={string.Join("/", PressurePreset)}", 16, 72, Colors.Black, format);
+             }
 
-            var w = _lastGeneratedAttributes?.Size.Width;
-            if (w != null)
-            {
+             var w = _lastGeneratedAttributes?.Size.Width;
+             if (w != null)
+             {
                 ds.DrawText($"StrokeWidth={w.Value:0.##}", 16, 156, Colors.Black, format);
-            }
+             }
 
-            var c = _lastGeneratedAttributes?.Color;
-            if (c != null)
-            {
+             var c = _lastGeneratedAttributes?.Color;
+             if (c != null)
+             {
                 ds.DrawText($"Color=ARGB({c.Value.A},{c.Value.R},{c.Value.G},{c.Value.B})", 16, 184, Colors.Black, format);
-            }
+             }
 
             ds.DrawText($"Export={GetExportWidth()}x{GetExportHeight()}", 16, 212, Colors.Black, format);
 
@@ -1246,22 +1242,22 @@ namespace StrokeSampler
                 }
             }
             else if (_lastMaxOverwrite is int maxOverwrite3)
-            {
-                for (var i = 1; i <= maxOverwrite3; i++)
-                {
-                    var y = DefaultStartY + ((i - 1) * DefaultSpacingY);
-                    ds.DrawText($"N={i}", 16, y - 12, Colors.Black, format);
-                }
-            }
-            else
-            {
-                for (var i = 0; i < PressurePreset.Length; i++)
-                {
-                    var y = DefaultStartY + (i * DefaultSpacingY);
-                    ds.DrawText($"P={PressurePreset[i]:0.0}", 16, y - 12, Colors.Black, format);
-                }
-            }
-        }
+             {
+                 for (var i = 1; i <= maxOverwrite3; i++)
+                 {
+                     var y = DefaultStartY + ((i - 1) * DefaultSpacingY);
+                     ds.DrawText($"N={i}", 16, y - 12, Colors.Black, format);
+                 }
+             }
+             else
+             {
+                 for (var i = 0; i < PressurePreset.Length; i++)
+                 {
+                     var y = DefaultStartY + (i * DefaultSpacingY);
+                     ds.DrawText($"P={PressurePreset[i]:0.0}", 16, y - 12, Colors.Black, format);
+                 }
+             }
+         }
 
         private InkDrawingAttributes CreatePencilAttributesFromToolbarBestEffort()
         {
@@ -1325,13 +1321,13 @@ namespace StrokeSampler
             var value = prop.GetValue(toolButton);
             if (value is double d)
             {
-                strokeWidth = d * 2;
+                strokeWidth = d*2;
                 return true;
             }
 
             if (value is float f)
             {
-                strokeWidth = f * 2;
+                strokeWidth = f*2;
                 return true;
             }
 
@@ -1381,10 +1377,10 @@ namespace StrokeSampler
 
             for (var x = startX; x <= endX; x += stepX)
             {
-                points.Add(new InkPoint(new Point(x, y), pressure));
+                points.Add(new InkPoint(new Point(x, y),pressure));
             }
 
-            var stroke = strokeBuilder.CreateStrokeFromInkPoints(points, Matrix3x2.Identity, null, null);
+            var stroke = strokeBuilder.CreateStrokeFromInkPoints(points,Matrix3x2.Identity,null,null);
             stroke.DrawingAttributes = attributes;
             return stroke;
         }
@@ -1469,7 +1465,7 @@ namespace StrokeSampler
             }
 
             var binSize = GetRadialBinSize();
-
+ 
             var savePicker = new FileSavePicker
             {
                 SuggestedStartLocation = PickerLocationId.PicturesLibrary,
@@ -2132,23 +2128,23 @@ namespace StrokeSampler
                 double maxN = double.NegativeInfinity;
 
                 var outBytes = new byte[w * h * 4];
-
+ 
                 for (var y = 0; y < h; y++)
                 {
                     for (var x = 0; x < w; x++)
                     {
                         var n = noise[y * w + x];
-
+ 
                         var t = (n - minN) / (maxN - minN);
                         t = Math.Clamp(t, 0.0, 1.0);
                         var g = (byte)Math.Round(t * 255.0);
-
+ 
                         var outIdx = (y * w + x) * 4;
                         outBytes[outIdx + 0] = g; // B
                         outBytes[outIdx + 1] = g; // G
                         outBytes[outIdx + 2] = g; // R
                         outBytes[outIdx + 3] = 255;
-
+ 
                         // 中心からの距離を推定する（r=r_maxの近傍は不安定なので無視）
                         /*
                         var dx = x - cx;
@@ -2232,13 +2228,13 @@ namespace StrokeSampler
                     // 1024x1024内で横線を引く（中心付近）
                     var y = (exportSize - 1) / 2f;
 
-                    var stroke = CreatePencilStroke(x0, x1, y, pressure, attributes);
-                    ds.DrawInk(new[] { stroke });
+                     var stroke = CreatePencilStroke(x0, x1, y, pressure, attributes);
+                     ds.DrawInk(new[] { stroke });
 
-                    if (includeLabels)
-                    {
-                        DrawS200LineLabels(ds, attributes, pressure, exportSize, x0, x1);
-                    }
+                     if (includeLabels)
+                     {
+                         DrawS200LineLabels(ds, attributes, pressure, exportSize, x0, x1);
+                     }
                 }
 
                 await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
@@ -2248,21 +2244,21 @@ namespace StrokeSampler
         }
 
         private void DrawS200LineLabels(CanvasDrawingSession ds, InkDrawingAttributes attributes, float pressure, int exportSize, float x0, float x1)
-        {
-            var format = new CanvasTextFormat
-            {
-                FontSize = 18,
-                WordWrapping = CanvasWordWrapping.NoWrap
-            };
+         {
+             var format = new CanvasTextFormat
+             {
+                 FontSize = 18,
+                 WordWrapping = CanvasWordWrapping.NoWrap
+             };
 
-            ds.DrawText("Mode=Line", 16, 16, Colors.Black, format);
-            ds.DrawText("S=200", 16, 40, Colors.Black, format);
-            ds.DrawText($"Pressure={pressure:0.###}", 16, 64, Colors.Black, format);
-            ds.DrawText($"Export={exportSize}x{exportSize}", 16, 88, Colors.Black, format);
-            ds.DrawText($"X={x0:0.##}..{x1:0.##}", 16, 112, Colors.Black, format);
-            ds.DrawText($"StrokeWidth={attributes.Size.Width:0.##}", 16, 136, Colors.Black, format);
-            ds.DrawText($"Color=ARGB({attributes.Color.A},{attributes.Color.R},{attributes.Color.G},{attributes.Color.B})", 16, 160, Colors.Black, format);
-        }
+             ds.DrawText("Mode=Line", 16, 16, Colors.Black, format);
+             ds.DrawText("S=200", 16, 40, Colors.Black, format);
+             ds.DrawText($"Pressure={pressure:0.###}", 16, 64, Colors.Black, format);
+             ds.DrawText($"Export={exportSize}x{exportSize}", 16, 88, Colors.Black, format);
+             ds.DrawText($"X={x0:0.##}..{x1:0.##}", 16, 112, Colors.Black, format);
+             ds.DrawText($"StrokeWidth={attributes.Size.Width:0.##}", 16, 136, Colors.Black, format);
+             ds.DrawText($"Color=ARGB({attributes.Color.A},{attributes.Color.R},{attributes.Color.G},{attributes.Color.B})", 16, 160, Colors.Black, format);
+         }
 
         private const int PaperNoiseCropSize = 24;
         private const int PaperNoiseCropHalf = PaperNoiseCropSize / 2;
