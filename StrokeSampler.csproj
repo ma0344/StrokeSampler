@@ -120,9 +120,15 @@
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
     <Compile Include="CenterAlphaSummaryCsvBuilder.cs" />
+    <Compile Include="Helpers\ExportDot512.cs" />
+    <Compile Include="Helpers\ExportEstimatedPaperNoise.cs" />
+    <Compile Include="Helpers\ExportPaperNoiseCrop24.cs" />
     <Compile Include="Helpers\DrawingHelpers.cs" />
+    <Compile Include="Helpers\ExportCenterAlphaSummary.cs" />
     <Compile Include="Helpers\ExportHelpers.cs" />
-    <Compile Include="Helpers\Helpers.cs" />
+    <Compile Include="Helpers\ExportRadialSamplesSummary.cs" />
+    <Compile Include="Helpers\GenerateHelper.cs" />
+    <Compile Include="Helpers\StrokeHelpers.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
@@ -134,6 +140,7 @@
     <Compile Include="RadialAlphaCsvBuilder.cs" />
     <Compile Include="Helpers\UIHelpers.cs" />
     <Compile Include="Helpers\RadialFalloffExportService.cs" />
+    <Compile Include="RadialFalloffBatchGenerator.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">
@@ -1604,6 +1611,7 @@
     <Content Include="Sample\pencil-preview.png" />
     <Content Include="Sample\pencil-preview_w5.png" />
     <Content Include="Sample\pencil-preview_w5_p0.5.png" />
+    <Content Include="UpgradeLog.htm" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">

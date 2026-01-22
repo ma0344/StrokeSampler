@@ -18,7 +18,7 @@ using Windows.UI.Xaml.Media;
 
 namespace StrokeSampler
 {
-    internal class Helpers
+    internal class StrokeHelpers
     {
 
         private const double PencilStrokeWidthMin = MainPage.PencilStrokeWidthMin;

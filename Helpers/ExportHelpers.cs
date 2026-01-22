@@ -9,7 +9,7 @@ using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using Windows.UI;
 using Windows.UI.Xaml.Controls;
-using static StrokeSampler.Helpers;
+using static StrokeSampler.StrokeHelpers;
 using Windows.Foundation;
 using Windows.UI.Input.Inking;
 namespace StrokeSampler
@@ -287,8 +287,16 @@ namespace StrokeSampler
              }
          }
 
-         internal static async System.Threading.Tasks.Task ExportS200LineAsync(MainPage mp, lastProperties _lp, bool isTransparentBackground, bool includeLabels, string suggestedFileName)
+         internal static async System.Threading.Tasks.Task ExportS200LineAsync(MainPage mp, bool isTransparentBackground, bool includeLabels, string suggestedFileName)
          {
+
+            var _lastGeneratedAttributes = mp._lastGeneratedAttributes;
+            var _lastOverwritePressure = mp._lastOverwritePressure;
+            var _lastMaxOverwrite = mp._lastMaxOverwrite;
+            var _lastDotGridSpacing = mp._lastDotGridSpacing;
+            var _lastWasDotGrid = mp._lastWasDotGrid;
+
+
              var picker = new FileSavePicker
              {
                  SuggestedStartLocation = PickerLocationId.PicturesLibrary,
@@ -306,11 +314,11 @@ namespace StrokeSampler
 
              var attributes = CreatePencilAttributesFromToolbarBestEffort(mp);
              attributes.Size = new Size(200, 200);
-             _lp._lastGeneratedAttributes = attributes;
-             _lp._lastOverwritePressure = null;
-             _lp._lastMaxOverwrite = null;
-             _lp._lastDotGridSpacing = null;
-             _lp._lastWasDotGrid = false;
+             _lastGeneratedAttributes = attributes;
+             _lastOverwritePressure = null;
+             _lastMaxOverwrite = null;
+             _lastDotGridSpacing = null;
+             _lastWasDotGrid = false;
 
              var pressure = 1.0f;
 
