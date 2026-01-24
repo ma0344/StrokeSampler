@@ -1,13 +1,13 @@
-﻿using System;
+﻿using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Text;
+using StrokeSampler.Helpers;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
-
-using Microsoft.Graphics.Canvas;
-using Microsoft.Graphics.Canvas.Text;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage;
@@ -141,42 +141,42 @@ namespace StrokeSampler
         }
         private async void ExportDot512MaterialButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportDot512Async(this,isTransparentBackground: true, includeLabels: false, suggestedFileName: "dot512-material");
+            await ExportDot512.ExportDot512Async(this,isTransparentBackground: true, includeLabels: false, suggestedFileName: "dot512-material");
         }
 
         private async void ExportDot512PreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportDot512Async(mp: this,isTransparentBackground: false, includeLabels: true, suggestedFileName: "dot512-preview");
+            await ExportDot512.ExportDot512Async(mp: this,isTransparentBackground: false, includeLabels: true, suggestedFileName: "dot512-preview");
         }
 
         private async void ExportDot512BatchMaterialButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportDot512BatchAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
+            await ExportDot512.ExportDot512BatchAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
         }
 
         private async void ExportDot512BatchPreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportDot512BatchAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
+            await ExportDot512.ExportDot512BatchAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
         }
 
         private async void ExportDot512BatchMaterialSizesButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportDot512BatchSizesAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
+            await ExportDot512.ExportDot512BatchSizesAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
         }
 
         private async void ExportDot512BatchPreviewSizesButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportDot512BatchSizesAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
+            await ExportDot512.ExportDot512BatchSizesAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
         }
 
         private async void ExportDot512SlideMaterialButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportDot512SlideAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
+            await ExportDot512.ExportDot512SlideAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
         }
 
         private async void ExportDot512SlidePreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportDot512SlideAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
+            await ExportDot512.ExportDot512SlideAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
         }
 
         private async void ExportEstimatedPaperNoiseButton_Click(object sender, RoutedEventArgs e)

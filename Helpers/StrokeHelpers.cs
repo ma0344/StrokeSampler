@@ -43,16 +43,6 @@ namespace StrokeSampler
         private static readonly int[] RadialAlphaThresholds = MainPage.RadialAlphaThresholds;
 
 
-        public class lastProperties
-        {
-            public InkDrawingAttributes _lastGeneratedAttributes;
-            public float? _lastOverwritePressure;
-            public int? _lastMaxOverwrite;
-            public int? _lastDotGridSpacing;
-            public bool _lastWasDotGrid;
-        };
-
-
 
         internal static int[] CreateRadialAlphaThresholds()
         {
@@ -571,13 +561,6 @@ namespace StrokeSampler
             var b = y[x0 + 1];
             return a + (b - a) * t;
         }
-        
-        internal static Task ExportNormalizedFalloffAsync(MainPage mp)
-            => ExportHelpers.ExportNormalizedFalloffAsync(mp);
-        
-
-        internal static Task ExportRadialFalloffBatchAsync(MainPage mp)
-            => ExportHelpers.ExportRadialFalloffBatchAsync(mp);
         
     }
 }

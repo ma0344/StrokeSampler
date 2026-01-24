@@ -129,6 +129,7 @@
     <Compile Include="Helpers\ExportRadialSamplesSummary.cs" />
     <Compile Include="Helpers\GenerateHelper.cs" />
     <Compile Include="Helpers\StrokeHelpers.cs" />
+    <Compile Include="Helpers\TestMethods.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
