@@ -119,15 +119,22 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
-    <Compile Include="CenterAlphaSummaryCsvBuilder.cs" />
+    <Compile Include="Helpers\CenterAlphaSummaryCsvBuilder.cs" />
+    <Compile Include="Helpers\ExportNormalizedFalloffService.cs" />
     <Compile Include="Helpers\ExportDot512.cs" />
     <Compile Include="Helpers\ExportEstimatedPaperNoise.cs" />
     <Compile Include="Helpers\ExportPaperNoiseCrop24.cs" />
     <Compile Include="Helpers\DrawingHelpers.cs" />
     <Compile Include="Helpers\ExportCenterAlphaSummary.cs" />
     <Compile Include="Helpers\ExportHelpers.cs" />
+    <Compile Include="Helpers\ExportPngService.cs" />
     <Compile Include="Helpers\ExportRadialSamplesSummary.cs" />
+    <Compile Include="Helpers\ExportS200Service.cs" />
     <Compile Include="Helpers\GenerateHelper.cs" />
+    <Compile Include="Helpers\ParseFalloffCSV.cs" />
+    <Compile Include="Helpers\ParseFalloffFilenameService.cs" />
+    <Compile Include="Helpers\ReadASamplesCSV.cs" />
+    <Compile Include="Helpers\ReadCenterACSV.cs" />
     <Compile Include="Helpers\StrokeHelpers.cs" />
     <Compile Include="Helpers\TestMethods.cs" />
     <Compile Include="MainPage.xaml.cs">
@@ -1634,6 +1641,7 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
+    <None Include="docs\copilot-session-summary.md" />
     <None Include="docs\drow-inkcanvas-pencil-from-code-answers.md" />
     <None Include="docs\handover.md" />
     <None Include="docs\Issues\issue-01-project-structure.md" />

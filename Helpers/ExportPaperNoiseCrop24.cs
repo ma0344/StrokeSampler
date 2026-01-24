@@ -56,7 +56,7 @@ namespace StrokeSampler
 
                 var x0 = cropCx - MainPage.PaperNoiseCropHalf;
                 var y0 = cropCy - MainPage.PaperNoiseCropHalf;
-                cropped = StrokeHelpers.CropRgba(bytes, w, h, x0, y0, MainPage.PaperNoiseCropSize, MainPage.PaperNoiseCropSize);
+                cropped = CropRgba(bytes, w, h, x0, y0, MainPage.PaperNoiseCropSize, MainPage.PaperNoiseCropSize);
             }
 
             CachedFileManager.DeferUpdates(saveFile);
@@ -68,5 +68,41 @@ namespace StrokeSampler
             }
             await CachedFileManager.CompleteUpdatesAsync(saveFile);
         }
+
+        internal static byte[] CropRgba(byte[] srcRgba, int srcW, int srcH, int x0, int y0, int cropW, int cropH)
+        {
+            var dst = new byte[cropW * cropH * 4];
+
+            for (var y = 0; y < cropH; y++)
+            {
+                var sy = y0 + y;
+                for (var x = 0; x < cropW; x++)
+                {
+                    var sx = x0 + x;
+
+                    var dstIdx = (y * cropW + x) * 4;
+
+                    // 範囲外は透明で埋める（安全側）
+                    if ((uint)sx >= (uint)srcW || (uint)sy >= (uint)srcH)
+                    {
+                        dst[dstIdx + 0] = 0;
+                        dst[dstIdx + 1] = 0;
+                        dst[dstIdx + 2] = 0;
+                        dst[dstIdx + 3] = 0;
+                        continue;
+                    }
+
+                    var srcIdx = (sy * srcW + sx) * 4;
+                    dst[dstIdx + 0] = srcRgba[srcIdx + 0];
+                    dst[dstIdx + 1] = srcRgba[srcIdx + 1];
+                    dst[dstIdx + 2] = srcRgba[srcIdx + 2];
+                    dst[dstIdx + 3] = srcRgba[srcIdx + 3];
+                }
+            }
+
+            return dst;
+        }
+
     }
+
 }

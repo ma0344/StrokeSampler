@@ -9,7 +9,7 @@ using Windows.Storage.Streams;
 using Windows.UI;
 using static StrokeSampler.StrokeHelpers;
 
-namespace StrokeSampler.Helpers
+namespace StrokeSampler
 {
     internal static class ExportDot512
     {

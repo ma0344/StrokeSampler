@@ -1,6 +1,5 @@
 ﻿using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Text;
-using StrokeSampler.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -132,12 +131,12 @@ namespace StrokeSampler
 
         private async void ExportMaterialButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportPngAsync(mp: this,isTransparentBackground: true,includeLabels: false,suggestedFileName: "pencil-material");
+            await ExportPngService.ExportAsync(mp: this,isTransparentBackground: true,includeLabels: false,suggestedFileName: "pencil-material");
         }
 
         private async void ExportPreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportPngAsync(mp: this,isTransparentBackground: false,includeLabels: true,suggestedFileName: "pencil-preview");
+            await ExportPngService.ExportAsync(mp: this,isTransparentBackground: false,includeLabels: true,suggestedFileName: "pencil-preview");
         }
         private async void ExportDot512MaterialButton_Click(object sender, RoutedEventArgs e)
         {
@@ -186,12 +185,12 @@ namespace StrokeSampler
 
         private async void ExportS200LineMaterialButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportS200LineAsync(mp: this, isTransparentBackground: true, includeLabels: false, suggestedFileName: "pencil-material-line-s200");
+            await ExportS200Service.ExportAsync(mp: this, isTransparentBackground: true, includeLabels: false, suggestedFileName: "pencil-material-line-s200");
         }
 
         private async void ExportS200LinePreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportS200LineAsync(mp: this, isTransparentBackground: false, includeLabels: true, suggestedFileName: "pencil-preview-line-s200");
+            await ExportS200Service.ExportAsync(mp: this, isTransparentBackground: false, includeLabels: true, suggestedFileName: "pencil-preview-line-s200");
         }
 
         private async void ExportPaperNoiseCrop24Button_Click(object sender, RoutedEventArgs e)
@@ -211,7 +210,7 @@ namespace StrokeSampler
 
         private async void ExportNormalizedFalloffButton_Click(object sender, RoutedEventArgs e)
         {
-            await ExportHelpers.ExportNormalizedFalloffAsync(this);
+            await ExportNormalizedFalloffService.ExportAsync(this);
         }
     }
 }

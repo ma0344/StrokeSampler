@@ -52,14 +52,14 @@ namespace StrokeSampler
                     continue;
                 }
 
-                if (!StrokeHelpers.TryParseFalloffFilename(f.Name, out var s, out var p, out var n))
+                if (!ParseFalloffFilenameService.TryParseFalloffFilename(f.Name, out var s, out var p, out var n))
                 {
                     skipped++;
                     continue;
                 }
 
                 var text = await FileIO.ReadTextAsync(f);
-                if (!StrokeHelpers.TryReadAlphaSamplesFromFalloffCsv(text, rs, out var a))
+                if (!ReadASamplesCSV.TryReadAlphaSamplesFromFalloffCsv(text, rs, out var a))
                 {
                     skipped++;
                     continue;

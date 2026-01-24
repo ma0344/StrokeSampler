@@ -2,14 +2,78 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Windows.UI;
 
 namespace StrokeSampler
 {
     internal static class UIHelpers
     {
-            internal static int GetNormalizedFalloffS0(MainPage mp)
+
+        internal static bool TryGetSelectedBrushColor(object toolButton, out Color color)
+        {
+            color = default;
+
+            var type = toolButton.GetType();
+            var prop = type.GetRuntimeProperty("SelectedBrush");
+            if (prop?.GetMethod is null)
+            {
+                return false;
+            }
+
+            var brush = prop.GetValue(toolButton);
+            if (brush is null)
+            {
+                return false;
+            }
+
+            var brushType = brush.GetType();
+            var colorProp = brushType.GetRuntimeProperty("Color");
+            if (colorProp?.GetMethod is null)
+            {
+                return false;
+            }
+
+            var value = colorProp.GetValue(brush);
+            if (value is Color c)
+            {
+                color = c;
+                return true;
+            }
+
+            return false;
+        }
+
+        internal static bool TryGetSelectedStrokeWidth(object toolButton, out double strokeWidth)
+        {
+            strokeWidth = default;
+
+            var type = toolButton.GetType();
+            var prop = type.GetRuntimeProperty("SelectedStrokeWidth");
+            if (prop?.GetMethod is null)
+            {
+                return false;
+            }
+
+            var value = prop.GetValue(toolButton);
+            if (value is double d)
+            {
+                strokeWidth = d * 2;
+                return true;
+            }
+
+            if (value is float f)
+            {
+                strokeWidth = f * 2;
+                return true;
+            }
+
+            return false;
+        }
+
+        internal static int GetNormalizedFalloffS0(MainPage mp)
         {
             if (int.TryParse(mp.NormalizedFalloffS0TextBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var s0))
             {

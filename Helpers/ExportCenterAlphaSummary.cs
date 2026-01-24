@@ -31,7 +31,7 @@ namespace StrokeSampler
                     && name.StartsWith("radial-falloff-", StringComparison.OrdinalIgnoreCase),
                 tryParseKey: name =>
                 {
-                    if (!StrokeHelpers.TryParseFalloffFilename(name, out var s, out var p, out var n))
+                    if (!ParseFalloffFilenameService.TryParseFalloffFilename(name, out var s, out var p, out var n))
                     {
                         return (false, default, default, default);
                     }
@@ -40,7 +40,7 @@ namespace StrokeSampler
                 },
                 tryReadCenterAlpha: text =>
                 {
-                    if (!StrokeHelpers.TryReadCenterAlphaFromFalloffCsv(text, out var centerAlpha))
+                    if (!ReadCenterACSV.TryReadCenterAlphaFromFalloffCsv(text, out var centerAlpha))
                     {
                         return (false, default);
                     }
