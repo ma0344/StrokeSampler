@@ -1,203 +1,203 @@
-# SkiaSharp �ւ̈ڐA�p�����FUWP InkCanvas Pencil �ߎ����f��
+# SkiaSharp への移植用メモ：UWP InkCanvas Pencil 近似モデル
 
-## ?? ���͌��� Summary:
-���̃��|�W�g���i`StrokeSampler`�j�ł́AUWP `InkCanvas` �� `Pencil` �̕`����ϑ����A�ȉ���2�v�f�ɕ������ĈڐA�\�Ȍ`�ɂ��܂����B
+## ?? 分析結果 Summary:
+このリポジトリ（`StrokeSampler`）では、UWP `InkCanvas` の `Pencil` の描画を観測し、以下の2要素に分解して移植可能な形にしました。
 
-- ���������i���a�����̕��σA���t�@�j `F(r)`
-- ���ځi�m�C�Y�j `N(x,y)`
+- 距離減衰（半径方向の平均アルファ） `F(r)`
+- 紙目（ノイズ） `N(x,y)`
 
-SkiaSharp ���ł́A�����́u�\�t�g�~�X�^���v�i��F`StampSoftCircle`�j�v�� **��������LUT�Œu��**���A����� **���ڃm�C�Y�ŕϒ�**���邱�ƂŁAUWP Pencil �̌����ڂɊ񂹂܂��B
+SkiaSharp 側では、既存の「ソフト円スタンプ（例：`StampSoftCircle`）」を **距離減衰LUTで置換**し、さらに **紙目ノイズで変調**することで、UWP Pencil の見た目に寄せます。
 
 
 ---
 
-## ? �ڐA���Ɏ󂯓n���K�v�̂���t�@�C��
+## ? 移植時に受け渡す必要のあるファイル
 
-### 1) ��������LUT�i�K�{�j
+### 1) 距離減衰LUT（必須）
 - `Sample/Compair/CSV/normalized-falloff-S0200-P1-N1.csv`
-  - ��: `r_norm,mean_alpha,stddev_alpha,count`
-  - Skia���Ŏg���̂͊�{ `mean_alpha`�i`stddev_alpha` �͕i���w�W/�C�Ӂj
-  - `S0=200` ����ɂ������K���ς�LUT
+  - 列: `r_norm,mean_alpha,stddev_alpha,count`
+  - Skia側で使うのは基本 `mean_alpha`（`stddev_alpha` は品質指標/任意）
+  - `S0=200` を基準にした正規化済みLUT
 
-�i�Q�l�Ƃ��āA���f�[�^��CSV�Q�j
-- `Sample/Compair/CSV/radial-falloff-S*-P1-N1.csv`�i�C�Ӂj
+（参考として、生データのCSV群）
+- `Sample/Compair/CSV/radial-falloff-S*-P1-N1.csv`（任意）
 
-### 2) ���ڃe�N�X�`���i�K�{�j
+### 2) 紙目テクスチャ（必須）
 - `paper-noise-estimated-*.png`
-  - **���̃��|�W�g�����ł̓t�@�C���Ǘ����Ă��Ȃ����߁A��������PNG��ʓr�n���K�v������܂�**
-  - �������͖{�A�v���� `���ڐ���PNG` �{�^��
+  - **このリポジトリ内ではファイル管理していないため、生成したPNGを別途渡す必要があります**
+  - 生成元は本アプリの `紙目推定PNG` ボタン
 
 
 ---
 
-## 1. ���f���i�����j
+## 1. モデル（数式）
 
-### 1.1 �����̐��K��
-��T�C�Y `S0` �ƁA���ۂ̃u���V�T�C�Y `S`�ipx�����j��p���āA���S����̋��� `distance_px` �� `r_norm` �ɕϊ����܂��B
+### 1.1 距離の正規化
+基準サイズ `S0` と、実際のブラシサイズ `S`（px相当）を用いて、中心からの距離 `distance_px` を `r_norm` に変換します。
 
 - `distance_px = sqrt((x - cx)^2 + (y - cy)^2)`
 - `r_norm = distance_px * (S0 / S)`
 
-���̃��|�W�g����LUT�� `S0=200` ��ō���Ă��܂��B
+このリポジトリのLUTは `S0=200` 基準で作っています。
 
-### 1.2 ���������iLUT�j
-`normalized-falloff-...csv` �� `mean_alpha` ��z�� `lut[]` �ɓǂݍ��݂܂��i�C���f�b�N�X�� `r_norm`�j�B
+### 1.2 距離減衰（LUT）
+`normalized-falloff-...csv` の `mean_alpha` を配列 `lut[]` に読み込みます（インデックスが `r_norm`）。
 
-`r_norm` �͘A���l�Ȃ̂� **���`���**���܂��B
+`r_norm` は連続値なので **線形補間**します。
 
 - `i = floor(r_norm)`
 - `t = r_norm - i`
 - `F(r_norm) = lerp(lut[i], lut[i+1], t)`
 
-�͈͊O�͒[�ŃN�����v���܂��B
+範囲外は端でクランプします。
 
-### 1.3 ���ځi�m�C�Y�j
-���ډ摜�i�O���[�X�P�[���j�� 0..1 �ɐ��K�����Ďg���܂��B
+### 1.3 紙目（ノイズ）
+紙目画像（グレースケール）を 0..1 に正規化して使います。
 
 - `noise = gray / 255.0`
-- ���]���K�v�Ȃ� `noise = 1.0 - noise`
+- 反転が必要なら `noise = 1.0 - noise`
 
-### 1.4 �ŏI�A���t�@�i�ŏ��\���j
-�܂��͂��̎��ŏ\���ł��B
+### 1.4 最終アルファ（最小構成）
+まずはこの式で十分です。
 
 - `alpha = baseAlpha * F(r_norm) * noise`
 
-`baseAlpha` �͓��ʌŒ�ł��ǂ��ł��B
+`baseAlpha` は当面固定でも良いです。
 
 
 ---
 
-## 2. Skia���Œu��������ꏊ�i�T�O�j
+## 2. Skia側で置き換える場所（概念）
 
-SkiaSharp���ɁA�ȉ��̂悤�ȁu�X�^���v�`��v����������O��ł��B
+SkiaSharp側に、以下のような「スタンプ描画」処理がある前提です。
 
-- `DrawPencilStroke(...)` ���T���v���_�𐶐�
-- �e�T���v���_�� `StampSoftCircle(...)` �̂悤�Ȋ֐���
-  - `distance` ���� `mask`�i0..1�j�����
-  - `mask` �� alpha �Ɋ|���ēh��
+- `DrawPencilStroke(...)` がサンプル点を生成
+- 各サンプル点で `StampSoftCircle(...)` のような関数が
+  - `distance` から `mask`（0..1）を作り
+  - `mask` を alpha に掛けて塗る
 
-���� `mask` �����������A��������LUT�ɒu�����܂��B
+この `mask` 生成部分を、距離減衰LUTに置換します。
 
-- ��: `mask = SoftCircle(distance, radius, hardness, ...)`
-- �V: `mask = F(r_norm)`
+- 旧: `mask = SoftCircle(distance, radius, hardness, ...)`
+- 新: `mask = F(r_norm)`
 
-�����Ď��ڂ��g����Ȃ�
+そして紙目が使えるなら
 - `mask *= N(x,y)`
 
 
 ---
 
-## 3. ���ڃe�N�X�`���̈����i�p�X/�T�C�Y/�^�C���K��j
+## 3. 紙目テクスチャの扱い（パス/サイズ/タイル規約）
 
-### 3.1 �p�X�iSkia���j
-Skia�����|�W�g���̊Ǘ����j�ɍ��킹�āA�ȉ��̂ǂ��炩�ɂ��܂��B
+### 3.1 パス（Skia側）
+Skia側リポジトリの管理方針に合わせて、以下のどちらかにします。
 
-- A�āi�����j: `Assets/paper-noise-estimated.png` �Ƃ��ē���
-- B��: ���[�U�[�w��p�X�i�ݒ�j����ǂݍ���
+- A案（推奨）: `Assets/paper-noise-estimated.png` として同梱
+- B案: ユーザー指定パス（設定）から読み込み
 
-����MD�ɓY�t����ׂ����̂� **�����ς�PNG�t�@�C��**�ł��B
+このMDに添付するべきものは **生成済みPNGファイル**です。
 
-### 3.2 �T�C�Y
-- ����PNG�̃s�N�Z���T�C�Y�͐������̓��͉摜�Ɉˑ����܂��B
-- Skia���́u�摜�̕�/�����v��ǂݎ���ē��삷��ΌŒ�l�͕s�v�ł��B
+### 3.2 サイズ
+- 紙目PNGのピクセルサイズは生成時の入力画像に依存します。
+- Skia側は「画像の幅/高さ」を読み取って動作すれば固定値は不要です。
 
-### 3.3 �^�C���K��i�d�v�j
-UWP���ۂ����o���Ȃ�A���ڂ� **�L�����o�X���W�i���[���h�j�Œ�**�ŎQ�Ƃ��܂��B
+### 3.3 タイル規約（重要）
+UWPっぽさを出すなら、紙目は **キャンバス座標（ワールド）固定**で参照します。
 
 - `noise = SamplePaperNoise(canvasX, canvasY)`
-- �^�C������Ȃ�
+- タイルするなら
   - `u = ((canvasX % W)+W)%W`
   - `v = ((canvasY % H)+H)%H`
 
-��Ԃ͍ŏ��͍ŋߖT�ł��ǂ��ł����A�\�Ȃ���`��Ԑ����ł��B
+補間は最初は最近傍でも良いですが、可能なら線形補間推奨です。
 
 
 ---
 
-## 4. ��������LUT�iCSV�j�̓ǂݎ��d�l
+## 4. 距離減衰LUT（CSV）の読み取り仕様
 
-### 4.1 ����CSV
+### 4.1 入力CSV
 - `normalized-falloff-S0200-P1-N1.csv`
 
-��i�擪�j:
+例（先頭）:
 - `# normalized-falloff S0=200 P=1 N=1 count=7`
 - `r_norm,mean_alpha,stddev_alpha,count`
 - `0,0.593...,0.016...,7`
 
-### 4.2 �g�p�J����
-- �܂��� `mean_alpha` �̂�
-- `stddev_alpha` �́u�s�m�����v�Ȃ̂ŁA���
-  - �N���b�v�͈͌���
-  - �i���]��
-  �ɗ��p�\�i�C�Ӂj
+### 4.2 使用カラム
+- まずは `mean_alpha` のみ
+- `stddev_alpha` は「不確かさ」なので、後で
+  - クリップ範囲決定
+  - 品質評価
+  に利用可能（任意）
 
 
 ---
 
-## 5. Skia���̎��������iCPU�X�V / Shader�j
+## 5. Skia側の実装方式（CPU更新 / Shader）
 
-�������̃R�[�h����Ɉˑ����邽�߁A2�Ă������܂��B
+向こうのコード事情に依存するため、2案を示します。
 
-### 5.1 CPU�� `SKBitmap` ���X�V��������i������������₷���j
-- �e�X�^���v�ɂ��āA�e���͈͂̃s�N�Z���𑖍�
-- `r_norm` ���v�Z���� `F(r_norm)` ������
-- `noise` ������
-- `alpha` ���v�Z���Ċ����s�N�Z���ɍ����i�܂��� `SrcOver`�j
+### 5.1 CPUで `SKBitmap` を更新する方式（実装が分かりやすい）
+- 各スタンプについて、影響範囲のピクセルを走査
+- `r_norm` を計算して `F(r_norm)` を引く
+- `noise` を引く
+- `alpha` を計算して既存ピクセルに合成（まずは `SrcOver`）
 
-���_:
-- �������P��
-- LUT/���ڂ̎Q�Ƃ����̂܂܏�����
+利点:
+- 実装が単純
+- LUT/紙目の参照がそのまま書ける
 
-���_:
-- ���x���o�ɂ����i�œK�����K�v�ɂȂ蓾��j
+欠点:
+- 速度が出にくい（最適化が必要になり得る）
 
-### 5.2 `SKShader` �ŕ`�掞�ɕ]����������i���������₷���j
-- �\�Ȃ�
-  - �����i���S����̋����j
-  - LUT�Q�Ɓi1D�e�N�X�`�������j
-  - ���ڃT���v��
-  ���V�F�[�_�ōs��
+### 5.2 `SKShader` で描画時に評価する方式（高速化しやすい）
+- 可能なら
+  - 距離（中心からの距離）
+  - LUT参照（1Dテクスチャ相当）
+  - 紙目サンプル
+  をシェーダで行う
 
-����:
-- SkiaSharp�Ń����^�C���V�F�[�_���g���邩�͊��ˑ�
-- �܂���CPU�����Ő��������o���Ă���ڍs�ł��ǂ�
-
-
----
-
-## 6. �܂��ŏ��œ������菇�i�����j
-
-1. `normalized-falloff-S0200-P1-N1.csv` ��Skia���ɓ�������
-2. CSV��ǂ݁A`mean_alpha` �� `double[] lut` �ɂ���
-3. `StampSoftCircle` �� `mask` �� `F(r_norm)` �ɒu������i���ږ����j
-4. `paper-noise-estimated.png` �𓯍����� `mask *= noise` ������
-5. `S=10` �O��Ō����ڂ�UWP�Ɋ�邩�m�F����
+注意:
+- SkiaSharpでランタイムシェーダが使えるかは環境依存
+- まずはCPU方式で正しさを出してから移行でも良い
 
 
 ---
 
-## 7. �Q�Ǝ����i�[���R�[�h�j
+## 6. まず最小で動かす手順（推奨）
 
-### 7.1 LUT�]��
+1. `normalized-falloff-S0200-P1-N1.csv` をSkia側に同梱する
+2. CSVを読み、`mean_alpha` を `double[] lut` にする
+3. `StampSoftCircle` の `mask` を `F(r_norm)` に置換する（紙目無し）
+4. `paper-noise-estimated.png` を同梱して `mask *= noise` を入れる
+5. `S=10` 前後で見た目がUWPに寄るか確認する
+
+
+---
+
+## 7. 参照実装（擬似コード）
+
+### 7.1 LUT評価
 - `EvalFalloff(rNorm)`
-  - ���`���
-  - �͈͊O�N�����v
+  - 線形補間
+  - 範囲外クランプ
 
-### 7.2 ���ڎQ��
+### 7.2 紙目参照
 - `EvalNoise(canvasX, canvasY)`
-  - PNG�̃O���[�l�� 0..1
-  - �K�v�Ȃ甽�]
-  - �^�C���̓L�����o�X���W�ōs��
+  - PNGのグレー値を 0..1
+  - 必要なら反転
+  - タイルはキャンバス座標で行う
 
 
 ---
 
-## 8. �⑫�ipressure�ˑ��ɂ��āj
-���̒i�K�ł́upressure�����a/�Z���v�̃e�[�u���͕K�{�ł͂���܂���B
-�܂��� **S�Œ�i��:10�j��F(r)�Ǝ��ڂ�����**�ƁA�����ڂ́g�����h���傫���߂Â��܂��B
+## 8. 補足（pressure依存について）
+この段階では「pressure→直径/濃さ」のテーブルは必須ではありません。
+まずは **S固定（例:10）でF(r)と紙目を入れる**と、見た目の“質感”が大きく近づきます。
 
-pressure�ˑ����K�v�ɂȂ������_��:
-- `baseAlpha`�i�Z���j
-- `S`�i�T�C�Y�j
-- `F(r)` �̌`
-�̂ǂꂪpressure�ŕς�邩��ǉ����肵�܂��B
+pressure依存が必要になった時点で:
+- `baseAlpha`（濃さ）
+- `S`（サイズ）
+- `F(r)` の形
+のどれがpressureで変わるかを追加測定します。

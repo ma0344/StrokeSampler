@@ -1,103 +1,119 @@
-# Copilot ì‹ÆƒTƒ}ƒŠiƒXƒŒƒbƒh‹¤—L—pj
+# Copilot ä½œæ¥­ã‚µãƒãƒªï¼ˆã‚¹ãƒ¬ãƒƒãƒ‰å…±æœ‰ç”¨ï¼‰
 
-## –Ú“I
-‚±‚ÌƒXƒŒƒbƒh‚ÅÀ{‚µ‚½•ÏX“à—eEŒ»ó‚ğA•ÊƒXƒŒƒbƒhi•Ê’S“–/•ÊCopilotj‚Éˆø‚«Œp‚®‚½‚ß‚Ìƒƒ‚‚Å‚·B
+## ç›®çš„
+ã“ã®ã‚¹ãƒ¬ãƒƒãƒ‰ã§å®Ÿæ–½ã—ãŸå¤‰æ›´å†…å®¹ãƒ»ç¾çŠ¶ã‚’ã€åˆ¥ã‚¹ãƒ¬ãƒƒãƒ‰ï¼ˆåˆ¥æ‹…å½“/åˆ¥Copilotï¼‰ã«å¼•ãç¶™ããŸã‚ã®ãƒ¡ãƒ¢ã§ã™ã€‚
 
-## i‚ß•ûi•ûjj
-- `MainPage.xaml.cs` ‚ÌŠeƒCƒxƒ“ƒgƒnƒ“ƒhƒ‰‚ÍAŒ´‘¥‚Æ‚µ‚Ä **ˆ—–{‘Ì‚ğƒwƒ‹ƒp[/ƒT[ƒrƒX‚ÖˆÚ‚µAUI‘¤‚Í1sˆÏ÷**‚É‚·‚éB
-- –Ú“I‚ÍuˆÚ“®iÓ–±•ª—£jv‚ÅA‹““®•ÏX‚âÅ“K‰»‚ÍŠî–{“I‚És‚í‚È‚¢B
-- ƒrƒ‹ƒh‚ª’Ê‚é‚±‚Æ‚ğ“s“xŠm”FB
+## é€²ã‚æ–¹ï¼ˆæ–¹é‡ï¼‰
+- `MainPage.xaml.cs` ã®å„ã‚¤ãƒ™ãƒ³ãƒˆãƒãƒ³ãƒ‰ãƒ©ã¯ã€åŸå‰‡ã¨ã—ã¦ **å‡¦ç†æœ¬ä½“ã‚’ãƒ˜ãƒ«ãƒ‘ãƒ¼/ã‚µãƒ¼ãƒ“ã‚¹ã¸ç§»ã—ã€UIå´ã¯1è¡Œå§”è­²**ã«ã™ã‚‹ã€‚
+- ç›®çš„ã¯ã€Œç§»å‹•ï¼ˆè²¬å‹™åˆ†é›¢ï¼‰ã€ã§ã€æŒ™å‹•å¤‰æ›´ã‚„æœ€é©åŒ–ã¯åŸºæœ¬çš„ã«è¡Œã‚ãªã„ã€‚
+- ãƒ“ãƒ«ãƒ‰ãŒé€šã‚‹ã“ã¨ã‚’éƒ½åº¦ç¢ºèªã€‚
 
-## À{Ï‚İiå‚ÈˆÏ÷/ˆÚAj
+## å®Ÿæ–½æ¸ˆã¿ï¼ˆä¸»ãªå§”è­²/ç§»æ¤ï¼‰
 
-### 1) Radial Œn
+### 1) Radial ç³»
 - `ExportRadialAlphaCsvButton_Click()`
-  - `RadialFalloffExportService.ExportRadialAlphaCsvAsync(MainPage)` ‚ğ’Ç‰ÁB
-  - `MainPage.xaml.cs` ‘¤‚Í `await RadialFalloffExportService.ExportRadialAlphaCsvAsync(this);` ‚ÉˆÏ÷B
+  - `RadialFalloffExportService.ExportRadialAlphaCsvAsync(MainPage)` ã‚’è¿½åŠ ã€‚
+  - `MainPage.xaml.cs` å´ã¯ `await RadialFalloffExportService.ExportRadialAlphaCsvAsync(this);` ã«å§”è­²ã€‚
 
 - `ExportRadialFalloffBatchSizesNsButton_Click()`
-  - `RadialFalloffExportService.ExportRadialFalloffBatchSizesNsAsync(MainPage)` ‚ğ’Ç‰ÁB
-  - `MainPage.xaml.cs` ‘¤‚Í1sˆÏ÷B
+  - `RadialFalloffExportService.ExportRadialFalloffBatchSizesNsAsync(MainPage)` ã‚’è¿½åŠ ã€‚
+  - `MainPage.xaml.cs` å´ã¯1è¡Œå§”è­²ã€‚
 
 - `ExportRadialFalloffBatchPsSizesNsButton_Click()`
-  - `RadialFalloffExportService.ExportRadialFalloffBatchPsSizesNsAsync(MainPage)` ‚ğ’Ç‰ÁB
-  - `MainPage.xaml.cs` ‘¤‚Í1sˆÏ÷B
+  - `RadialFalloffExportService.ExportRadialFalloffBatchPsSizesNsAsync(MainPage)` ã‚’è¿½åŠ ã€‚
+  - `MainPage.xaml.cs` å´ã¯1è¡Œå§”è­²ã€‚
 
 ### 2) Center alpha summary
 - `Helpers/ExportCenterAlphaSummary.cs`
-  - `ExportCenterAlphaSummary.ExportAsync(MainPage)` ‚ğÀ‘•iƒ{ƒ^ƒ“ˆ—–{‘Ì‚ğˆÚAjB
+  - `ExportCenterAlphaSummary.ExportAsync(MainPage)` ã‚’å®Ÿè£…ï¼ˆãƒœã‚¿ãƒ³å‡¦ç†æœ¬ä½“ã‚’ç§»æ¤ï¼‰ã€‚
 - `ExportCenterAlphaSummaryButton_Click()`
-  - `await ExportCenterAlphaSummary.ExportAsync(this);` ‚É1sˆÏ÷B
+  - `await ExportCenterAlphaSummary.ExportAsync(this);` ã«1è¡Œå§”è­²ã€‚
 
 ### 3) Radial samples summary
 - `Helpers/ExportRadialSamplesSummaryButton.cs`
-  - “–‰ `ExportRadialSamplesSummaryButton` ‚Æ‚¢‚¤Œ^–¼‚ª XAML ‚Ì `Button` ‚ÆÕ“ËiCS1061j‚µ“¾‚½‚½‚ßA
-    **Œ^–¼‚ğ `ExportRadialSamplesSummary` ‚É•ÏX**‚µ‚ÄÕ“Ë‰ñ”ğB
-  - `ExportRadialSamplesSummary.ExportAsync(MainPage)` ‚ğÀ‘•iˆ—–{‘Ì‚ğˆÚAjB
+  - å½“åˆ `ExportRadialSamplesSummaryButton` ã¨ã„ã†å‹åãŒ XAML ã® `Button` ã¨è¡çªï¼ˆCS1061ï¼‰ã—å¾—ãŸãŸã‚ã€
+    **å‹åã‚’ `ExportRadialSamplesSummary` ã«å¤‰æ›´**ã—ã¦è¡çªå›é¿ã€‚
+  - `ExportRadialSamplesSummary.ExportAsync(MainPage)` ã‚’å®Ÿè£…ï¼ˆå‡¦ç†æœ¬ä½“ã‚’ç§»æ¤ï¼‰ã€‚
 - `ExportRadialSamplesSummaryButton_Click()`
-  - `await ExportRadialSamplesSummary.ExportAsync(this);` ‚É1sˆÏ÷B
+  - `await ExportRadialSamplesSummary.ExportAsync(this);` ã«1è¡Œå§”è­²ã€‚
 
 ### 4) Estimated paper noise
 - `Helpers/ExportEstimatedPaperNoise.cs`
-  - `ExportEstimatedPaperNoise.ExportAsync(MainPage)` ‚ğÀ‘•B
-  - .NET 5 ŒİŠ·‚Ì‚½‚ß `double.IsFinite` ‚Íg—p‚¹‚¸A`double.IsNaN/IsInfinity` ‚ğg—pB
+  - `ExportEstimatedPaperNoise.ExportAsync(MainPage)` ã‚’å®Ÿè£…ã€‚
+  - .NET 5 äº’æ›ã®ãŸã‚ `double.IsFinite` ã¯ä½¿ç”¨ã›ãšã€`double.IsNaN/IsInfinity` ã‚’ä½¿ç”¨ã€‚
 - `ExportEstimatedPaperNoiseButton_Click()`
-  - `await ExportEstimatedPaperNoise.ExportAsync(this);` ‚É1sˆÏ÷B
+  - `await ExportEstimatedPaperNoise.ExportAsync(this);` ã«1è¡Œå§”è­²ã€‚
 
-> ’ˆÓ: Œ³ƒR[ƒh‚É‚Í `noise` Zo‚ªƒRƒƒ“ƒgƒAƒEƒg‚³‚ê‚½­Õ‚ª‚ ‚è‚Ü‚µ‚½BŒ»İ‚ÌÀ‘•‚Íu“®‚­Œ`v‚Å `noise` ‚ğZo‚µ‚Ä‚¢‚Ü‚·B
-> Œµ–§‚ÉuƒRƒƒ“ƒgƒAƒEƒg‚ğŠO‚µ‚½‚¾‚¯‚Ì‹““®v‚ğ‹‚ß‚éê‡‚ÍA–Ú“I‚ÌƒAƒ‹ƒSƒŠƒYƒ€i`bin` ‚Ìˆµ‚¢“™j‚ğÄ’è‹`‚·‚é•K—v‚ª‚ ‚è‚Ü‚·B
+> æ³¨æ„: å…ƒã‚³ãƒ¼ãƒ‰ã«ã¯ `noise` ç®—å‡ºãŒã‚³ãƒ¡ãƒ³ãƒˆã‚¢ã‚¦ãƒˆã•ã‚ŒãŸç—•è·¡ãŒã‚ã‚Šã¾ã—ãŸã€‚ç¾åœ¨ã®å®Ÿè£…ã¯ã€Œå‹•ãå½¢ã€ã§ `noise` ã‚’ç®—å‡ºã—ã¦ã„ã¾ã™ã€‚
+> å³å¯†ã«ã€Œã‚³ãƒ¡ãƒ³ãƒˆã‚¢ã‚¦ãƒˆã‚’å¤–ã—ãŸã ã‘ã®æŒ™å‹•ã€ã‚’æ±‚ã‚ã‚‹å ´åˆã¯ã€ç›®çš„ã®ã‚¢ãƒ«ã‚´ãƒªã‚ºãƒ ï¼ˆ`bin` ã®æ‰±ã„ç­‰ï¼‰ã‚’å†å®šç¾©ã™ã‚‹å¿…è¦ãŒã‚ã‚Šã¾ã™ã€‚
 
 ### 5) PaperNoise crop 24
 - `Helpers/ExportPaperNoiseCrop24.cs`
-  - `ExportPaperNoiseCrop24.ExportAsync(MainPage)` ‚ğÀ‘•B
-  - `IAsyncOperation<T>` ‚ğ `await` ‚·‚é‚½‚ß‚É `using System;` ‚ğ’Ç‰ÁiCS4036 ‰ñ”ğjB
+  - `ExportPaperNoiseCrop24.ExportAsync(MainPage)` ã‚’å®Ÿè£…ã€‚
+  - `IAsyncOperation<T>` ã‚’ `await` ã™ã‚‹ãŸã‚ã« `using System;` ã‚’è¿½åŠ ï¼ˆCS4036 å›é¿ï¼‰ã€‚
 - `ExportPaperNoiseCrop24Button_Click()`
-  - `await ExportPaperNoiseCrop24.ExportAsync(this);` ‚É1sˆÏ÷B
+  - `await ExportPaperNoiseCrop24.ExportAsync(this);` ã«1è¡Œå§”è­²ã€‚
 
-### 6) Generate Œn
+### 6) Generate ç³»
 - `Helpers/GenerateHelper.cs`
   - `GenerateHelper.Generate(MainPage)`
   - `GenerateHelper.GenerateOverwriteSamples(MainPage)`
   - `GenerateHelper.GenerateDotGrid(MainPage)`
-  ‚ğÀ‘•i‚»‚ê‚¼‚êŒ³‚Ìƒ{ƒ^ƒ“ˆ—–{‘Ì‚ğˆÚAjB
+  ã‚’å®Ÿè£…ï¼ˆãã‚Œãã‚Œå…ƒã®ãƒœã‚¿ãƒ³å‡¦ç†æœ¬ä½“ã‚’ç§»æ¤ï¼‰ã€‚
 
 - `MainPage.xaml.cs`
-  - `GenerateButton_Click()` ¨ `GenerateHelper.Generate(this);`
-  - `GenerateOverwriteSamplesButton_Click()` ¨ `GenerateHelper.GenerateOverwriteSamples(this);`
-  - `GenerateDotGridButton_Click()` ¨ `GenerateHelper.GenerateDotGrid(this);`
+  - `GenerateButton_Click()` â†’ `GenerateHelper.Generate(this);`
+  - `GenerateOverwriteSamplesButton_Click()` â†’ `GenerateHelper.GenerateOverwriteSamples(this);`
+  - `GenerateDotGridButton_Click()` â†’ `GenerateHelper.GenerateDotGrid(this);`
 
-### 7) Dot512 export ˆê®
+### 7) Dot512 export ä¸€å¼
 - `Helpers/ExportDot512.cs`
-  - `namespace StrokeSampler.Helpers` ‚Ì `static class ExportDot512` ‚Æ‚µ‚ÄA‰º‹L4ƒƒ\ƒbƒh‚ğ**À‘•ˆÚA**:
+  - `namespace StrokeSampler.Helpers` ã® `static class ExportDot512` ã¨ã—ã¦ã€ä¸‹è¨˜4ãƒ¡ã‚½ãƒƒãƒ‰ã‚’**å®Ÿè£…ç§»æ¤**:
     - `ExportDot512Async(...)`
     - `ExportDot512BatchAsync(...)`
     - `ExportDot512BatchSizesAsync(...)`
     - `ExportDot512SlideAsync(...)`
 
 - `Helpers/ExportHelpers.cs`
-  - ã‹L4ƒƒ\ƒbƒh‚ğ `ExportDot512.*` ‚Ö‚Ì **1sˆÏ÷**‚É’uŠ·iŒÄ‚Ño‚µŒİŠ·ˆÛjB
+  - ä¸Šè¨˜4ãƒ¡ã‚½ãƒƒãƒ‰ã‚’ `ExportDot512.*` ã¸ã® **1è¡Œå§”è­²**ã«ç½®æ›ï¼ˆå‘¼ã³å‡ºã—äº’æ›ç¶­æŒï¼‰ã€‚
 
-## ƒrƒ‹ƒhEŒŸØó‹µ
-- •ÏX‚Ìß–Ú‚²‚Æ‚Éƒrƒ‹ƒh‚ğÀs‚µAÅI“_‚Åƒrƒ‹ƒh¬Œ÷B
+### 8) Normalized falloff
+- `Helpers/ExportNormalizedFalloffService.cs`
+  - `ExportNormalizedFalloffService.ExportAsync(MainPage mp)` ã‚’å®Ÿè£…ï¼ˆæ—§ `ExportHelpers.ExportNormalizedFalloffAsync` ã®å‡¦ç†æœ¬ä½“ã‚’ç§»æ¤ï¼‰ã€‚
+  - å†…éƒ¨ã§ä½¿ã† `TryParseFalloffFilename/TryParseFalloffCsv/SampleLinear/BuildNormalizedFalloffCsv` ã¯ `StrokeHelpers` ã«ã‚ã‚‹ãŸã‚ã€`using static StrokeSampler.StrokeHelpers;` ã‚’ä½¿ç”¨ã€‚
+- `Helpers/ExportHelpers.cs`
+  - `ExportNormalizedFalloffAsync(MainPage mp)` ã‚’ **1è¡Œå§”è­²**ã«å¤‰æ›´ï¼š`=> ExportNormalizedFalloffService.ExportAsync(mp);`
 
-## ‚æ‚­o‚½’ˆÓ“_iÄ”­–h~j
-- Œ^–¼‚ª XAML ‘¤‚Ì `Button` –¼‚È‚Ç‚ÆÕ“Ë‚·‚é‚ÆA`CS1061` ‚É‚È‚è“¾‚éB
-  - —á: `ExportRadialSamplesSummaryButton` ¨ `ExportRadialSamplesSummary` ‚ÉƒŠƒl[ƒ€B
-- UWP ‚Ì `IAsyncOperation<T>` ‚ğƒwƒ‹ƒp[‘¤‚Å `await` ‚·‚éê‡AŠÂ‹«‚É‚æ‚è `CS4036` ‚ªo‚é‚±‚Æ‚ª‚ ‚éB
-  - `using System;` ‚â `System.Runtime.InteropServices.WindowsRuntime` ‚Ì’Ç‰Á‚Å‰ğÁ‚µ‚½ƒP[ƒX‚ ‚èB
-- `.NET 5` ‚Å‚Í `double.IsFinite` ‚ªg‚¦‚È‚¢‚½‚ßA`IsNaN/IsInfinity` ‚ğg‚¤B
+### 9) ExportPng
+- `Helpers/ExportPngService.cs`
+  - `ExportPngService.ExportAsync(MainPage mp, bool isTransparentBackground, bool includeLabels, string suggestedFileName)` ã‚’å®Ÿè£…ï¼ˆæ—§ `ExportHelpers.ExportPngAsync` ã®å‡¦ç†æœ¬ä½“ã‚’ç§»æ¤ï¼‰ã€‚
+  - `FileSavePicker`/`CanvasRenderTarget.SaveAsync` ã® `await` ã‚’æˆç«‹ã•ã›ã‚‹ãŸã‚ã€`System.Runtime.InteropServices.WindowsRuntime` ç­‰ã® using ã‚’è¿½åŠ ã€‚
+- `Helpers/ExportHelpers.cs`
+  - `ExportPngAsync(...)` ã‚’ **1è¡Œå§”è­²**ã«å¤‰æ›´ï¼š`=> ExportPngService.ExportAsync(...)`
 
-## å‚È•ÏXƒtƒ@ƒCƒ‹ˆê——
-- `MainPage.xaml.cs`iƒCƒxƒ“ƒgƒnƒ“ƒhƒ‰‚Ì1sˆÏ÷‰»j
-- `Helpers/RadialFalloffExportService.cs`iRadialŒnCSV/Batch‚ÌˆÏ÷æ’Ç‰Áj
-- `Helpers/ExportCenterAlphaSummary.cs`iV‹K/À‘•’Ç‰Áj
-- `Helpers/ExportRadialSamplesSummaryButton.cs`iŒ^–¼•ÏX{À‘•’Ç‰Áj
-- `Helpers/ExportEstimatedPaperNoise.cs`iÀ‘•’Ç‰ÁA.NET5ŒİŠ·C³j
-- `Helpers/ExportPaperNoiseCrop24.cs`iÀ‘•’Ç‰ÁACS4036‘Îôj
-- `Helpers/GenerateHelper.cs`iÀ‘•’Ç‰Áj
-- `Helpers/ExportDot512.cs`iÀ‘•’Ç‰Áj
-- `Helpers/ExportHelpers.cs`iDot512Œn‚ğ1sˆÏ÷‰»j
+## ãƒ“ãƒ«ãƒ‰ãƒ»æ¤œè¨¼çŠ¶æ³
+- å¤‰æ›´ã®ç¯€ç›®ã”ã¨ã«ãƒ“ãƒ«ãƒ‰ã‚’å®Ÿè¡Œã—ã€æœ€çµ‚æ™‚ç‚¹ã§ãƒ“ãƒ«ãƒ‰æˆåŠŸã€‚
 
-## Ÿ‚É‹N‚±‚è“¾‚éì‹Æ
-- `ExportHelpers` ‚Éc‚é‘¼‚Ì exporti`ExportPngAsync` ‚È‚Çj‚à“¯—l‚ÉŒÂ•Êƒtƒ@ƒCƒ‹‰»‚·‚é‚©ŒŸ“¢B
-- `ExportEstimatedPaperNoise` ‚ÌƒAƒ‹ƒSƒŠƒYƒ€®‡iuˆÓ}’Ê‚è‚ÌF(r)Enoise„’èvj‚ª•K—v‚È‚çd—l‚ğ‹l‚ß‚Ä’²®B
+## ã‚ˆãå‡ºãŸæ³¨æ„ç‚¹ï¼ˆå†ç™ºé˜²æ­¢ï¼‰
+- å‹åãŒ XAML å´ã® `Button` åãªã©ã¨è¡çªã™ã‚‹ã¨ã€`CS1061` ã«ãªã‚Šå¾—ã‚‹ã€‚
+  - ä¾‹: `ExportRadialSamplesSummaryButton` â†’ `ExportRadialSamplesSummary` ã«ãƒªãƒãƒ¼ãƒ ã€‚
+- UWP ã® `IAsyncOperation<T>` ã‚’ãƒ˜ãƒ«ãƒ‘ãƒ¼å´ã§ `await` ã™ã‚‹å ´åˆã€ç’°å¢ƒã«ã‚ˆã‚Š `CS4036` ãŒå‡ºã‚‹ã“ã¨ãŒã‚ã‚‹ã€‚
+  - `using System;` ã‚„ `System.Runtime.InteropServices.WindowsRuntime` ã®è¿½åŠ ã§è§£æ¶ˆã—ãŸã‚±ãƒ¼ã‚¹ã‚ã‚Šã€‚
+- `.NET 5` ã§ã¯ `double.IsFinite` ãŒä½¿ãˆãªã„ãŸã‚ã€`IsNaN/IsInfinity` ã‚’ä½¿ã†ã€‚
+
+## ä¸»ãªå¤‰æ›´ãƒ•ã‚¡ã‚¤ãƒ«ä¸€è¦§
+- `MainPage.xaml.cs`ï¼ˆã‚¤ãƒ™ãƒ³ãƒˆãƒãƒ³ãƒ‰ãƒ©ã®1è¡Œå§”è­²åŒ–ï¼‰
+- `Helpers/RadialFalloffExportService.cs`ï¼ˆRadialç³»CSV/Batchã®å§”è­²å…ˆè¿½åŠ ï¼‰
+- `Helpers/ExportCenterAlphaSummary.cs`ï¼ˆæ–°è¦/å®Ÿè£…è¿½åŠ ï¼‰
+- `Helpers/ExportRadialSamplesSummaryButton.cs`ï¼ˆå‹åå¤‰æ›´ï¼‹å®Ÿè£…è¿½åŠ ï¼‰
+- `Helpers/ExportEstimatedPaperNoise.cs`ï¼ˆå®Ÿè£…è¿½åŠ ã€.NET5äº’æ›ä¿®æ­£ï¼‰
+- `Helpers/ExportPaperNoiseCrop24.cs`ï¼ˆå®Ÿè£…è¿½åŠ ã€CS4036å¯¾ç­–ï¼‰
+- `Helpers/GenerateHelper.cs`ï¼ˆå®Ÿè£…è¿½åŠ ï¼‰
+- `Helpers/ExportDot512.cs`ï¼ˆå®Ÿè£…è¿½åŠ ï¼‰
+- `Helpers/ExportHelpers.cs`ï¼ˆDot512ç³»ã‚’1è¡Œå§”è­²åŒ–ï¼‰
+- `Helpers/ExportNormalizedFalloffService.cs`ï¼ˆå®Ÿè£…è¿½åŠ ï¼‰
+- `Helpers/ExportPngService.cs`ï¼ˆå®Ÿè£…è¿½åŠ ï¼‰
+
+## æ¬¡ã«èµ·ã“ã‚Šå¾—ã‚‹ä½œæ¥­
+- `ExportHelpers` ã«æ®‹ã‚‹ä»–ã® exportï¼ˆ`ExportPngAsync` ãªã©ï¼‰ã‚‚åŒæ§˜ã«å€‹åˆ¥ãƒ•ã‚¡ã‚¤ãƒ«åŒ–ã™ã‚‹ã‹æ¤œè¨ã€‚
+- `ExportEstimatedPaperNoise` ã®ã‚¢ãƒ«ã‚´ãƒªã‚ºãƒ æ•´åˆï¼ˆã€Œæ„å›³é€šã‚Šã®F(r)ãƒ»noiseæ¨å®šã€ï¼‰ãŒå¿…è¦ãªã‚‰ä»•æ§˜ã‚’è©°ã‚ã¦èª¿æ•´ã€‚

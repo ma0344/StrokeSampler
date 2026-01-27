@@ -163,6 +163,11 @@ namespace StrokeSampler
             await ExportDot512.ExportDot512BatchSizesAsync(mp:this,isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
         }
 
+        private async void ExportDot512BatchMaterialSizesPsNsButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExportDot512.ExportDot512BatchSizesPsNsAsync(mp: this, isTransparentBackground: true, includeLabels: false, defaultSuffix: "material");
+        }
+
         private async void ExportDot512BatchPreviewSizesButton_Click(object sender, RoutedEventArgs e)
         {
             await ExportDot512.ExportDot512BatchSizesAsync(mp:this,isTransparentBackground: false, includeLabels: true, defaultSuffix: "preview");
@@ -212,5 +217,21 @@ namespace StrokeSampler
         {
             await ExportNormalizedFalloffService.ExportAsync(this);
         }
+
+        private async void CompareDot512WithSkiaButton_Click(object sender, RoutedEventArgs e)
+        {
+            await CompareDot512WithSkia.CompareDot512WithSkiaAsync(this);
+        }
+
+        private async void ExportDot512PreSaveAlphaSummaryButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExportDot512.ExportDot512PreSaveAlphaSummaryCsvAsync(this);
+        }
+
+        private async void ExportDot512PreSaveAlphaFloorBySizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExportDot512.ExportDot512PreSaveAlphaFloorBySizeCsvAsync(this);
+        }
+
     }
 }

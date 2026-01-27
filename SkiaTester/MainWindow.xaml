@@ -1,0 +1,170 @@
+﻿<Window x:Class="SkiaTester.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SkiaTester"
+        xmlns:skia="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
+        mc:Ignorable="d"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        ui:WindowHelper.UseModernWindowStyle="True"
+        Title="MainWindow" d:Height="550" d:Width="1500" Height="800" Width="1500">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,8">
+                <TextBlock Text="Out Dir:" VerticalAlignment="Center"/>
+                <TextBox x:Name="OutputDirectoryTextBox"
+                         Width="450"
+                         Text="c:/users/ma/source/repos/StrokeSampler/Sample/Compair/CSV"
+                         Margin="6,0,12,0" />
+                <Button x:Name="BrowseOutputDirectoryButton"
+                        Content="Browse..."
+                        Width="90"
+                        Click="BrowseOutputDirectoryButton_Click" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="S(直径px):" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ui:NumberBox x:Name="DiameterNumberBox"
+                              Width="Auto"
+                              Text="100" Margin="0,0,12,0" ValueChanged="DiameterNumberBox_ValueChanged"
+                              Maximum="200"
+                              Minimum="0"
+                              SpinButtonPlacementMode="Inline" />
+
+                <TextBlock Text="P:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ui:NumberBox x:Name="PressureNumberBox" Width="Auto" Text="0.0104" Margin="0,0,12,0" ValueChanged="PressureNumberBox_ValueChanged"
+                              Maximum="1"
+                              Minimum="0.0001"
+                              LargeChange="0.001"
+                              SmallChange="0.0001"
+                              SpinButtonPlacementMode="Inline"
+                              Value="0.0104" />
+
+                <TextBlock Text="N:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ui:NumberBox x:Name="StampCountNumberBox" Width="Auto" Text="1" Margin="0,0,12,0"
+                              Maximum="1000"
+                              Minimum="1"
+                              SmallChange="1"
+                              LargeChange="10"
+                              SpinButtonPlacementMode="Inline"
+                              Value="1" />
+
+                <Button x:Name="RenderButton" Content="Render" Width="90" Click="RenderButton_Click" />
+                <Button x:Name="ExportCenterAlphaCsvButton" Content="Export centerα vs N" Width="160" Margin="8,0,0,0" Click="ExportCenterAlphaCsvButton_Click" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,8">
+
+                <CheckBox x:Name="IgnoreAlphaCheckBox" Content="α無視表示" Margin="16,0,0,0" VerticalAlignment="Center" IsChecked="False" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+                <CheckBox x:Name="CheckerBackgroundCheckBox" Content="チェッカー背景" Margin="12,0,0,0" VerticalAlignment="Center" IsChecked="False" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+
+                <CheckBox x:Name="PaperNoiseCheckBox" Content="紙目" Margin="16,0,0,0" VerticalAlignment="Center" IsChecked="True" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+                <TextBox x:Name="PaperNoisePathTextBox" Width="260" Margin="8,0,0,0" Text="Sample/paper-noise-estimated-dot512-material.png" />
+                <CheckBox x:Name="PaperNoiseClampToValidCheckBox" Content="ClampToValid" Margin="12,0,0,0" VerticalAlignment="Center" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+
+                <TextBlock Text="DotPNG:" VerticalAlignment="Center" Margin="16,0,6,0" />
+                <TextBox x:Name="DotMaterialPathTextBox" Width="260" Margin="0,0,8,0" Text="Sample/dot512-material-cropped.png" />
+                <Button x:Name="EstimatePaperNoiseButton" Content="Estimate paper-noise" Width="150" Click="EstimatePaperNoiseButton_Click" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,8">
+
+                <TextBlock Text="Strength:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PaperNoiseStrengthNumberBox" Width="Auto" Text="0.35" Margin="0,0,12,0"
+                              Maximum="1"
+                              Minimum="0"
+                              SmallChange="0.05"
+                              LargeChange="0.1"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperNoiseStrengthNumberBox_ValueChanged"
+                              Value="0.35" />
+
+                <TextBlock Text="NoiseScale:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PaperNoiseScaleNumberBox" Width="Auto" Text="2" Margin="0,0,12,0"
+                              Maximum="16"
+                              Minimum="0.5"
+                              SmallChange="0.5"
+                              LargeChange="1"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperNoiseScaleNumberBox_ValueChanged"
+                              Value="2" />
+
+                <TextBlock Text="NoiseOffsetX:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PaperNoiseOffsetXNumberBox" Width="Auto" Text="0" Margin="0,0,12,0"
+                              Maximum="1024"
+                              Minimum="-1024"
+                              SmallChange="1"
+                              LargeChange="16"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperNoiseOffsetNumberBox_ValueChanged"
+                              Value="0" />
+
+                <TextBlock Text="NoiseOffsetY:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PaperNoiseOffsetYNumberBox" Width="Auto" Text="0" Margin="0,0,12,0"
+                              Maximum="1024"
+                              Minimum="-1024"
+                              SmallChange="1"
+                              LargeChange="16"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperNoiseOffsetNumberBox_ValueChanged"
+                              Value="0" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,8">
+
+                <TextBlock Text="NoiseGain:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PaperNoiseGainNumberBox" Width="Auto" Text="0.2" Margin="0,0,12,0"
+                              Maximum="10"
+                              Minimum="0"
+                              SmallChange="0.1"
+                              LargeChange="0.5"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperNoiseGainNumberBox_ValueChanged"
+                              Value="0.2" />
+
+                <CheckBox x:Name="PaperNoiseApplyToCountCheckBox" Content="k→Count" Margin="0,0,12,0" VerticalAlignment="Center" Checked="PaperNoiseApplyModeCheckBox_Changed" Unchecked="PaperNoiseApplyModeCheckBox_Changed" />
+
+                <TextBlock Text="LowFreqScale:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PaperNoiseLowFreqScaleNumberBox" Width="Auto" Text="4" Margin="0,0,12,0"
+                              Maximum="64"
+                              Minimum="1"
+                              SmallChange="1"
+                              LargeChange="4"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperNoiseLowFreqNumberBox_ValueChanged"
+                              Value="4" />
+
+                <TextBlock Text="LowFreqMix:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PaperNoiseLowFreqMixNumberBox" Width="Auto" Text="0" Margin="0,0,12,0"
+                              Maximum="1"
+                              Minimum="0"
+                              SmallChange="0.05"
+                              LargeChange="0.1"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperNoiseLowFreqNumberBox_ValueChanged"
+                              Value="0" />
+
+                <TextBlock Text="CSV:" VerticalAlignment="Center" Margin="16,0,6,0" />
+                <CheckBox x:Name="UsePreQuantizeMetricsCheckBox" Content="量子化前集計" Margin="0,0,8,0" VerticalAlignment="Center" IsChecked="True" />
+                <TextBox x:Name="RadialCsvPathTextBox" Width="260" Text="skia-radial-falloff-S200-P1-N1.skia.csv" />
+                <Button x:Name="ExportRadialCsvButton" Content="Export radial" Margin="8,0,0,0" Click="ExportRadialCsvButton_Click" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Margin="0,0,0,8">
+            <TextBlock x:Name="FloorInfoTextBlock" />
+            <TextBlock x:Name="AlphaSummaryTextBlock" />
+            <TextBlock x:Name="AutoCompareTextBlock" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Border Grid.Row="2" BorderBrush="#33000000" BorderThickness="1" CornerRadius="4">
+            <skia:SKElement x:Name="Preview" PaintSurface="Preview_PaintSurface" Width="200" Height="200"/>
+        </Border>
+    </Grid>
+</Window>

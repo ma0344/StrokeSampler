@@ -5,6 +5,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Project Path="SkiaTester/SkiaTester.csproj" Id="8269c45d-0dac-463e-b042-2538734112fd" />
   <Project Path="StrokeSampler.csproj" Id="366147a3-5f31-4d03-b847-0f693bae938c">
     <Platform Solution="*|ARM" Project="ARM" />
     <Platform Solution="*|ARM64" Project="ARM64" />

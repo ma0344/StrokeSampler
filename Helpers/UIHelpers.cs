@@ -35,7 +35,6 @@ namespace StrokeSampler
             {
                 return false;
             }
-
             var value = colorProp.GetValue(brush);
             if (value is Color c)
             {
@@ -44,6 +43,81 @@ namespace StrokeSampler
             }
 
             return false;
+        }
+
+
+        internal static IReadOnlyList<float> GetDot512BatchPs(MainPage mp)
+        {
+            if (mp.Dot512BatchPsTextBox is null)
+            {
+                return Array.Empty<float>();
+            }
+
+            var raw = mp.Dot512BatchPsTextBox.Text;
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return Array.Empty<float>();
+            }
+
+            var set = new HashSet<float>();
+            var list = new List<float>();
+
+            var parts = raw.Split(new[] { ',', ';', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in parts)
+            {
+                if (!float.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out var p))
+                {
+                    continue;
+                }
+
+                p = Math.Clamp(p, 0.01f, 1.0f);
+
+                // floatの重複は誤差が出るので丸めた値を採用
+                p = (float)Math.Round(p, 4);
+                if (set.Add(p))
+                {
+                    list.Add(p);
+                }
+            }
+
+            list.Sort();
+            return list;
+        }
+
+        internal static IReadOnlyList<int> GetDot512BatchNs(MainPage mp)
+        {
+            if (mp.Dot512BatchNsTextBox is null)
+            {
+                return Array.Empty<int>();
+            }
+
+            var raw = mp.Dot512BatchNsTextBox.Text;
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return Array.Empty<int>();
+            }
+
+            var set = new HashSet<int>();
+            var list = new List<int>();
+
+            var parts = raw.Split(new[] { ',', ';', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in parts)
+            {
+                if (!int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
+                {
+                    continue;
+                }
+
+                // 実行時間の暴走を避けるため上限を設ける
+                n = Math.Clamp(n, 1, 200);
+                if (set.Add(n))
+                {
+                    list.Add(n);
+                }
+            }
+
+            list.Sort();
+            return list;
         }
 
         internal static bool TryGetSelectedStrokeWidth(object toolButton, out double strokeWidth)
@@ -115,7 +189,7 @@ namespace StrokeSampler
 
         internal static float GetOverwritePressure(MainPage mp)
         {
-            if (float.TryParse(mp.OverwritePressureTextBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var pressure))
+            if (float.TryParse(mp.OverwritePressureNumberBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var pressure))
             {
                 return Math.Clamp(pressure, 0.01f, 1.0f);
             }
@@ -162,7 +236,7 @@ namespace StrokeSampler
 
         internal static float GetDot512Pressure(MainPage mp)
         {
-            if (float.TryParse(mp.Dot512PressureTextBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var pressure))
+            if (float.TryParse(mp.Dot512PressureNumberBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var pressure))
             {
                 return Math.Clamp(pressure, 0.01f, 1.0f);
             }

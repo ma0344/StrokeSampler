@@ -77,7 +77,7 @@
         <StackPanel Grid.Row="2"
                     Grid.Column="0"
                     Orientation="Vertical"
-                    HorizontalAlignment="Stretch">
+                    VerticalAlignment="Bottom">
             <StackPanel Orientation="Horizontal"
                         Padding="12"
                         Spacing="12">
@@ -111,7 +111,7 @@
 
             <TextBlock Text="重ね塗りPressure:"
                        VerticalAlignment="Center" />
-            <TextBox x:Name="OverwritePressureTextBox"
+            <TextBox x:Name="OverwritePressureNumberBox"
                          x:FieldModifier="Public"
                          Width="80"
                      Text="0.5"
@@ -165,7 +165,7 @@
                         Spacing="12">
                 <TextBlock Text="Dot512 Pressure:"
                            VerticalAlignment="Center" />
-                <TextBox x:Name="Dot512PressureTextBox"
+                <TextBox x:Name="Dot512PressureNumberBox"
                          x:FieldModifier="Public"
                          Width="80"
                          Text="1.0"
@@ -177,6 +177,22 @@
                          x:FieldModifier="Public"
                          Width="70"
                          Text="1"
+                         IsReadOnly="False" />
+
+                <TextBlock Text="Dot512 P一覧:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Dot512BatchPsTextBox"
+                         x:FieldModifier="Public"
+                         Width="200"
+                         Text="0.05,0.1,0.5,1.0"
+                         IsReadOnly="False" />
+
+                <TextBlock Text="Dot512 N一覧:"
+                           VerticalAlignment="Center" />
+                <TextBox x:Name="Dot512BatchNsTextBox"
+                         x:FieldModifier="Public"
+                         Width="140"
+                         Text="1,10,100"
                          IsReadOnly="False" />
 
                 <TextBlock Text="Dot512 Size:"
@@ -196,7 +212,15 @@
                         Content="Dot512(白+ラベル)"
                         Click="ExportDot512PreviewButton_Click" />
 
+                <Button x:Name="ExportDot512BatchMaterialSizesPsNsButton"
+                        Content="Dot512一括S×P×N(透過)"
+                        Click="ExportDot512BatchMaterialSizesPsNsButton_Click" />
+
                 <AppBarSeparator />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
 
                 <TextBlock Text="Dot512 枚数:"
                            VerticalAlignment="Center" />
@@ -220,7 +244,7 @@
                          x:FieldModifier="Public"
                          Width="70"
                          Text="0.5"
-                         IsReadOnly="False" />
+                          IsReadOnly="False" />
 
                 <TextBlock Text="Sizes:"
                            VerticalAlignment="Center" />
@@ -266,6 +290,7 @@
                 <Button x:Name="ExportDot512BatchPreviewSizesButton"
                         Content="Dot512一括S(白)"
                         Click="ExportDot512BatchPreviewSizesButton_Click" />
+                <AppBarSeparator />
 
                 <Button x:Name="ExportDot512SlideMaterialButton"
                         Content="Dot512Slide(透過)"
@@ -276,6 +301,7 @@
                         Click="ExportDot512SlidePreviewButton_Click" />
 
                 <AppBarSeparator />
+
                 <Button x:Name="ExportEstimatedPaperNoiseButton"
                         Content="紙目推定PNG"
                         Click="ExportEstimatedPaperNoiseButton_Click" />
@@ -288,7 +314,19 @@
                         Content="S200線(白)"
                         Click="ExportS200LinePreviewButton_Click" />
 
+                <Button x:Name="ExportDot512PreSaveAlphaSummaryButton"
+                        Content="保存前αCSV"
+                        Click="ExportDot512PreSaveAlphaSummaryButton_Click" />
+
+                <Button x:Name="ExportDot512PreSaveAlphaFloorBySizeButton"
+                        Content="床CSV(S別)"
+                        Click="ExportDot512PreSaveAlphaFloorBySizeButton_Click" />
+
                 <AppBarSeparator />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
 
                 <TextBlock Text="Crop dx:"
                            VerticalAlignment="Center" />
@@ -319,10 +357,6 @@
                         Click="ExportRadialFalloffCsvButton_Click" />
 
                 <AppBarSeparator />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal"
-                        Padding="12"
-                        Spacing="12">
 
 
                 <TextBlock Text="F(r)一括 Sizes(&lt;=200):"
@@ -393,6 +427,10 @@
                 <Button x:Name="ExportRadialSamplesSummaryButton"
                         Content="半径別サマリCSV"
                         Click="ExportRadialSamplesSummaryButton_Click" />
+
+                <Button x:Name="CompareDot512WithSkiaButton"
+                        Content="dot512比較(UWP vs Skia)"
+                        Click="CompareDot512WithSkiaButton_Click" />
 
                 <AppBarSeparator />
 

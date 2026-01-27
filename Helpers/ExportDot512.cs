@@ -13,6 +13,12 @@ namespace StrokeSampler
 {
     internal static class ExportDot512
     {
+        internal static async Task ExportDot512PreSaveAlphaSummaryCsvAsync(MainPage mp)
+            => await TestMethods.ExportDot512PreSaveAlphaSummaryCsvAsync(mp);
+
+        internal static async Task ExportDot512PreSaveAlphaFloorBySizeCsvAsync(MainPage mp)
+            => await TestMethods.ExportDot512PreSaveAlphaFloorBySizeCsvAsync(mp);
+
         internal static async Task ExportDot512Async(MainPage mp, bool isTransparentBackground, bool includeLabels, string suggestedFileName)
         {
             var attributes = CreatePencilAttributesFromToolbarBestEffort(mp);
@@ -209,6 +215,85 @@ namespace StrokeSampler
                         }
 
                         await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
+                    }
+                }
+            }
+        }
+
+        internal static async Task ExportDot512BatchSizesPsNsAsync(MainPage mp, bool isTransparentBackground, bool includeLabels, string defaultSuffix)
+        {
+            var sizes = UIHelpers.GetDot512BatchSizes(mp);
+            if (sizes.Count == 0)
+            {
+                // サイズ指定が無い場合は従来の一括生成にフォールバック
+                await ExportDot512BatchAsync(mp, isTransparentBackground, includeLabels, defaultSuffix);
+                return;
+            }
+
+            var ps = UIHelpers.GetDot512BatchPs(mp);
+            if (ps.Count == 0)
+            {
+                ps = new[] { UIHelpers.GetDot512Pressure(mp) };
+            }
+
+            var ns = UIHelpers.GetDot512BatchNs(mp);
+            if (ns.Count == 0)
+            {
+                ns = new[] { UIHelpers.GetDot512Overwrite(mp) };
+            }
+
+            var prefix = UIHelpers.GetDot512BatchPrefixOrDefault(mp, defaultSuffix);
+
+            var folderPicker = new FolderPicker
+            {
+                SuggestedStartLocation = PickerLocationId.PicturesLibrary
+            };
+            folderPicker.FileTypeFilter.Add(".png");
+
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder is null)
+            {
+                return;
+            }
+
+            var cx = (MainPage.Dot512Size - 1) / 2f;
+            var cy = (MainPage.Dot512Size - 1) / 2f;
+
+            var device = CanvasDevice.GetSharedDevice();
+
+            foreach (var size in sizes)
+            {
+                var attributes = CreatePencilAttributesFromToolbarBestEffort(mp);
+                attributes.Size = new Size(size, size);
+
+                foreach (var pressure in ps)
+                {
+                    foreach (var n in ns)
+                    {
+                        var fileName = $"{prefix}-S{size:0.##}-P{pressure:0.####}-N{n}.png";
+                        var file = await folder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
+
+                        using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                        using (var target = new CanvasRenderTarget(device, MainPage.Dot512Size, MainPage.Dot512Size, MainPage.Dot512Dpi))
+                        {
+                            using (var ds = target.CreateDrawingSession())
+                            {
+                                ds.Clear(isTransparentBackground ? Color.FromArgb(0, 0, 0, 0) : Colors.White);
+
+                                for (var k = 0; k < n; k++)
+                                {
+                                    var dot = CreatePencilDot(cx, cy, pressure, attributes);
+                                    ds.DrawInk(new[] { dot });
+                                }
+
+                                if (includeLabels)
+                                {
+                                    DrawingHelpers.DrawDot512Labels(ds, attributes, pressure, n);
+                                }
+                            }
+
+                            await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
+                        }
                     }
                 }
             }

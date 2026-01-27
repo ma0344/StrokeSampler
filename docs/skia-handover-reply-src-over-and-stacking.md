@@ -1,75 +1,80 @@
-# Skia��Copilot�񓚂ւ̕ԐM�iUWP Pencil �ڐA�j
+# Skia側Copilot回答への返信（UWP Pencil 移植）
 
-## �ړI
-`migration/skia-migration-uwp-pencil-model.md` ��ǂ񂾏�ł̂��m�F�i�u�ʏ퍇�� `SrcOver` �O��ł悢���v�u�d�Ȃ�̍��������x�z�I���v�j�ɑ΂��A������Ŏ擾�����ϑ��f�[�^��Y���ĉ񓚂��܂��B
-
----
-
-## ���_�i��Ɂj
-- **���i�K�ł� `SrcOver` �O��̂܂܂Ői�߂Ă��������B**
-- �������u�d�ˁi�X�^���v�𓯈�_�ɌJ��Ԃ��j�ɂ��Z���Ȃ���v�� `SrcOver` �̗��z���Ő����ł��邩�͏d�v�Ȃ̂ŁA������� **P�~S�~N�̃f�[�^�Z�b�g��ǉ��擾**���܂����B
-- ���̌��ʁA���Ȃ��Ƃ� **���S�ߖT�ir=0 bin�j**�̑������́A`SrcOver` �́u�w���O�a�v���f���Ɛ�������X���������ł��B
+## 目的
+`migration/skia-migration-uwp-pencil-model.md` を読んだ上でのご確認（「通常合成 `SrcOver` 前提でよいか」「重なりの合成則が支配的か」）に対し、こちらで取得した観測データを添えて回答します。
 
 ---
 
-## ����1�ւ̉񓚁FLUT�͒P�� `F(r)` �������H�d�˂̔Z���Ȃ�����ϑ��������H
-- �ȑO�n���� `normalized-falloff-...csv` �� **�P���iN=1�j**�̋������� `F(r)` �ł��B
-- ����A�V���� **�d�ˉ� N ��U����** `radial-falloff-S{S}-P{P}-N{N}.csv` ���쐬���A
-  ����ɂ���炩�� **���S���ir=0�j**�ƕ������a�̒l�𒊏o�����T�}��CSV���쐬���܂����B
+## 結論（先に）
+- **現段階では `SrcOver` 前提のままで進めてください。**
+- ただし「重ね（スタンプを同一点に繰り返す）による濃くなり方」が `SrcOver` の理想式で説明できるかは重要なので、こちらで **P×S×Nのデータセットを追加取得**しました。
+- その結果、少なくとも **中心近傍（r=0 bin）**の増え方は、`SrcOver` の「指数飽和」モデルと整合する傾向が強いです。
 
 ---
 
-## ����2�ւ̉񓚁F�x�z�I�Ȃ̂� a) �� b) ���H
-- **�܂��� a)�i`baseAlpha` / `F(r)` / `noise` �̍Č��j��D��**���č�����������̂��ŏ��ύX�ł��B
-- ������ b)�i�d�Ȃ�̐ςݕ��j�� `SrcOver` ����傫���O��Ă��Ȃ������m�F���邽�߁A�ȉ��̃T�}����񎦂��܂��B
+## 質問1への回答：LUTは単発 `F(r)` だけか？重ねの濃くなり方も観測したか？
+- 以前渡した `normalized-falloff-...csv` は **単発（N=1）**の距離減衰 `F(r)` です。
+- 今回、新たに **重ね回数 N を振った** `radial-falloff-S{S}-P{P}-N{N}.csv` を作成し、
+  さらにそれらから **中心α（r=0）**と複数半径の値を抽出したサマリCSVも作成しました。
 
-### �ϑ��T�}���i���S���Fr=0�j
-- `center_alpha(S,P,N)` �́A�e `(S,P)` ���Ƃ�
-  - `N` �ɑ΂��ĒP������
-  - ��� `?1` �ɖO�a
-  �Ƃ����X���������܂��B
+---
 
-- ����� `SrcOver` �̓���_�d�˂œ����闝�z��
+## 質問2への回答：支配的なのは a) か b) か？
+- **まずは a)（`baseAlpha` / `F(r)` / `noise` の再現）を優先**して差分実装するのが最小変更です。
+- ただし b)（重なりの積み方）が `SrcOver` から大きく外れていないかを確認するため、以下のサマリを提示します。
+
+### 観測サマリ（中心α：r=0）
+- `center_alpha(S,P,N)` は、各 `(S,P)` ごとに
+  - `N` に対して単調増加
+  - 上限 `?1` に飽和
+  という傾向を示します。
+
+- これは `SrcOver` の同一点重ねで得られる理想式
   - `A_N = 1 - (1 - A_1)^N`
-  �ƌ`�󂪈�v���₷���i�w���O�a�j���߁A
-  **���Ȃ��Ƃ����S�ߖT�̗ݐς� `SrcOver` ���f���ŏ\�������ł���\��������**�ł��B
+  と形状が一致しやすい（指数飽和）ため、
+  **少なくとも中心近傍の累積は `SrcOver` モデルで十分説明できる可能性が高い**です。
 
-> ����: �����ł� `A_N` �́u���S1�s�N�Z���v�ł͂Ȃ� `radial-falloff` �� `r=0 bin` �̕��ϒl�ł��i���S��v�͗v�������A�X���̈�v�����Ă��܂��j�B
-
----
-
-## Skia���̐����������j�i�ŏ������j
-1. �����͓��� `SKBlendMode.SrcOver` �̂܂�
-2. `StampSoftCircle` �� "mask" �������A`F(r_norm)`�i��������LUT�j�Q�Ƃɒu��
-3. ���ڂ͏]���ǂ��� `DstIn` �����i�A���t�@�}�X�N�j�œK�p
-4. �����u�d�Ȃ肪����Ȃ��v�Ɗ������ꍇ�̂݁A���a�ʃT�}�������č������̒ǉ������ɐi��
+> 注意: ここでの `A_N` は「中心1ピクセル」ではなく `radial-falloff` の `r=0 bin` の平均値です（完全一致は要求せず、傾向の一致を見ています）。
 
 ---
 
-## ? ����V���ɓn���t�@�C���iSkia���փR�s�[�j
+## Skia側の推奨実装方針（最小差分）
+1. 合成は当面 `SKBlendMode.SrcOver` のまま
+2. `StampSoftCircle` の "mask" 生成を、`F(r_norm)`（距離減衰LUT）参照に置換
+3. 紙目は従来どおり `DstIn` 相当（アルファマスク）で適用
+4. もし「重なりが合わない」と感じた場合のみ、半径別サマリを見て合成則の追加検討に進む
 
-### 1) ���S���̃T�}���iP�~S�~N�j
+---
+
+## ? 今回新たに渡すファイル（Skia側へコピー）
+
+## 補足（観測データの保存場所）
+本ドキュメントで言及している「Nを増やしてもノイズ（紙目）パターン自体は変わらず、αだけが増えていく」観測の元データ（PNG/CSV）は、以下に格納されています。
+
+- `Sample/Compair/CSV/N/`
+
+### 1) 中心αのサマリ（P×S×N）
 - `Sample/Compair/CSV/N/center-alpha-vs-N-vs-P.csv`
-  - ��: `S,P,N,center_alpha`
-  - �p�r: �d�ˉ񐔂ɂ��O�a�̈ꎟ����i`SrcOver`���Ɣ�r���₷���j
+  - 列: `S,P,N,center_alpha`
+  - 用途: 重ね回数による飽和の一次判定（`SrcOver`式と比較しやすい）
 
-### 2) �������a�T���v���̃T�}���iP�~S�~N�j
+### 2) 複数半径サンプルのサマリ（P×S×N）
 - `Sample/Compair/CSV/N/alpha-samples-vs-N-vs-P.csv`
-  - ��: `S,P,N,a_r0,a_r1,a_r2,a_r5,a_r10,a_r20,a_r50,a_r100`�i����͔��a�ꗗ�ݒ�Ɉˑ��j
-  - �p�r: ���S�����łȂ��O���܂Ŋ܂߂����z�`��̕ω����m�F
+  - 列: `S,P,N,a_r0,a_r1,a_r2,a_r5,a_r10,a_r20,a_r50,a_r100`（※列は半径一覧設定に依存）
+  - 用途: 中心だけでなく外縁まで含めた分布形状の変化を確認
 
-### 3) �ϑ��摜/�ϑ�CSV�̑�\�T�u�Z�b�g�i��������E�ڎ��m�F�p�j
-�ȉ��́ASkia���Łupaper-noise���]�̎�������v��u�~��MAE/RMSE��r�v���񂷂��߂̍ŏ��T�u�Z�b�g�ł��B
+### 3) 観測画像/観測CSVの代表サブセット（自動判定・目視確認用）
+以下は、Skia側で「paper-noise反転の自動判定」や「円内MAE/RMSE比較」を回すための最小サブセットです。
 
-- S�i���a�j: `10, 12, 100, 200`
+- S（直径）: `10, 12, 100, 200`
 - P: `0.05, 0.5, 1.0`
 - N: `1, 10, 100`
 
-�e�g�ݍ��킹�ɂ��āA�����t�H���_�Ɏ���2�t�@�C��������܂��F
-- �ϑ�PNG: `Sample/Compair/CSV/N/dot512-material-S{S}-P{P}-N{N}.png`
-- �ϑ�CSV: `Sample/Compair/CSV/N/radial-falloff-S{S}-P{P}-N{N}.csv`
+各組み合わせについて、同じフォルダに次の2ファイルがあります：
+- 観測PNG: `Sample/Compair/CSV/N/dot512-material-S{S}-P{P}-N{N}.png`
+- 観測CSV: `Sample/Compair/CSV/N/radial-falloff-S{S}-P{P}-N{N}.csv`
 
-���݊m�F�ς݁i�S36�P�[�X�j
+存在確認済み（全36ケース）
 
 | S | P | N | PNG | CSV |
 |---:|---:|---:|---|---|
@@ -110,8 +115,8 @@
 | 200 | 1 | 10 | `Sample/Compair/CSV/N/dot512-material-S200-P1-N10.png` | `Sample/Compair/CSV/N/radial-falloff-S200-P1-N10.csv` |
 | 200 | 1 | 100 | `Sample/Compair/CSV/N/dot512-material-S200-P1-N100.png` | `Sample/Compair/CSV/N/radial-falloff-S200-P1-N100.csv` |
 
-### 3) ���̋�������CSV�i�K�v�ɉ����āj
+### 3) 元の距離減衰CSV（必要に応じて）
 - `Sample/Compair/CSV/N/radial-falloff-S{S}-P{P}-N{N}.csv`
-  - ��: `r,mean_alpha`
-  - �p�r: �T�}�����s�������ꍇ�̏ڍ׎Q��
+  - 列: `r,mean_alpha`
+  - 用途: サマリが不足した場合の詳細参照
 ***

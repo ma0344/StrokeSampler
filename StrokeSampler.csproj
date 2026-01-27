@@ -120,6 +120,7 @@
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
     <Compile Include="Helpers\CenterAlphaSummaryCsvBuilder.cs" />
+    <Compile Include="Helpers\CompareDot512WithSkia.cs" />
     <Compile Include="Helpers\ExportNormalizedFalloffService.cs" />
     <Compile Include="Helpers\ExportDot512.cs" />
     <Compile Include="Helpers\ExportEstimatedPaperNoise.cs" />
@@ -1601,6 +1602,27 @@
     <Content Include="Sample\Compair\CSV\N\dot512-material-S50-P1-N9.png" />
     <Content Include="Sample\Compair\pred-dot-alpha-noiseInv-dot512-material.png" />
     <Content Include="Sample\Compair\pred-dot-alpha-noiseN-dot512-material.png" />
+    <Content Include="Sample\Compair\Skia\skia-dot512-S100-P0.01-N1.png" />
+    <Content Include="Sample\Compair\Skia\skia-dot512-S100-P0.02-N1.png" />
+    <Content Include="Sample\Compair\Skia\skia-dot512-S100-P0.03-N1.png" />
+    <Content Include="Sample\Compair\Skia\skia-dot512-S100-P0.04-N1.png" />
+    <Content Include="Sample\Compair\Skia\skia-dot512-S100-P0.05-N1.png" />
+    <Content Include="Sample\Compair\Skia\skia-dot512-S100-P0.06-N1.png" />
+    <Content Include="Sample\Compair\Skia\skia-dot512-S100-P0.07-N1.png" />
+    <Content Include="Sample\Compair\Skia\skia-dot512-S100-P0.08-N1.png" />
+    <Content Include="Sample\Compair\Skia\skia-dot512-S100-P0.09-N1.png" />
+    <Content Include="Sample\Compair\Skia\skia-dot512-S100-P0.1-N1.png" />
+    <Content Include="Sample\Compair\Skia\LegacyPngRenderer.cs.txt" />
+    <Content Include="Sample\Compair\UWP\dot512-material-S100-P0.01-N1.png" />
+    <Content Include="Sample\Compair\UWP\dot512-material-S100-P0.02-N1.png" />
+    <Content Include="Sample\Compair\UWP\dot512-material-S100-P0.03-N1.png" />
+    <Content Include="Sample\Compair\UWP\dot512-material-S100-P0.04-N1.png" />
+    <Content Include="Sample\Compair\UWP\dot512-material-S100-P0.05-N1.png" />
+    <Content Include="Sample\Compair\UWP\dot512-material-S100-P0.06-N1.png" />
+    <Content Include="Sample\Compair\UWP\dot512-material-S100-P0.07-N1.png" />
+    <Content Include="Sample\Compair\UWP\dot512-material-S100-P0.08-N1.png" />
+    <Content Include="Sample\Compair\UWP\dot512-material-S100-P0.09-N1.png" />
+    <Content Include="Sample\Compair\UWP\dot512-material-S100-P0.1-N1.png" />
     <Content Include="Sample\crop24-dot512-material-dx-36-dy-36.png" />
     <Content Include="Sample\crop24-paper-noise-estimated-dot512-material-dx-36-dy-36.png" />
     <Content Include="Sample\crop24-pencil-preview-Dot-512px-P1.0-N1-dx-36-dy-36.png" />
@@ -1639,8 +1661,11 @@
       <Version>1.28.2</Version>
     </PackageReference>
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
+    <Folder Include="Helpers\Skia\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".github\copilot-instructions.md" />
     <None Include="docs\copilot-session-summary.md" />
     <None Include="docs\drow-inkcanvas-pencil-from-code-answers.md" />
     <None Include="docs\handover.md" />
@@ -1660,10 +1685,15 @@
     <None Include="docs\skia-handover-reply-src-over-and-stacking.md" />
     <None Include="docs\skia-migration-uwp-pencil-model.md" />
     <None Include="docs\skia-overstamp-mitigation-algorithm.md" />
+    <None Include="docs\skia-uwp-parity-policy-message.md" />
+    <None Include="docs\skia-uwp-parity-roadmap.md" />
+    <None Include="docs\skia-validation-decision-order.md" />
+    <None Include="docs\uwp-skia-pre-save-alpha-findings.md" />
     <None Include="Drow to InkCanvas with Pencil Strokes from code.md" />
     <None Include="Sample\Compair\CSV\normalized-falloff-S0200-P1-N1.csv" />
     <None Include="Sample\Compair\CSV\N\alpha-samples-vs-N-vs-P.csv" />
     <None Include="Sample\Compair\CSV\N\center-alpha-vs-N-vs-P.csv" />
+    <None Include="Sample\Compair\CSV\N\dot-compare-alpha-circle.csv" />
     <None Include="Sample\Compair\CSV\N\radial-falloff-S100-P0.05-N1.csv" />
     <None Include="Sample\Compair\CSV\N\radial-falloff-S100-P0.05-N10.csv" />
     <None Include="Sample\Compair\CSV\N\radial-falloff-S100-P0.05-N100.csv" />
@@ -2567,6 +2597,19 @@
     <None Include="Sample\Compair\CSV\radial-falloff-S24-P1-N1.csv" />
     <None Include="Sample\Compair\CSV\radial-falloff-S5-P1-N1.csv" />
     <None Include="Sample\Compair\CSV\radial-falloff-S50-P1-N1.csv" />
+    <None Include="Sample\Compair\CSV\Skia-radial-falloff-S200-P1-N1.skia.csv" />
+    <None Include="Sample\Compair\Skia\skia-pre-save-alpha-summary-down-to-1e-6.csv" />
+    <None Include="Sample\Compair\Skia\skia-pre-save-alpha-summary.csv" />
+    <None Include="Sample\Compair\Skia\uwp-pre-save-alpha-summary-S100-P0.01-to-0.02-step0.0001.csv" />
+    <None Include="Sample\Compair\Skia\uwp-pre-save-alpha-summary-S200-P0.01-to-0.02-step0.0001.csv" />
+    <None Include="Sample\Compair\Skia\uwp-pre-save-alpha-summary-S24-P0.01-to-0.02-step0.0001.csv" />
+    <None Include="Sample\Compair\uwp-pre-save-alpha-floor-S2-to-S200-P0-to-0.0105-step0.0001.csv" />
+    <None Include="Sample\Compair\uwp-pre-save-alpha-summary-S100-N1.csv" />
+    <None Include="Sample\Compair\uwp-pre-save-alpha-summary-S100-N2.csv" />
+    <None Include="Sample\Compair\uwp-pre-save-alpha-summary-S200-N1.csv" />
+    <None Include="Sample\Compair\uwp-pre-save-alpha-summary-S200-N2.csv" />
+    <None Include="Sample\Compair\uwp-pre-save-alpha-summary.csv" />
+    <None Include="Sample\Compair\UWP\dot-compare-alpha-circle.csv" />
     <None Include="Sample\radial-falloff-dot512-material.csv" />
     <None Include="tools\list-representative-sample.ps1" />
   </ItemGroup>

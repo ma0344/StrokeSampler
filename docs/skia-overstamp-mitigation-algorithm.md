@@ -1,37 +1,37 @@
-# Skia�ڐA�F�X�^���v�����̔Z�����΍�iQ13?Q15�̋�̃A���S���Y���āj
+# Skia移植：スタンプ方式の濃すぎ対策（Q13?Q15の具体アルゴリズム案）
 
-## �w�i
-LUT�����i`mask = F(r_norm)`�j��ISF�X�g���[�N���L�����o�X�ɕ`��ł���i�K�܂ŗ������A�`�悳�ꂽ�������炩�ɔZ������B
+## 背景
+LUT方式（`mask = F(r_norm)`）でISFストロークをキャンバスに描画できる段階まで来たが、描画された線が明らかに濃すぎる。
 
-�T�^�I�ɂ͈ȉ��������ɂȂ�₷���B
-- �X�^���v�i�T���v���_�j���ߖ��ŁA����_�ߖT�ɉߏ�ɏd�Ȃ�
-- `SrcOver` �ł̗ݐςɂ��A�Z�����ړ��Ń����}���ɖO�a����
+典型的には以下が原因になりやすい。
+- スタンプ（サンプル点）が過密で、同一点近傍に過剰に重なる
+- `SrcOver` での累積により、短距離移動でαが急激に飽和する
 
-�{�h�L�������g�� `docs/drow-inkcanvas-pencil-from-code-answers.md` �� **Q13?Q15** �̈Ӑ}���ASkia�������ɗ��Ƃ����ނ��߂̋[���R�[�h�ĂƂ��Đ�������B
-
----
-
-## �O��
-- �����͓��� `SrcOver` �O��i�K�v�Ȃ��ō����ւ��j
-- LUT�ł̃}�X�N�����͈ێ��F`mask = F(r_norm)`
-- ���ڃm�C�Y�� `noise`�i0..1�j�Ƃ��ď�Z�i���K/���]�͕ʓr�I���j
-- �摜�S��̍Čv�Z�͔����A�u���V���ӂ̏��̈�̂ݍX�V����
+本ドキュメントは `docs/drow-inkcanvas-pencil-from-code-answers.md` の **Q13?Q15** の意図を、Skia側実装に落とし込むための擬似コード案として整理する。
 
 ---
 
-## �������j�i�i�K�I�ɓ����j
-- **Step A�i�ŏ��j**�F�����x�[�X�̊Ԉ����i�œ_���x��������j
-- **Step B�i�����j**�F�h��ς݃}�X�N�icoverage�j�ō����h��ɋ߂Â���iQ13/Q14�j
-- **Step C�i�����j**�F�d�˓h�芴���c�����߁A�֎~�ł͂Ȃ�����t��/�����t���ɂ���iQ15�j
+## 前提
+- 合成は当面 `SrcOver` 前提（必要なら後で差し替え）
+- LUTでのマスク生成は維持：`mask = F(r_norm)`
+- 紙目ノイズは `noise`（0..1）として乗算（正規/反転は別途選択）
+- 画像全域の再計算は避け、ブラシ周辺の小領域のみ更新する
 
 ---
 
-## Step A: �����x�[�X�̊Ԉ����i�܂�����j
-�ړI�F����_�ߖT�ւ̉ߏ�X�^���v��}���A�Z�����̑唼���R�X�g�ŉ��P����B
+## 実装方針（段階的に入れる）
+- **Step A（最小）**：距離ベースの間引き（打点密度を下げる）
+- **Step B（強化）**：塗り済みマスク（coverage）で差分塗りに近づける（Q13/Q14）
+- **Step C（調整）**：重ね塗り感を残すため、禁止ではなく上限付き/減衰付きにする（Q15）
+
+---
+
+## Step A: 距離ベースの間引き（まずこれ）
+目的：同一点近傍への過剰スタンプを抑え、濃すぎの大半を低コストで改善する。
 
 ```text
 radius = S * 0.5
-spacingMinPx = max(0.5, k * radius)  // k��0.1?0.3���x���璲��
+spacingMinPx = max(0.5, k * radius)  // kは0.1?0.3程度から調整
 
 filtered = []
 prev = null
@@ -48,27 +48,27 @@ for p in strokePoints:
   filtered.add(p)
   prev = p
 
-// filtered ���X�^���v��Ƃ��ĕ`���
+// filtered をスタンプ列として描画へ
 ```
 
-�����F
-- �܂��͂��ꂾ������āA�Z���������P���邩�m�F����B
-- `k` �͑��x�ˑ��i�x���قǖ��x���オ��j�����Ē����ΏہB
+メモ：
+- まずはこれだけ入れて、濃すぎが改善するか確認する。
+- `k` は速度依存（遅いほど密度が上がる）を見て調整対象。
 
 ---
 
-## Step B: �h��ς݃}�X�N�icoverage�j�ɂ�鍷���h��iQ13/Q14�j
-�ړI�F�u���ɓh���Ă���s�N�Z���͏㏑�����Ȃ�/�����ɂ����v���������A���ʂƂ��č�����������������֊񂹂�B
+## Step B: 塗り済みマスク（coverage）による差分塗り（Q13/Q14）
+目的：「既に塗られているピクセルは上書きしない/増えにくい」挙動を作り、結果として差分だけ増える方向へ寄せる。
 
-### �f�[�^�\��
-- `coverage[x,y]`�F0..1 �̓h��ςݓx
-  - �S��ʍX�V���Ȃ��i�X�V�̓X�^���vbbox�̂݁j
+### データ構造
+- `coverage[x,y]`：0..1 の塗り済み度
+  - 全画面更新しない（更新はスタンプbboxのみ）
 
-### �`��imask�K�p + coverage�X�V�j
+### 描画（mask適用 + coverage更新）
 ```text
 function stamp(xc, yc, S, baseAlpha, F_LUT, noise, coverage):
   radius = S * 0.5
-  bbox = [xc-radius .. xc+radius] �~ [yc-radius .. yc+radius]
+  bbox = [xc-radius .. xc+radius] × [yc-radius .. yc+radius]
 
   for each pixel (x,y) in bbox:
     r = distance((x,y),(xc,yc))
@@ -76,61 +76,61 @@ function stamp(xc, yc, S, baseAlpha, F_LUT, noise, coverage):
 
     r_norm = r * (S0 / S)
     mask = F_LUT(r_norm)      // 0..1
-    n = sampleNoise(x,y)      // 0..1 (invert�͂����Őؑ�)
+    n = sampleNoise(x,y)      // 0..1 (invertはここで切替)
     a = baseAlpha * mask * n  // 0..1
 
-    // �����h��F�h��ς݂قǊ�^�����炷
+    // 差分塗り：塗り済みほど寄与を減らす
     remain = 1 - coverage[x,y]
     a_eff = a * remain
 
-    // SrcOver�i���݂̂̐����j
+    // SrcOver（αのみの説明）
     dstA = canvasA[x,y]
     outA = dstA + a_eff * (1 - dstA)
     canvasA[x,y] = outA
 
-    // Q14: �`��Ɠ����Ƀ}�X�N�X�V�ibbox�͈͂����j
+    // Q14: 描画と同時にマスク更新（bbox範囲だけ）
     coverage[x,y] = clamp01(coverage[x,y] + a_eff)
 ```
 
-�����F
-- `a_eff = a * (1-coverage)` �� Q13 �́u���������h��v�̋ߎ��B
-- bbox�P�ʂ̍X�V�ŃR�X�g��}����̂� Q14 �̗v�_�B
+メモ：
+- `a_eff = a * (1-coverage)` が Q13 の「差分だけ塗る」の近似。
+- bbox単位の更新でコストを抑えるのが Q14 の要点。
 
 ---
 
-## Step C: �d�˓h��������iQ15�j
-Step B ����������Ɓu��؏d�Ȃ�Ȃ��v���ɂȂ��ĉ��M�炵���������邱�Ƃ�����B
-���̏ꍇ�́u���S�֎~�v�ł͂Ȃ�����t��/�ɘa�t���ցB
+## Step C: 重ね塗りを許す（Q15）
+Step B を強くすると「一切重ならない」寄りになって鉛筆らしさが消えることがある。
+その場合は「完全禁止」ではなく上限付き/緩和付きへ。
 
-### C-1) ����t���isaturate�j
+### C-1) 上限付き（saturate）
 ```text
 coverage[x,y] = clamp01(coverage[x,y] + a_eff * gain)
-// gain < 1 �ŐL�т�}����
+// gain < 1 で伸びを抑える
 ```
 
-### C-2) �����i����/�����Ŋɘa�j
+### C-2) 減衰（時間/距離で緩和）
 ```text
-// �X�V�͈͂����ŗǂ�
-coverage[x,y] *= decay  // 0.98?0.999�Ȃ�
+// 更新範囲だけで良い
+coverage[x,y] *= decay  // 0.98?0.999など
 ```
 
-### C-3) �Z���P�ʂ̋ߎ��i�y�ʉ��j
-�s�N�Z���P�ʂ��d���ꍇ�A�e���O���b�h�ŋߎ����ď����݂���B
+### C-3) セル単位の近似（軽量化）
+ピクセル単位が重い場合、粗いグリッドで近似して上限を設ける。
 ```text
 cell = (floor(x/cellSize), floor(y/cellSize))
 if cellStampCount[cell] >= MaxCount:
-  a_eff *= 0.2  // �܂��̓X�L�b�v
+  a_eff *= 0.2  // またはスキップ
 cellStampCount[cell]++
 ```
 
 ---
 
-## ���؁i�����j
-- �Z�����������ȃX�g���[�N�ŁAStep A�̂݁�Step B�ǉ���Step C�����̏��ɓK�p���A�����ڂƐ��l�i�~��MAE/RMSE�j�Ŕ�r����B
-- `representative-sample-subset.md` �̊ϑ�PNG�idot512-material�j�ƁASkia�������������Č�dot�𒼌aS�̒��S�~�����Ŕ�r����B
+## 検証（推奨）
+- 濃すぎが顕著なストロークで、Step Aのみ→Step B追加→Step C調整の順に適用し、見た目と数値（円内MAE/RMSE）で比較する。
+- `representative-sample-subset.md` の観測PNG（dot512-material）と、Skia側が生成した再現dotを直径Sの中心円だけで比較する。
 
 ---
 
-## ���҂���錋��
-- �u�ߖ��X�^���v�v�Ŕ������Ă����ߏ�ݐς��ɘa����A����UWP�����̔Z�x�ɋ߂Â��B
-- LUT/����/�����iSrcOver�j���ێ������܂܁A�Z�x�̎�����œ_���x/�㏑������ł��邩��؂蕪������B
+## 期待される結果
+- 「過密スタンプ」で発生していた過剰累積が緩和され、線がUWP相当の濃度に近づく。
+- LUT/紙目/合成（SrcOver）を維持したまま、濃度の主因が打点密度/上書き制御であるかを切り分けられる。

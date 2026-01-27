@@ -1,31 +1,31 @@
-# SkiaˆÚAŒü‚¯FŠÏ‘ªƒf[ƒ^i‘ã•\ƒTƒuƒZƒbƒgj
+# Skiaç§»æ¤å‘ã‘ï¼šè¦³æ¸¬ãƒ‡ãƒ¼ã‚¿ï¼ˆä»£è¡¨ã‚µãƒ–ã‚»ãƒƒãƒˆï¼‰
 
-## –Ú“I
-Skia‘¤‚ÅˆÈ‰º‚ğs‚¤‚½‚ß‚ÌAÅ¬ŒÀ‚ÌŠÏ‘ªƒf[ƒ^ƒZƒbƒg‚ğ–¾¦‚·‚éB
-- paper-noise‚Ì³‹K/”½“]‚ğ©“®”»’è‚·‚éi‰~“àMAE/RMSE‚È‚Çj
-- LUT·‚µ‘Ö‚¦i`F(r_norm)`jŒã‚Ì•`‰æŒ‹‰Ê‚ğŠÏ‘ªPNG‚Æ”äŠr‚·‚é
+## ç›®çš„
+Skiaå´ã§ä»¥ä¸‹ã‚’è¡Œã†ãŸã‚ã®ã€æœ€å°é™ã®è¦³æ¸¬ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’æ˜ç¤ºã™ã‚‹ã€‚
+- paper-noiseã®æ­£è¦/åè»¢ã‚’è‡ªå‹•åˆ¤å®šã™ã‚‹ï¼ˆå††å†…MAE/RMSEãªã©ï¼‰
+- LUTå·®ã—æ›¿ãˆï¼ˆ`F(r_norm)`ï¼‰å¾Œã®æç”»çµæœã‚’è¦³æ¸¬PNGã¨æ¯”è¼ƒã™ã‚‹
 
-## ‘O’ñ
-- ‰æ‘œ‚Í `512~512` ‚¾‚ªA•]‰¿‚Í **’¼ŒaS‚Ì’†S‰~iradius=S/2j** ‚ğå‚É‘ÎÛ‚Æ‚µA‰~ŠO‚Í”äŠr‚©‚çœŠO‚·‚éB
-- S/P/N ‚Íƒtƒ@ƒCƒ‹–¼‚©‚çæ“¾‚Å‚«‚éB
+## å‰æ
+- ç”»åƒã¯ `512Ã—512` ã ãŒã€è©•ä¾¡ã¯ **ç›´å¾„Sã®ä¸­å¿ƒå††ï¼ˆradius=S/2ï¼‰** ã‚’ä¸»ã«å¯¾è±¡ã¨ã—ã€å††å¤–ã¯æ¯”è¼ƒã‹ã‚‰é™¤å¤–ã™ã‚‹ã€‚
+- S/P/N ã¯ãƒ•ã‚¡ã‚¤ãƒ«åã‹ã‚‰å–å¾—ã§ãã‚‹ã€‚
 
-## ƒZƒbƒg’è‹`
-- Si’¼Œaj: `10, 12, 100, 200`
+## ã‚»ãƒƒãƒˆå®šç¾©
+- Sï¼ˆç›´å¾„ï¼‰: `10, 12, 100, 200`
 - P: `0.05, 0.5, 1.0`
 - N: `1, 10, 100`
 
-‡Œv: `4 ~ 3 ~ 3 = 36` ƒP[ƒX
+åˆè¨ˆ: `4 Ã— 3 Ã— 3 = 36` ã‚±ãƒ¼ã‚¹
 
-## ƒtƒ@ƒCƒ‹‚ÌêŠ
-- ƒx[ƒXƒfƒBƒŒƒNƒgƒŠ: `Sample/Compair/CSV/N`
+## ãƒ•ã‚¡ã‚¤ãƒ«ã®å ´æ‰€
+- ãƒ™ãƒ¼ã‚¹ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª: `Sample/Compair/CSV/N`
 
-ŠeƒP[ƒX‚ÉˆÈ‰º‚ª‘¶İ‚·‚éB
-- ŠÏ‘ªPNG: `dot512-material-S{S}-P{P}-N{N}.png`
-- ŠÏ‘ªCSV: `radial-falloff-S{S}-P{P}-N{N}.csv`
+å„ã‚±ãƒ¼ã‚¹ã«ä»¥ä¸‹ãŒå­˜åœ¨ã™ã‚‹ã€‚
+- è¦³æ¸¬PNG: `dot512-material-S{S}-P{P}-N{N}.png`
+- è¦³æ¸¬CSV: `radial-falloff-S{S}-P{P}-N{N}.csv`
 
-## ‘S36ƒP[ƒXi‘¶İŠm”FÏ‚İj
+## å…¨36ã‚±ãƒ¼ã‚¹ï¼ˆå­˜åœ¨ç¢ºèªæ¸ˆã¿ï¼‰
 
-| S | P | N | ŠÏ‘ªPNG | ŠÏ‘ªCSV |
+| S | P | N | è¦³æ¸¬PNG | è¦³æ¸¬CSV |
 |---:|---:|---:|---|---|
 | 10 | 0.05 | 1 | `Sample/Compair/CSV/N/dot512-material-S10-P0.05-N1.png` | `Sample/Compair/CSV/N/radial-falloff-S10-P0.05-N1.csv` |
 | 10 | 0.05 | 10 | `Sample/Compair/CSV/N/dot512-material-S10-P0.05-N10.png` | `Sample/Compair/CSV/N/radial-falloff-S10-P0.05-N10.csv` |
@@ -64,5 +64,5 @@ Skia‘¤‚ÅˆÈ‰º‚ğs‚¤‚½‚ß‚ÌAÅ¬ŒÀ‚ÌŠÏ‘ªƒf[ƒ^ƒZƒbƒg‚ğ–¾¦‚·‚éB
 | 200 | 1 | 10 | `Sample/Compair/CSV/N/dot512-material-S200-P1-N10.png` | `Sample/Compair/CSV/N/radial-falloff-S200-P1-N10.csv` |
 | 200 | 1 | 100 | `Sample/Compair/CSV/N/dot512-material-S200-P1-N100.png` | `Sample/Compair/CSV/N/radial-falloff-S200-P1-N100.csv` |
 
-## •t‘®i¶¬/ŒŸØ—pj
-- ˆê——¶¬ƒXƒNƒŠƒvƒg: `tools/list-representative-sample.ps1`
+## ä»˜å±ï¼ˆç”Ÿæˆ/æ¤œè¨¼ç”¨ï¼‰
+- ä¸€è¦§ç”Ÿæˆã‚¹ã‚¯ãƒªãƒ—ãƒˆ: `tools/list-representative-sample.ps1`

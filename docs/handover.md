@@ -1,84 +1,84 @@
-# ˆøŒp‚¬: StrokeSampleriŒ»ó‚ÌÀ‘•‚Æ”»’fj
+# å¼•ç¶™ã: StrokeSamplerï¼ˆç¾çŠ¶ã®å®Ÿè£…ã¨åˆ¤æ–­ï¼‰
 
-## –Ú“I
-–{ƒŠƒ|ƒWƒgƒŠi`StrokeSampler`j‚ÅÀ‘•‚µ‚½u‰”•MƒTƒ“ƒvƒ‹¶¬iInk¨PNGjv‚ÌŒ»ó‚ÆA”»–¾‚µ‚½§–ñEİŒv”»’f‚ğ®—‚µAì‚è’¼‚µiƒvƒƒWƒFƒNƒgí•Ê•ÏXj‚ÉŒü‚¯‚Äˆø‚«Œp‚°‚éó‘Ô‚É‚·‚éB
+## ç›®çš„
+æœ¬ãƒªãƒã‚¸ãƒˆãƒªï¼ˆ`StrokeSampler`ï¼‰ã§å®Ÿè£…ã—ãŸã€Œé‰›ç­†ã‚µãƒ³ãƒ—ãƒ«ç”Ÿæˆï¼ˆInkâ†’PNGï¼‰ã€ã®ç¾çŠ¶ã¨ã€åˆ¤æ˜ã—ãŸåˆ¶ç´„ãƒ»è¨­è¨ˆåˆ¤æ–­ã‚’æ•´ç†ã—ã€ä½œã‚Šç›´ã—ï¼ˆãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆç¨®åˆ¥å¤‰æ›´ï¼‰ã«å‘ã‘ã¦å¼•ãç¶™ã’ã‚‹çŠ¶æ…‹ã«ã™ã‚‹ã€‚
 
-## ‘O’ñ
-- “–‰‘z’è: UWPi`UseUwp=true`j‚Å `InkCanvas` + Win2D ‚É‚æ‚éPNG‘‚«o‚µB
-- “r’†‚Å”»–¾: ŒöŠJAPIã‚Å Hardnessid“xj‚Ì•ÏX‚ª‚Å‚«‚È‚¢‰Â”\«‚ª‚‚¢B
-- o—ÍPNG‚Ì—vŒ: 
-  - ‘fŞ—p: “§‰ßEƒ‰ƒxƒ‹–³‚µ
-  - Šm”F—p: ”’”wŒiEƒeƒLƒXƒgƒ‰ƒxƒ‹—L‚è
+## å‰æ
+- å½“åˆæƒ³å®š: UWPï¼ˆ`UseUwp=true`ï¼‰ã§ `InkCanvas` + Win2D ã«ã‚ˆã‚‹PNGæ›¸ãå‡ºã—ã€‚
+- é€”ä¸­ã§åˆ¤æ˜: å…¬é–‹APIä¸Šã§ Hardnessï¼ˆç¡¬åº¦ï¼‰ã®å¤‰æ›´ãŒã§ããªã„å¯èƒ½æ€§ãŒé«˜ã„ã€‚
+- å‡ºåŠ›PNGã®è¦ä»¶: 
+  - ç´ æç”¨: é€éãƒ»ãƒ©ãƒ™ãƒ«ç„¡ã—
+  - ç¢ºèªç”¨: ç™½èƒŒæ™¯ãƒ»ãƒ†ã‚­ã‚¹ãƒˆãƒ©ãƒ™ãƒ«æœ‰ã‚Š
 
-## å—v‚ÈİŒv”»’fiDecision Logj
-- Hardness ‚ÍŒöŠJAPI‚É‘¶İ‚µ‚È‚¢‚½‚ßƒTƒ“ƒvƒŠƒ“ƒO²‚©‚çœŠOiPressure’iŠK‚É’uŠ·jB
-- ƒTƒ“ƒvƒ‹‚Í Pressure ‚ÌŒÅ’èƒvƒŠƒZƒbƒg `0.2 / 0.5 / 0.8 / 1.0` ‚ğc‚É•À‚×‚éiAˆÄjB
-- ƒXƒgƒ[ƒN•‚Í `InkToolbar` ‚Ì‰”•Mƒ{ƒ^ƒ“i`InkToolbarPencilButton`j‚©‚ç `SelectedStrokeWidth` ‚ğæ“¾‚µ‚Ä“K—pB
-- `SelectedBrush` ‚Í’PF‚Æ‚ÍŒÀ‚ç‚È‚¢‚½‚ßA`SolidColorBrush` ‚Ìê‡‚Ì‚İ `InkDrawingAttributes.Color` ‚É”½‰fB
+## ä¸»è¦ãªè¨­è¨ˆåˆ¤æ–­ï¼ˆDecision Logï¼‰
+- Hardness ã¯å…¬é–‹APIã«å­˜åœ¨ã—ãªã„ãŸã‚ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°è»¸ã‹ã‚‰é™¤å¤–ï¼ˆPressureæ®µéšã«ç½®æ›ï¼‰ã€‚
+- ã‚µãƒ³ãƒ—ãƒ«ã¯ Pressure ã®å›ºå®šãƒ—ãƒªã‚»ãƒƒãƒˆ `0.2 / 0.5 / 0.8 / 1.0` ã‚’ç¸¦ã«ä¸¦ã¹ã‚‹ï¼ˆAæ¡ˆï¼‰ã€‚
+- ã‚¹ãƒˆãƒ­ãƒ¼ã‚¯å¹…ã¯ `InkToolbar` ã®é‰›ç­†ãƒœã‚¿ãƒ³ï¼ˆ`InkToolbarPencilButton`ï¼‰ã‹ã‚‰ `SelectedStrokeWidth` ã‚’å–å¾—ã—ã¦é©ç”¨ã€‚
+- `SelectedBrush` ã¯å˜è‰²ã¨ã¯é™ã‚‰ãªã„ãŸã‚ã€`SolidColorBrush` ã®å ´åˆã®ã¿ `InkDrawingAttributes.Color` ã«åæ˜ ã€‚
 
-## Œ»ó‚ÌUI
+## ç¾çŠ¶ã®UI
 - `MainPage.xaml`
   - `CommandBar`:
-    - `¶¬`
-    - `ƒNƒŠƒA`
-    - `‘fŞ—pPNGi“§‰ßj`
-    - `Šm”F—pPNGi”’+ƒ‰ƒxƒ‹j`
-  - `InkToolbar` + `InkCanvas`i`TargetInkCanvas` ‚ÅÚ‘±j
-  - o—ÍƒTƒCƒY“ü—Í: `ExportWidthTextBox` / `ExportHeightTextBox`
+    - `ç”Ÿæˆ`
+    - `ã‚¯ãƒªã‚¢`
+    - `ç´ æç”¨PNGï¼ˆé€éï¼‰`
+    - `ç¢ºèªç”¨PNGï¼ˆç™½+ãƒ©ãƒ™ãƒ«ï¼‰`
+  - `InkToolbar` + `InkCanvas`ï¼ˆ`TargetInkCanvas` ã§æ¥ç¶šï¼‰
+  - å‡ºåŠ›ã‚µã‚¤ã‚ºå…¥åŠ›: `ExportWidthTextBox` / `ExportHeightTextBox`
 
-## Œ»ó‚ÌÀ‘•iMainPage.xaml.csj
-### ƒTƒ“ƒvƒ‹¶¬
+## ç¾çŠ¶ã®å®Ÿè£…ï¼ˆMainPage.xaml.csï¼‰
+### ã‚µãƒ³ãƒ—ãƒ«ç”Ÿæˆ
 - `GenerateButton_Click`
-  - Šù‘¶Stroke‚ğƒNƒŠƒA
-  - `CreatePencilAttributesFromToolbarBestEffort()` ‚Å `InkDrawingAttributes` ‚ğì¬
-  - PressureƒvƒŠƒZƒbƒg•ªA…•½üƒXƒgƒ[ƒN‚ğ¶¬‚µ‚Ä `StrokeContainer` ‚É’Ç‰Á
+  - æ—¢å­˜Strokeã‚’ã‚¯ãƒªã‚¢
+  - `CreatePencilAttributesFromToolbarBestEffort()` ã§ `InkDrawingAttributes` ã‚’ä½œæˆ
+  - Pressureãƒ—ãƒªã‚»ãƒƒãƒˆåˆ†ã€æ°´å¹³ç·šã‚¹ãƒˆãƒ­ãƒ¼ã‚¯ã‚’ç”Ÿæˆã—ã¦ `StrokeContainer` ã«è¿½åŠ 
 
-### InkToolbar‚©‚ç‚Ì‘®«æ“¾
+### InkToolbarã‹ã‚‰ã®å±æ€§å–å¾—
 - `CreatePencilAttributesFromToolbarBestEffort()`
-  - `InkToolbar.GetToolButton(InkToolbarTool.Pencil)` ‚ğæ“¾
-  - `InkToolbarPencilButton` ‚ÉƒLƒƒƒXƒg‚Å‚«‚ê‚Î:
-    - `SelectedStrokeWidth` ‚ğ `InkDrawingAttributes.Size` ‚É”½‰f
-    - `SelectedBrush` ‚ª `SolidColorBrush` ‚Ìê‡‚Ì‚İ `InkDrawingAttributes.Color` ‚É”½‰f
-  - ƒLƒƒƒXƒg‚Å‚«‚È‚¢ŠÂ‹«Œü‚¯‚É”½ËƒxƒXƒgƒGƒtƒH[ƒgæ“¾‚àc‚µ‚Ä‚¢‚é
+  - `InkToolbar.GetToolButton(InkToolbarTool.Pencil)` ã‚’å–å¾—
+  - `InkToolbarPencilButton` ã«ã‚­ãƒ£ã‚¹ãƒˆã§ãã‚Œã°:
+    - `SelectedStrokeWidth` ã‚’ `InkDrawingAttributes.Size` ã«åæ˜ 
+    - `SelectedBrush` ãŒ `SolidColorBrush` ã®å ´åˆã®ã¿ `InkDrawingAttributes.Color` ã«åæ˜ 
+  - ã‚­ãƒ£ã‚¹ãƒˆã§ããªã„ç’°å¢ƒå‘ã‘ã«åå°„ãƒ™ã‚¹ãƒˆã‚¨ãƒ•ã‚©ãƒ¼ãƒˆå–å¾—ã‚‚æ®‹ã—ã¦ã„ã‚‹
 
-### PNG‘‚«o‚µ
+### PNGæ›¸ãå‡ºã—
 - `ExportPngAsync(isTransparentBackground, includeLabels, suggestedFileName)`
-  - `FileSavePicker` ‚Å•Û‘¶æ‘I‘ğ
-  - Win2D `CanvasRenderTarget(width,height,96)` ‚É•`‰æ
-    - ”wŒi: ‘fŞ—p=“§–¾AŠm”F—p=”’
+  - `FileSavePicker` ã§ä¿å­˜å…ˆé¸æŠ
+  - Win2D `CanvasRenderTarget(width,height,96)` ã«æç”»
+    - èƒŒæ™¯: ç´ æç”¨=é€æ˜ã€ç¢ºèªç”¨=ç™½
     - `ds.DrawInk(strokes)`
-    - Šm”F—p‚Ì‚İ `DrawPreviewLabels(ds)`
+    - ç¢ºèªç”¨ã®ã¿ `DrawPreviewLabels(ds)`
   - `target.SaveAsync(stream, CanvasBitmapFileFormat.Png)`
 
-### Šm”F—pƒ‰ƒxƒ‹
+### ç¢ºèªç”¨ãƒ©ãƒ™ãƒ«
 - `DrawPreviewLabels(ds)`
-  - Tool–¼APressureˆê——AExportƒTƒCƒY
-  - ÅŒã‚É¶¬‚Ég‚Á‚½ `InkDrawingAttributes` ‚©‚ç StrokeWidth / Color(ARGB) ‚ğ•\¦
+  - Toolåã€Pressureä¸€è¦§ã€Exportã‚µã‚¤ã‚º
+  - æœ€å¾Œã«ç”Ÿæˆã«ä½¿ã£ãŸ `InkDrawingAttributes` ã‹ã‚‰ StrokeWidth / Color(ARGB) ã‚’è¡¨ç¤º
 
-## ”»–¾‚µ‚½§–ñE‘z’è·•ª
-- `PencilProperties.Hardness` ‚ª‘¶İ‚µ‚È‚¢i­‚È‚­‚Æ‚àŒ»QÆƒZƒbƒg‚Å‚Í•s‰ÂjB
-- `InkToolbar.GetInkingAttributes()` ‚à‘¶İ‚µ‚È‚¢B
-- `InkToolbarPencilButton.SelectedBrush` ‚Í `Brush` ‚ÅAí‚É `Color` ‚ğ‚Â‚Æ‚ÍŒÀ‚ç‚È‚¢B
+## åˆ¤æ˜ã—ãŸåˆ¶ç´„ãƒ»æƒ³å®šå·®åˆ†
+- `PencilProperties.Hardness` ãŒå­˜åœ¨ã—ãªã„ï¼ˆå°‘ãªãã¨ã‚‚ç¾å‚ç…§ã‚»ãƒƒãƒˆã§ã¯ä¸å¯ï¼‰ã€‚
+- `InkToolbar.GetInkingAttributes()` ã‚‚å­˜åœ¨ã—ãªã„ã€‚
+- `InkToolbarPencilButton.SelectedBrush` ã¯ `Brush` ã§ã€å¸¸ã« `Color` ã‚’æŒã¤ã¨ã¯é™ã‚‰ãªã„ã€‚
 
-## ˆË‘¶ŠÖŒW
-- NuGet: `Win2D.uwp`i`StrokeSampler.csproj` ‚É `PackageReference` ’Ç‰ÁÏ‚İj
+## ä¾å­˜é–¢ä¿‚
+- NuGet: `Win2D.uwp`ï¼ˆ`StrokeSampler.csproj` ã« `PackageReference` è¿½åŠ æ¸ˆã¿ï¼‰
 
-## ì‚è’¼‚µ‚Ì„§•ûj
-1. ƒvƒƒWƒFƒNƒgí•Ê‚ğŠm’è‚·‚éi—á: WinUI 3 / WPF / UWPŒp‘± ‚È‚ÇjB
-2. –Ú“I‚ÌAPIiHardness‘Š“–Aƒuƒ‰ƒV—±qƒpƒ‰ƒ[ƒ^•ÏXj‚ªˆµ‚¦‚éƒtƒŒ[ƒ€ƒ[ƒN/ƒ‰ƒCƒuƒ‰ƒŠ‚ğ‘I’è‚·‚éB
-3. Šù‘¶ƒR[ƒh‚©‚çˆÚA‚µ‚â‚·‚¢•”•ª:
-   - PNG‘‚«o‚µ‚Ì2Œn“i‘fŞ—p/Šm”F—pj‚Æ‚¢‚¤—vŒ
-   - Pressure’iŠKƒTƒ“ƒvƒ‹¶¬‚ÌŠT”O
-   - Šm”F—pƒ‰ƒxƒ‹Ä‚«‚İ
+## ä½œã‚Šç›´ã—æ™‚ã®æ¨å¥¨æ–¹é‡
+1. ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆç¨®åˆ¥ã‚’ç¢ºå®šã™ã‚‹ï¼ˆä¾‹: WinUI 3 / WPF / UWPç¶™ç¶š ãªã©ï¼‰ã€‚
+2. ç›®çš„ã®APIï¼ˆHardnessç›¸å½“ã€ãƒ–ãƒ©ã‚·ç²’å­ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿å¤‰æ›´ï¼‰ãŒæ‰±ãˆã‚‹ãƒ•ãƒ¬ãƒ¼ãƒ ãƒ¯ãƒ¼ã‚¯/ãƒ©ã‚¤ãƒ–ãƒ©ãƒªã‚’é¸å®šã™ã‚‹ã€‚
+3. æ—¢å­˜ã‚³ãƒ¼ãƒ‰ã‹ã‚‰ç§»æ¤ã—ã‚„ã™ã„éƒ¨åˆ†:
+   - PNGæ›¸ãå‡ºã—ã®2ç³»çµ±ï¼ˆç´ æç”¨/ç¢ºèªç”¨ï¼‰ã¨ã„ã†è¦ä»¶
+   - Pressureæ®µéšã‚µãƒ³ãƒ—ãƒ«ç”Ÿæˆã®æ¦‚å¿µ
+   - ç¢ºèªç”¨ãƒ©ãƒ™ãƒ«ç„¼ãè¾¼ã¿
 
-## è“®ŒŸØiŒ»ƒvƒƒWƒFƒNƒgj
-1. ƒAƒvƒŠ‹N“®
-2. `InkToolbar` ‚Å‰”•M‚ÌF/ƒTƒCƒY‚ğ‘I‘ğ
-3. `¶¬` ‚ğ‰Ÿ‚µ‚Ä4–{‚ÌƒTƒ“ƒvƒ‹ü‚ª•`‰æ‚³‚ê‚é‚±‚Æ‚ğŠm”F
-4. `‘fŞ—pPNGi“§‰ßj` ‚ğ•Û‘¶‚µA“§–¾”wŒi‚Å‚ ‚é‚±‚Æ‚ğŠm”F
-5. `Šm”F—pPNGi”’+ƒ‰ƒxƒ‹j` ‚ğ•Û‘¶‚µA”’”wŒi‚Æƒ‰ƒxƒ‹‚ğŠm”F
+## æ‰‹å‹•æ¤œè¨¼ï¼ˆç¾ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆï¼‰
+1. ã‚¢ãƒ—ãƒªèµ·å‹•
+2. `InkToolbar` ã§é‰›ç­†ã®è‰²/ã‚µã‚¤ã‚ºã‚’é¸æŠ
+3. `ç”Ÿæˆ` ã‚’æŠ¼ã—ã¦4æœ¬ã®ã‚µãƒ³ãƒ—ãƒ«ç·šãŒæç”»ã•ã‚Œã‚‹ã“ã¨ã‚’ç¢ºèª
+4. `ç´ æç”¨PNGï¼ˆé€éï¼‰` ã‚’ä¿å­˜ã—ã€é€æ˜èƒŒæ™¯ã§ã‚ã‚‹ã“ã¨ã‚’ç¢ºèª
+5. `ç¢ºèªç”¨PNGï¼ˆç™½+ãƒ©ãƒ™ãƒ«ï¼‰` ã‚’ä¿å­˜ã—ã€ç™½èƒŒæ™¯ã¨ãƒ©ãƒ™ãƒ«ã‚’ç¢ºèª
 
-## å—vƒtƒ@ƒCƒ‹
+## ä¸»è¦ãƒ•ã‚¡ã‚¤ãƒ«
 - `MainPage.xaml` (modify)
 - `MainPage.xaml.cs` (modify)
 - `StrokeSampler.csproj` (modify) - `Win2D.uwp`
