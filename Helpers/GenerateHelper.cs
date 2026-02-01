@@ -89,5 +89,47 @@ namespace StrokeSampler
                 mp.InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(dot);
             }
         }
+
+        internal static void GenerateDotGridFixedCondition(MainPage mp)
+        {
+            mp.InkCanvasControl.InkPresenter.StrokeContainer.Clear();
+
+            var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(mp);
+
+            var dotSize = UIHelpers.GetDot512SizeOrNull(mp);
+            if (dotSize is double s)
+            {
+                attributes.Size = new Size(s, s);
+            }
+
+            mp._lastGeneratedAttributes = attributes;
+
+            var pressure = UIHelpers.GetDot512Pressure(mp);
+            var overwrite = UIHelpers.GetDot512Overwrite(mp);
+            var spacing = UIHelpers.GetDotGridSpacing(mp);
+
+            mp._lastOverwritePressure = pressure;
+            mp._lastMaxOverwrite = overwrite;
+            mp._lastDotGridSpacing = spacing;
+            mp._lastWasDotGrid = true;
+
+            // Keep it bounded to fit typical canvas sizes.
+            const int columns = 12;
+            const int rows = 10;
+
+            foreach (var dot in PencilDotGridGenerator.GenerateFixedCondition(
+                attributes,
+                pressure,
+                overwrite,
+                spacing,
+                MainPage.DefaultDotGridStartX,
+                MainPage.DefaultDotGridStartY,
+                columns,
+                rows,
+                StrokeHelpers.CreatePencilDot))
+            {
+                mp.InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(dot);
+            }
+        }
     }
 }

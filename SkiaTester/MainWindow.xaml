@@ -37,6 +37,10 @@
                               Minimum="0"
                               SpinButtonPlacementMode="Inline" />
 
+                <TextBlock Text="FalloffCSV:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <TextBox x:Name="NormalizedFalloffPathTextBox" Width="360" Margin="0,0,6,0" Text="Sample/Compair/CSV/normalized-falloff-S0200-P1-N1.csv" />
+                <Button x:Name="BrowseNormalizedFalloffButton" Content="Browse..." Width="90" Margin="0,0,12,0" Click="BrowseNormalizedFalloffButton_Click" />
+
                 <TextBlock Text="P:" VerticalAlignment="Center" Margin="0,0,6,0" />
                 <ui:NumberBox x:Name="PressureNumberBox" Width="Auto" Text="0.0104" Margin="0,0,12,0" ValueChanged="PressureNumberBox_ValueChanged"
                               Maximum="1"
@@ -64,9 +68,30 @@
                 <CheckBox x:Name="IgnoreAlphaCheckBox" Content="α無視表示" Margin="16,0,0,0" VerticalAlignment="Center" IsChecked="False" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
                 <CheckBox x:Name="CheckerBackgroundCheckBox" Content="チェッカー背景" Margin="12,0,0,0" VerticalAlignment="Center" IsChecked="False" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
 
-                <CheckBox x:Name="PaperNoiseCheckBox" Content="紙目" Margin="16,0,0,0" VerticalAlignment="Center" IsChecked="True" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
-                <TextBox x:Name="PaperNoisePathTextBox" Width="260" Margin="8,0,0,0" Text="Sample/paper-noise-estimated-dot512-material.png" />
-                <CheckBox x:Name="PaperNoiseClampToValidCheckBox" Content="ClampToValid" Margin="12,0,0,0" VerticalAlignment="Center" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+                <CheckBox x:Name="QuantizeAlpha8bitCheckBox" Content="α8bit表示" Margin="12,0,0,0" VerticalAlignment="Center" IsChecked="False" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+
+                <TextBlock Text="PreviewScale:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PreviewScaleNumberBox" Width="Auto" Text="1" Margin="0,0,12,0"
+                              Maximum="16"
+                              Minimum="0.05"
+                              SmallChange="0.1"
+                              LargeChange="0.5"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PreviewScaleNumberBox_ValueChanged"
+                              Value="1" />
+
+                <CheckBox x:Name="PaperNoiseCheckBox" Content="紙目" Margin="0,0,0,0" VerticalAlignment="Center" IsChecked="True" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+                <TextBox x:Name="PaperNoisePathTextBox"
+                         Width="260"
+                         Margin="8,0,0,0"
+                         Text="Sample/NoiseSheet-WhiteBack2-Transparent.png" />
+                <CheckBox x:Name="PaperNoiseClampToValidCheckBox" Content="ClampToValid" Margin="12,0,0,0" VerticalAlignment="Center" IsChecked="False" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+                <CheckBox x:Name="PaperNoiseInvalidNoneCheckBox" Content="Invalid=None" Margin="12,0,0,0" VerticalAlignment="Center" IsChecked="True" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+                <CheckBox x:Name="PaperNoiseUseAlphaCheckBox" Content="UseAlpha" Margin="12,0,0,0" VerticalAlignment="Center" IsChecked="True" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,8">
+                <Button x:Name="PaperNoiseDiagnosticsButton" Content="Noise diag" Width="90" Margin="12,0,0,0" Click="PaperNoiseDiagnosticsButton_Click" />
 
                 <TextBlock Text="DotPNG:" VerticalAlignment="Center" Margin="16,0,6,0" />
                 <TextBox x:Name="DotMaterialPathTextBox" Width="260" Margin="0,0,8,0" Text="Sample/dot512-material-cropped.png" />
@@ -76,24 +101,38 @@
                         Margin="0,0,0,8">
 
                 <TextBlock Text="Strength:" VerticalAlignment="Center" Margin="12,0,6,0" />
-                <ui:NumberBox x:Name="PaperNoiseStrengthNumberBox" Width="Auto" Text="0.35" Margin="0,0,12,0"
+                <ui:NumberBox x:Name="PaperNoiseStrengthNumberBox" Width="Auto" Text="0.2" Margin="0,0,12,0"
                               Maximum="1"
                               Minimum="0"
                               SmallChange="0.05"
                               LargeChange="0.1"
                               SpinButtonPlacementMode="Inline"
                               ValueChanged="PaperNoiseStrengthNumberBox_ValueChanged"
-                              Value="0.35" />
+                              Value="0.2" />
 
                 <TextBlock Text="NoiseScale:" VerticalAlignment="Center" Margin="12,0,6,0" />
-                <ui:NumberBox x:Name="PaperNoiseScaleNumberBox" Width="Auto" Text="2" Margin="0,0,12,0"
+                <ui:NumberBox x:Name="PaperNoiseScaleNumberBox" Width="Auto" Text="0.125" Margin="0,0,12,0"
                               Maximum="16"
-                              Minimum="0.5"
-                              SmallChange="0.5"
+                              Minimum="0.005"
+                              SmallChange="0.125"
                               LargeChange="1"
                               SpinButtonPlacementMode="Inline"
                               ValueChanged="PaperNoiseScaleNumberBox_ValueChanged"
-                              Value="2" />
+                              Value="0.125
+" />
+
+                <TextBlock Text="NoisePeriodPx:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PaperNoisePeriodPxNumberBox" Width="Auto" Text="43.5" Margin="0,0,6,0"
+                              Maximum="4096"
+                              Minimum="1"
+                              SmallChange="1"
+                              LargeChange="10"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperNoisePeriodPxNumberBox_ValueChanged"
+                              Value="43.5" />
+                <Button x:Name="ApplyPaperNoisePeriodButton" Content="Apply" Width="70" Margin="0,0,12,0" Click="ApplyPaperNoisePeriodButton_Click" />
+                <Button x:Name="PresetNoisePeriod43_5Button" Content="43.5" Width="60" Margin="0,0,6,0" Click="PresetNoisePeriod43_5Button_Click" />
+                <Button x:Name="PresetNoisePeriod348Button" Content="348" Width="60" Margin="0,0,12,0" Click="PresetNoisePeriod348Button_Click" />
 
                 <TextBlock Text="NoiseOffsetX:" VerticalAlignment="Center" Margin="12,0,6,0" />
                 <ui:NumberBox x:Name="PaperNoiseOffsetXNumberBox" Width="Auto" Text="0" Margin="0,0,12,0"
@@ -128,7 +167,127 @@
                               ValueChanged="PaperNoiseGainNumberBox_ValueChanged"
                               Value="0.2" />
 
+                <TextBlock Text="NoisePreviewZoom:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="NoisePreviewZoomNumberBox" Width="Auto" Text="1" Margin="0,0,12,0"
+                              Maximum="64"
+                              Minimum="1"
+                              SmallChange="1"
+                              LargeChange="4"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperNoiseLowFreqNumberBox_ValueChanged"
+                              Value="1" />
+
                 <CheckBox x:Name="PaperNoiseApplyToCountCheckBox" Content="k→Count" Margin="0,0,12,0" VerticalAlignment="Center" Checked="PaperNoiseApplyModeCheckBox_Changed" Unchecked="PaperNoiseApplyModeCheckBox_Changed" />
+                <CheckBox x:Name="DisableKMeanNormalizationCheckBox" Content="kMeanNorm無効" Margin="0,0,12,0" VerticalAlignment="Center" IsChecked="False" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+
+                <TextBlock Text="k stage:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ComboBox x:Name="PaperNoiseApplyStageComboBox" Width="140" SelectedIndex="0" SelectionChanged="PaperNoiseApplyStageComboBox_SelectionChanged">
+                    <ComboBoxItem Content="pre" />
+                    <ComboBoxItem Content="post" />
+                </ComboBox>
+
+                <TextBlock Text="AlphaCutoff:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="AlphaCutoffNumberBox" Width="Auto" Text="0" Margin="0,0,12,0"
+                              Maximum="0.1"
+                              Minimum="0"
+                              SmallChange="0.00392"
+                              LargeChange="0.005"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="AlphaCutoffNumberBox_ValueChanged"
+                              Value="0" />
+
+                <CheckBox x:Name="NoiseDependentCutoffCheckBox" Content="cutoff×k" Margin="0,0,12,0" VerticalAlignment="Center" IsChecked="False" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,8">
+
+                <TextBlock Text="PaperMask:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ComboBox x:Name="PaperMaskModeComboBox" Width="160" SelectedIndex="0" SelectionChanged="PaperMaskModeComboBox_SelectionChanged">
+                    <ComboBoxItem Content="none" />
+                    <ComboBoxItem Content="mul(outA)" />
+                    <ComboBoxItem Content="soft(outA)" />
+                    <ComboBoxItem Content="thresh(outA)" />
+                </ComboBox>
+
+                <TextBlock Text="Base:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ComboBox x:Name="BaseShapeModeComboBox" Width="140" SelectedIndex="0" SelectionChanged="BaseShapeModeComboBox_SelectionChanged">
+                    <ComboBoxItem Content="ideal" />
+                    <ComboBoxItem Content="paper-only" />
+                </ComboBox>
+
+                <TextBlock Text="PaperOnlyFalloff:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ComboBox x:Name="PaperOnlyFalloffModeComboBox" Width="150" SelectedIndex="0" SelectionChanged="PaperOnlyFalloffModeComboBox_SelectionChanged">
+                    <ComboBoxItem Content="none" />
+                    <ComboBoxItem Content="radius-th" />
+                </ComboBox>
+
+                <TextBlock Text="PaperOnlyTh:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PaperOnlyRadiusThNumberBox" Width="Auto" Text="1" Margin="0,0,12,0"
+                              Maximum="1"
+                              Minimum="0"
+                              SmallChange="0.05"
+                              LargeChange="0.1"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperOnlyRadiusThNumberBox_ValueChanged"
+                              Value="1" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,8">
+
+                <CheckBox x:Name="PaperCapCheckBox" Content="cap(outA)" Margin="12,0,6,0" VerticalAlignment="Center" IsChecked="False" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+                <TextBlock Text="CapGain:" VerticalAlignment="Center" Margin="6,0,6,0" />
+                <ui:NumberBox x:Name="PaperCapGainNumberBox" Width="Auto" Text="1" Margin="0,0,12,0"
+                              Maximum="10"
+                              Minimum="0"
+                              SmallChange="0.1"
+                              LargeChange="1"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperCapGainNumberBox_ValueChanged"
+                              Value="1" />
+
+                <TextBlock Text="Preview:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ComboBox x:Name="AlphaPreviewModeComboBox" Width="140" SelectedIndex="0" SelectionChanged="AlphaPreviewModeComboBox_SelectionChanged">
+                    <ComboBoxItem Content="8bit" />
+                    <ComboBoxItem Content="float" />
+                    <ComboBoxItem Content="paperMask" />
+                    <ComboBoxItem Content="falloffWeight" />
+                    <ComboBoxItem Content="maskUsed" />
+                    <ComboBoxItem Content="outA_base" />
+                    <ComboBoxItem Content="outA_masked" />
+                    <ComboBoxItem Content="falloffF" />
+                </ComboBox>
+
+                <CheckBox x:Name="InvertMaskPreviewCheckBox" Content="invert mask view" Margin="12,0,0,0" VerticalAlignment="Center" IsChecked="False" Checked="PreviewOptions_Changed" Unchecked="PreviewOptions_Changed" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,8">
+
+                <TextBlock Text="MaskTh:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PaperMaskThresholdNumberBox" Width="Auto" Text="0.5" Margin="0,0,12,0"
+                              Maximum="5"
+                              Minimum="0"
+                              SmallChange="0.1"
+                              LargeChange="1.0"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperMaskNumberBox_ValueChanged"
+                              Value="0.5" />
+
+                <TextBlock Text="MaskGain:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="PaperMaskGainNumberBox" Width="Auto" Text="1" Margin="0,0,12,0"
+                              Maximum="10"
+                              Minimum="0"
+                              SmallChange="0.1"
+                              LargeChange="1"
+                              SpinButtonPlacementMode="Inline"
+                              ValueChanged="PaperMaskNumberBox_ValueChanged"
+                              Value="1" />
+
+                <TextBlock Text="MaskFalloff:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <ComboBox x:Name="PaperMaskFalloffModeComboBox" Width="160" SelectedIndex="0" SelectionChanged="PaperMaskFalloffModeComboBox_SelectionChanged">
+                    <ComboBoxItem Content="none" />
+                    <ComboBoxItem Content="gain@edge" />
+                    <ComboBoxItem Content="th@edge" />
+                </ComboBox>
 
                 <TextBlock Text="LowFreqScale:" VerticalAlignment="Center" Margin="12,0,6,0" />
                 <ui:NumberBox x:Name="PaperNoiseLowFreqScaleNumberBox" Width="Auto" Text="4" Margin="0,0,12,0"
@@ -149,6 +308,9 @@
                               SpinButtonPlacementMode="Inline"
                               ValueChanged="PaperNoiseLowFreqNumberBox_ValueChanged"
                               Value="0" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,8">
 
                 <TextBlock Text="CSV:" VerticalAlignment="Center" Margin="16,0,6,0" />
                 <CheckBox x:Name="UsePreQuantizeMetricsCheckBox" Content="量子化前集計" Margin="0,0,8,0" VerticalAlignment="Center" IsChecked="True" />
@@ -164,7 +326,11 @@
         </StackPanel>
 
         <Border Grid.Row="2" BorderBrush="#33000000" BorderThickness="1" CornerRadius="4">
-            <skia:SKElement x:Name="Preview" PaintSurface="Preview_PaintSurface" Width="200" Height="200"/>
+            <skia:SKElement x:Name="Preview" PaintSurface="Preview_PaintSurface" Width="800" Height="800"/>
+        </Border>
+
+        <Border Grid.Row="2" BorderBrush="#33000000" BorderThickness="1" CornerRadius="4" Margin="1600,0,0,0">
+            <skia:SKElement x:Name="NoisePreview" PaintSurface="NoisePreview_PaintSurface" Width="800" Height="800"/>
         </Border>
     </Grid>
 </Window>

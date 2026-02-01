@@ -14,12 +14,385 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI;
 using Windows.Foundation;
 using Windows.Storage.Streams;
+using Windows.UI.Input.Inking;
+using Windows.Storage.Provider;
 using static StrokeSampler.StrokeHelpers;
 
 namespace StrokeSampler
 {
     internal class TestMethods
     {
+        private enum AlphaCompositeMode
+        {
+            SourceOver,
+            Add,
+            Max,
+        }
+
+        internal static async Task ExportHiResSimulatedCompositeAsync(MainPage mp, bool transparentBackground, bool cropToBounds)
+        {
+            if (mp is null) throw new ArgumentNullException(nameof(mp));
+
+            int scale;
+            if (!int.TryParse(mp.ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out scale))
+            {
+                if (!int.TryParse(mp.ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out scale)) return;
+            }
+
+            double dpiD;
+            if (!double.TryParse(mp.ExportDpiTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out dpiD))
+            {
+                if (!double.TryParse(mp.ExportDpiTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out dpiD)) return;
+            }
+
+            if (scale <= 0) return;
+            if (dpiD <= 0) return;
+
+            var n = UIHelpers.GetDot512Overwrite(mp);
+            if (n < 1) n = 1;
+            if (n > 10000) n = 10000;
+
+            var pForName = (double)UIHelpers.GetDot512Pressure(mp);
+            var pTag = $"p{pForName.ToString("0.####", CultureInfo.InvariantCulture)}";
+
+            var strokes = mp.InkCanvasControl.InkPresenter.StrokeContainer.GetStrokes();
+            if (strokes is null || strokes.Count == 0) return;
+
+            var last = strokes[strokes.Count - 1];
+            if (last is null) return;
+
+            // laststroke（1回分）をHiResレンダしてα(BGRA8)を取得
+            var (stampBgra8, width, height) = await RenderHiResBgra8Async(mp, scale, (float)dpiD, transparentBackground, cropToBounds, new List<InkStroke>(1) { last });
+            if (stampBgra8 == null || stampBgra8.Length == 0) return;
+
+            // 保存ダイアログの回数削減のため、最初に保存先フォルダを選んで一括保存する。
+            // （キャンセルされた場合は何もしない）
+            var folderPicker = new FolderPicker
+            {
+                SuggestedStartLocation = PickerLocationId.PicturesLibrary
+            };
+            folderPicker.FileTypeFilter.Add(".png");
+            folderPicker.FileTypeFilter.Add(".csv");
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder == null) return;
+
+            foreach (var mode in new[] { AlphaCompositeMode.SourceOver, AlphaCompositeMode.Add, AlphaCompositeMode.Max })
+            {
+                var outBgra8 = SimulateCompositeAlpha(stampBgra8, width, height, n, mode);
+
+                // PNG
+                await SaveBgra8AsPngToFolderAsync(folder, outBgra8, width, height, (float)dpiD, tag: $"sim-{mode.ToString().ToLowerInvariant()}-n{n}-{pTag}");
+
+                // pre-save α統計CSV
+                await SaveAlphaStatsCsvToFolderAsync(folder, outBgra8, width, height, tag: $"sim-{mode.ToString().ToLowerInvariant()}-n{n}-{pTag}");
+            }
+        }
+
+        private static async Task<(byte[] Bytes, int Width, int Height)> RenderHiResBgra8Async(MainPage mp, int scale, float dpi, bool transparentBackground, bool cropToBounds, IReadOnlyList<InkStroke> strokes)
+        {
+            if (mp is null) throw new ArgumentNullException(nameof(mp));
+            if (strokes is null) throw new ArgumentNullException(nameof(strokes));
+
+            var baseWidth = UIHelpers.GetExportWidth(mp);
+            var baseHeight = UIHelpers.GetExportHeight(mp);
+
+            if (strokes.Count == 0) return (Array.Empty<byte>(), 0, 0);
+
+            Windows.Foundation.Rect bounds;
+            if (cropToBounds)
+            {
+                if (!StrokeHelpers.TryGetStrokesBoundingRect(strokes, out bounds))
+                {
+                    return (Array.Empty<byte>(), 0, 0);
+                }
+                if (bounds.X < 0) bounds.X = 0;
+                if (bounds.Y < 0) bounds.Y = 0;
+                if (bounds.Width <= 0 || bounds.Height <= 0) return (Array.Empty<byte>(), 0, 0);
+            }
+            else
+            {
+                bounds = new Windows.Foundation.Rect(0, 0, baseWidth, baseHeight);
+            }
+
+            var width = (int)Math.Ceiling(bounds.Width * scale);
+            var height = (int)Math.Ceiling(bounds.Height * scale);
+            if (width <= 0 || height <= 0) return (Array.Empty<byte>(), 0, 0);
+
+            var device = CanvasDevice.GetSharedDevice();
+            using (var target = new CanvasRenderTarget(device, width, height, dpi))
+            {
+                using (var ds = target.CreateDrawingSession())
+                {
+                    ds.Clear(transparentBackground ? Color.FromArgb(0, 0, 0, 0) : Colors.White);
+                    var translate = Matrix3x2.CreateTranslation((float)-bounds.X, (float)-bounds.Y);
+                    var scaleM = Matrix3x2.CreateScale(scale);
+                    ds.Transform = translate * scaleM;
+                    ds.DrawInk(strokes);
+                }
+                return (target.GetPixelBytes(), width, height);
+            }
+        }
+
+        private static byte[] SimulateCompositeAlpha(byte[] stampBgra8, int width, int height, int n, AlphaCompositeMode mode)
+        {
+            var expected = checked(width * height * 4);
+            if (stampBgra8.Length < expected) throw new ArgumentException("スタンプBGRA8の長さが不足しています。", nameof(stampBgra8));
+
+            // RGBは解析用途なので0固定。αだけを合成する。
+            // N回の「重ね塗り」は、各view（各画素）で同じstampのαがN回入ることを意味する。
+            var outBgra8 = new byte[expected];
+
+            // まず初期化（A=0）
+            for (var i = 0; i < expected; i += 4)
+            {
+                outBgra8[i + 0] = 0;
+                outBgra8[i + 1] = 0;
+                outBgra8[i + 2] = 0;
+                outBgra8[i + 3] = 0;
+            }
+
+            // 各回の合成を画素ごとに適用
+            for (var k = 0; k < n; k++)
+            {
+                for (var i = 0; i < expected; i += 4)
+                {
+                    var sA = stampBgra8[i + 3];
+                    var a = outBgra8[i + 3];
+
+                    var next = mode switch
+                    {
+                        AlphaCompositeMode.SourceOver => a + (sA * (255 - a) + 127) / 255,
+                        AlphaCompositeMode.Add => Math.Min(255, a + sA),
+                        AlphaCompositeMode.Max => Math.Max(a, sA),
+                        _ => a,
+                    };
+
+                    outBgra8[i + 3] = (byte)next;
+                }
+            }
+
+            return outBgra8;
+        }
+
+        private static async Task SaveBgra8AsPngToFolderAsync(StorageFolder folder, byte[] bgra8, int width, int height, float dpi, string tag)
+        {
+            if (folder is null) throw new ArgumentNullException(nameof(folder));
+            if (bgra8 is null) throw new ArgumentNullException(nameof(bgra8));
+            if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
+            if (height <= 0) throw new ArgumentOutOfRangeException(nameof(height));
+
+            var file = await folder.CreateFileAsync(
+                $"pencil-highres-sim-{width}x{height}-dpi{dpi.ToString("0.##", CultureInfo.InvariantCulture)}-{tag}.png",
+                CreationCollisionOption.ReplaceExisting);
+
+            using (var stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                var device = CanvasDevice.GetSharedDevice();
+                using (var bitmap = CanvasBitmap.CreateFromBytes(device, bgra8, width, height, Windows.Graphics.DirectX.DirectXPixelFormat.B8G8R8A8UIntNormalized))
+                {
+                    await bitmap.SaveAsync(stream, CanvasBitmapFileFormat.Png);
+                }
+            }
+        }
+
+        private static async Task SaveAlphaStatsCsvToFolderAsync(StorageFolder folder, byte[] bgra8, int width, int height, string tag)
+        {
+            if (folder is null) throw new ArgumentNullException(nameof(folder));
+
+            var file = await folder.CreateFileAsync($"pencil-highres-sim-pre-save-alpha-{width}x{height}-{tag}.csv", CreationCollisionOption.ReplaceExisting);
+            await WriteAlphaStatsCsvAsync(file, bgra8, width, height);
+        }
+        internal static async Task WriteAlphaStatsCsvAsync(StorageFile file, byte[] bgra8, int width, int height)
+        {
+            if (file == null) throw new ArgumentNullException(nameof(file));
+            if (bgra8 == null) throw new ArgumentNullException(nameof(bgra8));
+            if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
+            if (height <= 0) throw new ArgumentOutOfRangeException(nameof(height));
+
+            // BGRA8前提。strideはwidth*4。
+            var expected = checked(width * height * 4);
+            if (bgra8.Length < expected) throw new ArgumentException("BGRA8バッファ長が不足しています。", nameof(bgra8));
+
+            var hist = new int[256];
+            long sum = 0;
+            long count = 0;
+            var min = 255;
+            var max = 0;
+
+            for (var i = 0; i < expected; i += 4)
+            {
+                var a = bgra8[i + 3];
+                hist[a]++;
+                sum += a;
+                count++;
+                if (a < min) min = a;
+                if (a > max) max = a;
+            }
+
+            var mean = count == 0 ? 0.0 : sum / (double)count;
+
+            double varSum = 0;
+            for (var a = 0; a < 256; a++)
+            {
+                var c = hist[a];
+                if (c == 0) continue;
+                var d = a - mean;
+                varSum += d * d * c;
+            }
+            var stddev = count == 0 ? 0.0 : Math.Sqrt(varSum / count);
+
+            var unique = 0;
+            for (var a = 0; a < 256; a++)
+            {
+                if (hist[a] != 0) unique++;
+            }
+
+            var sb = new StringBuilder(1024);
+            sb.AppendLine("width,height,pixel_format,alpha_min,alpha_max,alpha_mean,alpha_stddev,alpha_unique");
+            sb.Append(width.ToString(CultureInfo.InvariantCulture));
+            sb.Append(',');
+            sb.Append(height.ToString(CultureInfo.InvariantCulture));
+            sb.Append(',');
+            sb.Append("BGRA8");
+            sb.Append(',');
+            sb.Append(min.ToString(CultureInfo.InvariantCulture));
+            sb.Append(',');
+            sb.Append(max.ToString(CultureInfo.InvariantCulture));
+            sb.Append(',');
+            sb.Append((mean / 255.0).ToString("0.########", CultureInfo.InvariantCulture));
+            sb.Append(',');
+            sb.Append((stddev / 255.0).ToString("0.########", CultureInfo.InvariantCulture));
+            sb.Append(',');
+            sb.Append(unique.ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine();
+
+            await FileIO.WriteTextAsync(file, sb.ToString());
+        }
+        internal static async Task ExportHiResLastStrokeAsync(MainPage mp, bool transparentBackground, bool cropToBounds)
+        {
+            if (mp is null)
+            {
+                throw new ArgumentNullException(nameof(mp));
+            }
+
+            int scale;
+            if (!int.TryParse(mp.ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out scale))
+            {
+                if (!int.TryParse(mp.ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out scale))
+                {
+                    return;
+                }
+            }
+
+            double dpiD;
+            if (!double.TryParse(mp.ExportDpiTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out dpiD))
+            {
+                if (!double.TryParse(mp.ExportDpiTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out dpiD))
+                {
+                    return;
+                }
+            }
+
+            if (scale <= 0) return;
+            if (dpiD <= 0) return;
+
+            var strokes = mp.InkCanvasControl.InkPresenter.StrokeContainer.GetStrokes();
+            if (strokes is null || strokes.Count == 0)
+            {
+                return;
+            }
+
+            var last = strokes[strokes.Count - 1];
+            if (last is null)
+            {
+                return;
+            }
+
+            var s = UIHelpers.GetDot512SizeOrNull(mp);
+            var p = (double)UIHelpers.GetDot512Pressure(mp);
+            var n = UIHelpers.GetDot512Overwrite(mp);
+
+            // 既存のpencil-highresとファイル名が衝突しないよう suffix を付ける。
+            var ctx = new ExportHighResInk.ExportContext(s, p, n, exportScale: scale, tag: "laststroke");
+            var one = new List<InkStroke>(1) { last };
+
+            await ExportHighResInk.ExportAsync(mp, scale, (float)dpiD, transparentBackground, cropToBounds, one, ctx);
+        }
+
+        internal static async Task ExportHiResPreSaveAlphaStatsAsync(MainPage mp, bool useLastStrokeOnly, bool transparentBackground, bool cropToBounds)
+        {
+            if (mp is null) throw new ArgumentNullException(nameof(mp));
+
+            int scale;
+            if (!int.TryParse(mp.ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out scale))
+            {
+                if (!int.TryParse(mp.ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out scale))
+                {
+                    return;
+                }
+            }
+
+            double dpiD;
+            if (!double.TryParse(mp.ExportDpiTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out dpiD))
+            {
+                if (!double.TryParse(mp.ExportDpiTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out dpiD))
+                {
+                    return;
+                }
+            }
+
+            if (scale <= 0) return;
+            if (dpiD <= 0) return;
+
+            var strokes = mp.InkCanvasControl.InkPresenter.StrokeContainer.GetStrokes();
+            if (strokes is null || strokes.Count == 0)
+            {
+                return;
+            }
+
+            IReadOnlyList<InkStroke> targetStrokes;
+            string tag;
+
+            if (useLastStrokeOnly)
+            {
+                var last = strokes[strokes.Count - 1];
+                targetStrokes = new List<InkStroke>(1) { last };
+                tag = "laststroke";
+            }
+            else
+            {
+                targetStrokes = strokes;
+                tag = "canvas";
+            }
+
+            var s = UIHelpers.GetDot512SizeOrNull(mp);
+            var p = (double)UIHelpers.GetDot512Pressure(mp);
+            var n = UIHelpers.GetDot512Overwrite(mp);
+
+            var ctx = new ExportHighResInk.ExportContext(s, p, n, exportScale: scale, tag: $"pre-save-alpha-{tag}");
+            await ExportHighResInk.ExportPreSaveAlphaStatsCsvAsync(mp, scale, (float)dpiD, transparentBackground, cropToBounds, targetStrokes, ctx);
+        }
+        internal static void AssertCanParseFalloffFileNameFormats()
+        {
+            if (!ParseFalloffFilenameService.TryParseFalloffFilename("radial-falloff-S200-P0.1-N50.csv", out var s0, out var p0, out var n0))
+            {
+                throw new InvalidOperationException("Failed to parse radial-falloff-S200-P0.1-N50.csv");
+            }
+            if (s0 != 200 || Math.Abs(p0 - 0.1) > 1e-9 || n0 != 50)
+            {
+                throw new InvalidOperationException("Parsed values mismatch for radial-falloff-S200-P0.1-N50.csv");
+            }
+
+            if (!ParseFalloffFilenameService.TryParseFalloffFilename("radial-falloff-hires-S200-P0.1-N50-scale8.csv", out var s1, out var p1, out var n1))
+            {
+                throw new InvalidOperationException("Failed to parse radial-falloff-hires-S200-P0.1-N50-scale8.csv");
+            }
+            if (s1 != 200 || Math.Abs(p1 - 0.1) > 1e-9 || n1 != 50)
+            {
+                throw new InvalidOperationException("Parsed values mismatch for radial-falloff-hires-S200-P0.1-N50-scale8.csv");
+            }
+        }
+
         internal static async Task ExportDot512PreSaveAlphaSummaryCsvAsync(MainPage mp)
             => await ExportDot512PreSaveAlphaSummaryCsvWithPressureSweepAsync(mp, pressureStartInclusive: 0.0100f, pressureEndInclusive: 0.0200f, pressureStep: 0.0001f);
 

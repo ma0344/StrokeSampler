@@ -21,15 +21,206 @@ namespace SkiaTester
         private const int DefaultDiameter = 200;
         private const float DefaultPressure = 1f;
         private SKBitmap? _lastBitmap;
+        private double[]? _lastAlpha01;
         private PaperNoise? _paperNoise;
         private string? _paperNoisePath;
         private NormalizedFalloffLut? _normalizedFalloff;
         private string? _normalizedFalloffPath;
         private bool isLoaded = false;
 
+        private bool IsCheckedByName(string name)
+        {
+            if (FindName(name) is System.Windows.Controls.Primitives.ToggleButton t)
+            {
+                return t.IsChecked == true;
+            }
+
+            return false;
+        }
+
+        private static SKBitmap BuildGrayscaleFromAlpha01(double[] alpha01, int width, int height)
+        {
+            var dst = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            var n = width * height;
+            if (alpha01.Length < n) return dst;
+
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var a = alpha01[y * width + x];
+                    if (double.IsNaN(a) || double.IsInfinity(a)) a = 0;
+                    a = Math.Clamp(a, 0.0, 1.0);
+
+                    // 低アルファ域の差が見えるようにガンマ補正（sqrt）を掛ける
+                    var vis = Math.Sqrt(a);
+                    var v8 = (byte)Math.Clamp((int)Math.Round(vis * 255.0), 0, 255);
+                    dst.SetPixel(x, y, new SKColor(v8, v8, v8, 255));
+                }
+            }
+
+            return dst;
+        }
+
+        private static void ApplyInvert01IfNeeded(double[] v01)
+        {
+            for (var i = 0; i < v01.Length; i++)
+            {
+                v01[i] = 1.0 - Math.Clamp(v01[i], 0.0, 1.0);
+            }
+        }
+
+        private static double[] BuildFalloffWeight01ForPreview(int canvasSizePx, int diameterPx, NormalizedFalloffLut? falloffLut)
+        {
+            var radiusPx = diameterPx * 0.5;
+            var cx = (canvasSizePx - 1) * 0.5;
+            var cy = (canvasSizePx - 1) * 0.5;
+            var out01 = new double[canvasSizePx * canvasSizePx];
+
+            // weightは 1..6 想定なので、0..1へ正規化して可視化する
+            const double wMin = 1.0;
+            const double wMax = 6.0;
+            for (var y = 0; y < canvasSizePx; y++)
+            {
+                var dy = y - cy;
+                for (var x = 0; x < canvasSizePx; x++)
+                {
+                    var dx = x - cx;
+                    var dist = Math.Sqrt(dx * dx + dy * dy);
+                    if (dist > radiusPx) continue;
+
+                    var f = 1.0;
+                    var rNorm = dist * (200.0 / diameterPx);
+                    if (falloffLut != null)
+                    {
+                        f = falloffLut.Eval(rNorm);
+                    }
+
+                    var denom = Math.Max(0.15, Math.Clamp(f, 0.0, 1.0));
+                    var w = Math.Clamp(1.0 / denom, wMin, wMax);
+                    var v01 = (w - wMin) / (wMax - wMin);
+                    out01[y * canvasSizePx + x] = Math.Clamp(v01, 0.0, 1.0);
+                }
+            }
+
+            return out01;
+        }
+
+        // outA_base/outA_masked はPencilDotRenderer側で計算して差分を切り分ける（UI側の再実装はズレやすいため）
+
+        private static SKBitmap BuildGrayscaleFromValue01(double[] value01, int width, int height)
+        {
+            var dst = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            var n = width * height;
+            if (value01.Length < n) return dst;
+
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var v = value01[y * width + x];
+                    if (double.IsNaN(v) || double.IsInfinity(v)) v = 0;
+                    v = Math.Clamp(v, 0.0, 1.0);
+                    var v8 = (byte)Math.Clamp((int)Math.Round(v * 255.0), 0, 255);
+                    dst.SetPixel(x, y, new SKColor(v8, v8, v8, 255));
+                }
+            }
+
+            return dst;
+        }
+
+        private static double[] BuildPaperMask01ForPreview(
+            int canvasSizePx,
+            int diameterPx,
+            PaperNoise noise,
+            double paperNoiseScale,
+            double paperNoiseOffsetX,
+            double paperNoiseOffsetY,
+            double paperNoiseLowFreqScale,
+            double paperNoiseLowFreqMix,
+            PencilDotRenderer.PaperMaskMode paperMaskMode,
+            double paperMaskThreshold01,
+            double paperMaskGain,
+            PencilDotRenderer.PaperMaskFalloffMode paperMaskFalloffMode,
+            NormalizedFalloffLut? falloffLut)
+        {
+            var radiusPx = diameterPx * 0.5;
+            var cx = (canvasSizePx - 1) * 0.5;
+            var cy = (canvasSizePx - 1) * 0.5;
+            var out01 = new double[canvasSizePx * canvasSizePx];
+
+            var mean = noise.Mean01;
+            var std = noise.Stddev01;
+            if (std <= 0) return out01;
+
+            for (var y = 0; y < canvasSizePx; y++)
+            {
+                var dy = y - cy;
+                for (var x = 0; x < canvasSizePx; x++)
+                {
+                    var dx = x - cx;
+                    var dist = Math.Sqrt(dx * dx + dy * dy);
+                    if (dist > radiusPx) continue;
+
+                    var nx = ((x + 0.5) + paperNoiseOffsetX) / paperNoiseScale;
+                    var ny = ((y + 0.5) + paperNoiseOffsetY) / paperNoiseScale;
+                    var n01 = noise.Sample01Mixed(nx, ny, paperNoiseLowFreqScale, paperNoiseLowFreqMix);
+
+                    var f = 1.0;
+                    if (paperMaskFalloffMode != PencilDotRenderer.PaperMaskFalloffMode.None)
+                    {
+                        var rNorm = dist * (200.0 / diameterPx);
+                        if (falloffLut != null)
+                        {
+                            f = falloffLut.Eval(rNorm);
+                        }
+                    }
+
+                    var falloffWeight = 1.0;
+                    if (paperMaskFalloffMode == PencilDotRenderer.PaperMaskFalloffMode.StrongerAtEdge)
+                    {
+                        var denom = Math.Max(0.15, Math.Clamp(f, 0.0, 1.0));
+                        falloffWeight = Math.Clamp(1.0 / denom, 1.0, 6.0);
+                    }
+                    var thresholdAdj = paperMaskThreshold01;
+                    if (paperMaskFalloffMode == PencilDotRenderer.PaperMaskFalloffMode.ThresholdAtEdge)
+                    {
+                        var edge = 1.0 - Math.Clamp(f, 0.0, 1.0);
+                        thresholdAdj = Math.Clamp(paperMaskThreshold01 + 0.35 * edge, 0.0, 1.0);
+                    }
+
+                    var z = (n01 - mean) / std;
+                    z = Math.Clamp(z, -3.0, 3.0);
+                    var t = (z + 3.0) / 6.0;
+                    if (paperMaskGain > 0)
+                    {
+                        t = 0.5 + (t - 0.5) * paperMaskGain;
+                    }
+                    t = Math.Clamp(t, 0.0, 1.0);
+
+                    var m = paperMaskMode switch
+                    {
+                        PencilDotRenderer.PaperMaskMode.MultiplyOutAlpha => t,
+                        PencilDotRenderer.PaperMaskMode.SoftOutAlpha => Math.Clamp((t - thresholdAdj) * (paperMaskGain <= 0 ? 1.0 : paperMaskGain) * falloffWeight, 0.0, 1.0),
+                        PencilDotRenderer.PaperMaskMode.ThresholdOutAlpha => t >= thresholdAdj ? 1.0 : 0.0,
+                        _ => 1.0,
+                    };
+
+                    out01[y * canvasSizePx + x] = m;
+                }
+            }
+
+            return out01;
+        }
+
         private NormalizedFalloffLut GetNormalizedFalloffLut()
         {
-            var relative = Path.Combine("Sample", "Compair", "CSV", "normalized-falloff-S0200-P1-N1.csv");
+            var relative = NormalizedFalloffPathTextBox.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(relative))
+            {
+                relative = Path.Combine("Sample", "Compair", "CSV", "normalized-falloff-S0200-P1-N1.csv");
+            }
+
             var repoRoot = PathHelpers.TryFindRepositoryRoot(PathHelpers.GetAppBaseDirectory());
             var path = repoRoot == null ? relative : Path.Combine(repoRoot, relative);
             path = Path.GetFullPath(path);
@@ -39,8 +230,157 @@ namespace SkiaTester
                 _normalizedFalloff = NormalizedFalloffLut.LoadFromCsv(path);
                 _normalizedFalloffPath = path;
             }
-
             return _normalizedFalloff!;
+        }
+
+        private void BrowseNormalizedFalloffButton_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
+                CheckFileExists = true,
+                CheckPathExists = true
+            };
+
+            var result = dialog.ShowDialog(this);
+            if (result != true) return;
+
+            var repoRoot = PathHelpers.TryFindRepositoryRoot(PathHelpers.GetAppBaseDirectory());
+            if (repoRoot != null)
+            {
+                try
+                {
+                    var rel = Path.GetRelativePath(repoRoot, dialog.FileName);
+                    NormalizedFalloffPathTextBox.Text = rel;
+                }
+                catch
+                {
+                    NormalizedFalloffPathTextBox.Text = dialog.FileName;
+                }
+            }
+            else
+            {
+                NormalizedFalloffPathTextBox.Text = dialog.FileName;
+            }
+
+            Rendering();
+        }
+
+        private void PaperNoiseDiagnosticsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var noisePath = PaperNoisePathTextBox.Text?.Trim();
+                if (string.IsNullOrWhiteSpace(noisePath))
+                {
+                    System.Windows.MessageBox.Show(this, "PaperNoisePath が空です。", "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var invalidMode = PaperNoiseInvalidNoneCheckBox.IsChecked == true
+                    ? PaperNoise.InvalidPixelMode.None
+                    : PaperNoise.InvalidPixelMode.Legacy;
+
+                var channel = PaperNoiseUseAlphaCheckBox.IsChecked == true
+                    ? PaperNoise.SampleChannel.Alpha
+                    : PaperNoise.SampleChannel.RgbAverage;
+
+                var repoRoot = PathHelpers.TryFindRepositoryRoot(PathHelpers.GetAppBaseDirectory());
+                var fullNoisePath = repoRoot == null ? Path.GetFullPath(noisePath) : Path.GetFullPath(Path.Combine(repoRoot, noisePath));
+
+                using var tmp = PaperNoise.LoadFromFile(fullNoisePath, invalidMode, channel);
+                tmp.InvalidEdgeMode = PaperNoiseClampToValidCheckBox.IsChecked == true
+                    ? PaperNoise.EdgeMode.ClampToValid
+                    : PaperNoise.EdgeMode.TreatInvalidAsOne;
+
+                var diag = tmp.GetPixelDiagnostics();
+                System.Windows.MessageBox.Show(this, diag, "PaperNoise diagnostics", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (ArgumentException ex)
+            {
+                System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch (InvalidOperationException ex)
+            {
+                System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch (IOException ex)
+            {
+                System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void NoisePreview_PaintSurface(object sender, SKPaintSurfaceEventArgs e)
+        {
+            var canvas = e.Surface.Canvas;
+            canvas.Clear(SKColors.White);
+
+            var usePaperNoise = PaperNoiseCheckBox.IsChecked == true;
+            if (!usePaperNoise)
+            {
+                using var p = new SKPaint { Color = SKColors.LightGray };
+                canvas.DrawRect(0, 0, e.Info.Width, e.Info.Height, p);
+                return;
+            }
+
+            PaperNoise? noise;
+            try
+            {
+                noise = TryLoadPaperNoiseFromUi();
+            }
+            catch
+            {
+                noise = null;
+            }
+
+            if (noise == null)
+            {
+                using var p = new SKPaint { Color = SKColors.LightGray };
+                canvas.DrawRect(0, 0, e.Info.Width, e.Info.Height, p);
+                return;
+            }
+
+            if (!TryParsePaperNoiseScale(out var paperNoiseScale) || paperNoiseScale <= 0) paperNoiseScale = 2.0;
+            if (!TryParsePaperNoiseOffset(out var paperNoiseOffsetX, out var paperNoiseOffsetY))
+            {
+                paperNoiseOffsetX = 0.0;
+                paperNoiseOffsetY = 0.0;
+            }
+            if (!TryParsePaperNoiseGain(out var paperNoiseGain) || paperNoiseGain < 0) paperNoiseGain = 0.2;
+
+            if (!TryParsePaperNoiseLowFreq(out var lowFreqScale, out var lowFreqMix))
+            {
+                lowFreqScale = 4.0;
+                lowFreqMix = 0.0;
+            }
+
+            var zoom = (double)NoisePreviewZoomNumberBox.Value;
+            if (zoom <= 0) zoom = 8.0;
+
+            // 1タイルを拡大して表示
+            var outW = e.Info.Width;
+            var outH = e.Info.Height;
+            using var bmp = new SKBitmap(outW, outH, SKColorType.Bgra8888, SKAlphaType.Unpremul);
+            for (var y = 0; y < outH; y++)
+            {
+                for (var x = 0; x < outW; x++)
+                {
+                    // 画面上の1pxが、ノイズ空間では 1/zoom px になる
+                    var nx = ((x / zoom) + paperNoiseOffsetX) / paperNoiseScale;
+                    var ny = ((y / zoom) + paperNoiseOffsetY) / paperNoiseScale;
+                    var n01 = noise.Sample01Mixed(nx, ny, lowFreqScale, lowFreqMix);
+                    // 表示はgainで見やすくする（正規化ではなく見た目用）
+                    var v = Math.Clamp(0.5 + (n01 - noise.Mean01) * paperNoiseGain, 0.0, 1.0);
+                    var g8 = (byte)Math.Clamp((int)Math.Round(v * 255.0), 0, 255);
+                    bmp.SetPixel(x, y, new SKColor(g8, g8, g8, 255));
+                }
+            }
+
+            canvas.DrawBitmap(bmp, 0, 0);
         }
 
         private void UpdateAutoCompareText()
@@ -78,20 +418,7 @@ namespace SkiaTester
                 PaperNoise? noise = null;
                 if (usePaperNoise)
                 {
-                    var noisePath = PaperNoisePathTextBox.Text?.Trim();
-                    if (!string.IsNullOrWhiteSpace(noisePath))
-                    {
-                        if (!string.Equals(_paperNoisePath, noisePath, StringComparison.OrdinalIgnoreCase) || _paperNoise == null)
-                        {
-                            _paperNoise?.Dispose();
-                            _paperNoise = PaperNoise.LoadFromFile(noisePath);
-                            _paperNoisePath = noisePath;
-                        }
-                        _paperNoise.InvalidEdgeMode = PaperNoiseClampToValidCheckBox.IsChecked == true
-                            ? PaperNoise.EdgeMode.ClampToValid
-                            : PaperNoise.EdgeMode.TreatInvalidAsOne;
-                        noise = _paperNoise;
-                    }
+                    noise = TryLoadPaperNoiseFromUi();
                 }
 
                 if (!TryParsePaperNoiseStrength(out var paperNoiseStrength)) paperNoiseStrength = 0.35;
@@ -107,23 +434,41 @@ namespace SkiaTester
                     ? PencilDotRenderer.PaperNoiseApplyMode.StampCount
                     : PencilDotRenderer.PaperNoiseApplyMode.Alpha;
 
+                var disableKMeanNorm = IsCheckedByName("DisableKMeanNormalizationCheckBox");
+                var applyStage = GetPaperNoiseApplyStageFromUi();
+                if (!TryParseAlphaCutoff(out var alphaCutoff01) || alphaCutoff01 < 0) alphaCutoff01 = 0.0;
+                var noiseDependentCutoff = IsCheckedByName("NoiseDependentCutoffCheckBox");
+                var paperMaskMode = GetPaperMaskModeFromUi();
+                if (!TryParsePaperMaskThreshold(out var paperMaskTh01)) paperMaskTh01 = 0.5;
+                if (!TryParsePaperMaskGain(out var paperMaskGain)) paperMaskGain = 1.0;
+                var paperMaskFalloffMode = GetPaperMaskFalloffModeFromUi();
+                var baseShapeMode = GetBaseShapeModeFromUi();
+                var paperOnlyFalloffMode = GetPaperOnlyFalloffModeFromUi();
+                if (!TryParsePaperOnlyRadiusTh(out var paperOnlyRadiusThNorm)) paperOnlyRadiusThNorm = 1.0;
+                var paperCapMode = GetPaperCapModeFromUi();
+                if (!TryParsePaperCapGain(out var paperCapGain)) paperCapGain = 1.0;
+
                 if (!TryParsePaperNoiseLowFreq(out var lowFreqScale, out var lowFreqMix))
                 {
                     lowFreqScale = 4.0;
                     lowFreqMix = 0.0;
                 }
 
-                NormalizedFalloffLut? falloffLut;
+                NormalizedFalloffLut? falloffLut = null;
                 try
                 {
                     falloffLut = GetNormalizedFalloffLut();
                 }
-                catch
+                catch (IOException)
+                {
+                    falloffLut = null;
+                }
+                catch (UnauthorizedAccessException)
                 {
                     falloffLut = null;
                 }
 
-                var alpha01 = PencilDotRenderer.RenderOutAlpha01(CanvasSizePx, s, p, n, noise, paperNoiseStrength, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY, paperNoiseGain, lowFreqScale, lowFreqMix, applyMode, falloffLut, out var kStats);
+                var alpha01 = PencilDotRenderer.RenderOutAlpha01(CanvasSizePx, s, p, n, noise, paperNoiseStrength, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY, paperNoiseGain, lowFreqScale, lowFreqMix, applyMode, falloffLut, disableKMeanNorm, applyStage, alphaCutoff01, noiseDependentCutoff, paperMaskMode, paperMaskTh01, paperMaskGain, paperMaskFalloffMode, baseShapeMode, PencilDotRenderer.PaperOnlyFalloffMode.None, 1.0, paperCapMode, paperCapGain, out var kStats);
                 var (mean, stddev) = RadialFalloff.ComputeMeanAndStddevAlphaByRadius(alpha01, CanvasSizePx, CanvasSizePx);
 
                 // UWP側の同条件CSVがある場合は比較
@@ -144,11 +489,23 @@ namespace SkiaTester
                 var (meanMetrics, stddevMetrics) = RadialFalloffComparer.CompareCsvWithStddev(tmpPath, uwpPath);
 
                 AutoCompareTextBlock.Text = $"- MAE(mean)={meanMetrics.mae:0.########}\n- RMSE(mean)={meanMetrics.rmse:0.########}\n- MAE(stddev)={stddevMetrics.mae:0.########}\n- RMSE(stddev)={stddevMetrics.rmse:0.########}\n"
-                    + $"k(min,max,mean,std)={kStats.kMin:0.###},{kStats.kMax:0.###},{kStats.kMean:0.###},{kStats.kStddev:0.###}  kMeanNorm={kStats.kMeanNorm:0.###}  gain={paperNoiseGain:0.###}";
+                    + $"k(min,max,mean,std)={kStats.kMin:0.###},{kStats.kMax:0.###},{kStats.kMean:0.###},{kStats.kStddev:0.###}\nkMeanNorm={(disableKMeanNorm ? 1.0 : kStats.kMeanNorm):0.###}\ngain={paperNoiseGain:0.###}\nmode={applyMode.ToString().ToLowerInvariant()}\nstage={(applyStage == PencilDotRenderer.PaperNoiseApplyStage.PostComposite ? "post" : "pre")}\nbase={baseShapeMode.ToString().ToLowerInvariant()}\ncap={paperCapMode.ToString().ToLowerInvariant()}\ncapGain={paperCapGain:0.###}\ncutoff={alphaCutoff01:0.#####}\ncutoffMulK={(noiseDependentCutoff ? 1 : 0)}\nmask={paperMaskMode.ToString().ToLowerInvariant()}\nmaskTh={paperMaskTh01:0.###}\nmaskGain={paperMaskGain:0.###}\nkMeanNormDisabled={(disableKMeanNorm ? 1 : 0)}";
             }
-            catch
+            catch (ArgumentException)
             {
                 // 自動更新は無音で落とす（UI操作を阻害しない）
+                AutoCompareTextBlock.Text = "";
+            }
+            catch (IOException)
+            {
+                AutoCompareTextBlock.Text = "";
+            }
+            catch (UnauthorizedAccessException)
+            {
+                AutoCompareTextBlock.Text = "";
+            }
+            catch (InvalidOperationException)
+            {
                 AutoCompareTextBlock.Text = "";
             }
         }
@@ -235,6 +592,38 @@ namespace SkiaTester
             Rendering();
         }
 
+        private PaperNoise? TryLoadPaperNoiseFromUi()
+        {
+            var usePaperNoise = PaperNoiseCheckBox.IsChecked == true;
+            if (!usePaperNoise) return null;
+
+            var path = PaperNoisePathTextBox.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(path)) return null;
+
+            var invalidMode = PaperNoiseInvalidNoneCheckBox.IsChecked == true
+                ? PaperNoise.InvalidPixelMode.None
+                : PaperNoise.InvalidPixelMode.Legacy;
+
+            var channel = PaperNoiseUseAlphaCheckBox.IsChecked == true
+                ? PaperNoise.SampleChannel.Alpha
+                : PaperNoise.SampleChannel.RgbAverage;
+
+            var reloadKey = $"{path}|{invalidMode}|{channel}";
+            if (!string.Equals(_paperNoisePath, reloadKey, StringComparison.OrdinalIgnoreCase) || _paperNoise == null)
+            {
+                var next = PaperNoise.LoadFromFile(path, invalidMode, channel);
+                _paperNoise?.Dispose();
+                _paperNoise = next;
+                _paperNoisePath = reloadKey;
+            }
+
+            _paperNoise.InvalidEdgeMode = PaperNoiseClampToValidCheckBox.IsChecked == true
+                ? PaperNoise.EdgeMode.ClampToValid
+                : PaperNoise.EdgeMode.TreatInvalidAsOne;
+
+            return _paperNoise;
+        }
+
         private void ExportCenterAlphaCsvButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -255,19 +644,24 @@ namespace SkiaTester
                 PaperNoise? noise = null;
                 if (usePaperNoise)
                 {
-                    var path = PaperNoisePathTextBox.Text?.Trim();
-                    if (!string.IsNullOrWhiteSpace(path))
+                    try
                     {
-                        if (!string.Equals(_paperNoisePath, path, StringComparison.OrdinalIgnoreCase) || _paperNoise == null)
-                        {
-                            _paperNoise?.Dispose();
-                            _paperNoise = PaperNoise.LoadFromFile(path);
-                            _paperNoisePath = path;
-                        }
-                        _paperNoise.InvalidEdgeMode = PaperNoiseClampToValidCheckBox.IsChecked == true
-                            ? PaperNoise.EdgeMode.ClampToValid
-                            : PaperNoise.EdgeMode.TreatInvalidAsOne;
-                        noise = _paperNoise;
+                        noise = TryLoadPaperNoiseFromUi();
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
+                        noise = null;
+                    }
+                    catch (IOException ex)
+                    {
+                        System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
+                        noise = null;
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
+                        noise = null;
                     }
                 }
 
@@ -321,7 +715,20 @@ namespace SkiaTester
                 var rows = new List<CenterAlphaSummaryCsvWriter.Row>(nList.Length);
                 foreach (var n in nList)
                 {
-                    var alpha01 = PencilDotRenderer.RenderOutAlpha01(CanvasSizePx, s, p, n, noise, paperNoiseStrength, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY, paperNoiseGain, lowFreqScaleLocal, lowFreqMixLocal, applyMode, falloffLut, out _);
+                    var disableKMeanNorm = IsCheckedByName("DisableKMeanNormalizationCheckBox");
+                    var applyStage = GetPaperNoiseApplyStageFromUi();
+                    if (!TryParseAlphaCutoff(out var alphaCutoff01) || alphaCutoff01 < 0) alphaCutoff01 = 0.0;
+                    var noiseDependentCutoff = IsCheckedByName("NoiseDependentCutoffCheckBox");
+                    var paperMaskMode = GetPaperMaskModeFromUi();
+                    if (!TryParsePaperMaskThreshold(out var paperMaskTh01)) paperMaskTh01 = 0.5;
+                    if (!TryParsePaperMaskGain(out var paperMaskGain)) paperMaskGain = 1.0;
+                    var paperMaskFalloffMode = GetPaperMaskFalloffModeFromUi();
+                    var baseShapeMode = GetBaseShapeModeFromUi();
+            var paperOnlyFalloffMode = GetPaperOnlyFalloffModeFromUi();
+            if (!TryParsePaperOnlyRadiusTh(out var paperOnlyRadiusThNorm)) paperOnlyRadiusThNorm = 1.0;
+                    var paperCapMode = GetPaperCapModeFromUi();
+                    if (!TryParsePaperCapGain(out var paperCapGain)) paperCapGain = 1.0;
+                    var alpha01 = PencilDotRenderer.RenderOutAlpha01(CanvasSizePx, s, p, n, noise, paperNoiseStrength, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY, paperNoiseGain, lowFreqScaleLocal, lowFreqMixLocal, applyMode, falloffLut, disableKMeanNorm, applyStage, alphaCutoff01, noiseDependentCutoff, paperMaskMode, paperMaskTh01, paperMaskGain, paperMaskFalloffMode, baseShapeMode, PencilDotRenderer.PaperOnlyFalloffMode.None, 1.0, paperCapMode, paperCapGain, out _);
                     var center = CenterAlphaSummary.GetCenterAlpha01(alpha01, CanvasSizePx, CanvasSizePx);
                     var q = CenterAlphaSummary.QuantizeTo8Bit01(center);
                     rows.Add(new CenterAlphaSummaryCsvWriter.Row(s, p, n, q));
@@ -412,35 +819,24 @@ namespace SkiaTester
             PaperNoise? noise = null;
             if (usePaperNoise)
             {
-                var path = PaperNoisePathTextBox.Text?.Trim();
-                if (!string.IsNullOrWhiteSpace(path))
+                try
                 {
-                    try
-                    {
-                        // パスが変わった場合だけ読み直す
-                        if (!string.Equals(_paperNoisePath, path, StringComparison.OrdinalIgnoreCase) || _paperNoise == null)
-                        {
-                            _paperNoise?.Dispose();
-                            _paperNoise = PaperNoise.LoadFromFile(path);
-                            _paperNoisePath = path;
-                        }
-                        noise = _paperNoise;
-                    }
-                    catch (ArgumentException ex)
-                    {
-                        System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
-                        noise = null;
-                    }
-                    catch (IOException ex)
-                    {
-                        System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
-                        noise = null;
-                    }
-                    catch (UnauthorizedAccessException ex)
-                    {
-                        System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
-                        noise = null;
-                    }
+                    noise = TryLoadPaperNoiseFromUi();
+                }
+                catch (ArgumentException ex)
+                {
+                    System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
+                    noise = null;
+                }
+                catch (IOException ex)
+                {
+                    System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
+                    noise = null;
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    System.Windows.MessageBox.Show(this, ex.Message, "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
+                    noise = null;
                 }
             }
 
@@ -459,17 +855,33 @@ namespace SkiaTester
                 falloffLut = null;
             }
 
-            _lastBitmap = PencilDotRenderer.Render(CanvasSizePx, s, p, n, noise, paperNoiseStrength, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY, paperNoiseGain, lowFreqScaleLocal, lowFreqMixLocal, applyMode, falloffLut);
+            var disableKMeanNorm = IsCheckedByName("DisableKMeanNormalizationCheckBox");
+            var applyStage = GetPaperNoiseApplyStageFromUi();
+            if (!TryParseAlphaCutoff(out var alphaCutoff01) || alphaCutoff01 < 0) alphaCutoff01 = 0.0;
+            var noiseDependentCutoff = IsCheckedByName("NoiseDependentCutoffCheckBox");
+            var paperMaskMode = GetPaperMaskModeFromUi();
+            if (!TryParsePaperMaskThreshold(out var paperMaskTh01)) paperMaskTh01 = 0.5;
+            if (!TryParsePaperMaskGain(out var paperMaskGain)) paperMaskGain = 1.0;
+            var paperMaskFalloffMode = GetPaperMaskFalloffModeFromUi();
+            var baseShapeMode = GetBaseShapeModeFromUi();
+            var paperOnlyFalloffMode = GetPaperOnlyFalloffModeFromUi();
+            if (!TryParsePaperOnlyRadiusTh(out var paperOnlyRadiusThNorm)) paperOnlyRadiusThNorm = 1.0;
+            var paperCapMode = GetPaperCapModeFromUi();
+            if (!TryParsePaperCapGain(out var paperCapGain)) paperCapGain = 1.0;
+            _lastBitmap = PencilDotRenderer.Render(CanvasSizePx, s, p, n, noise, paperNoiseStrength, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY, paperNoiseGain, lowFreqScaleLocal, lowFreqMixLocal, applyMode, falloffLut, disableKMeanNorm, applyStage, alphaCutoff01, noiseDependentCutoff, paperMaskMode, paperMaskTh01, paperMaskGain, paperMaskFalloffMode, baseShapeMode, paperOnlyFalloffMode, paperOnlyRadiusThNorm, paperCapMode, paperCapGain);
+            _lastAlpha01 = PencilDotRenderer.RenderOutAlpha01(CanvasSizePx, s, p, n, noise, paperNoiseStrength, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY, paperNoiseGain, lowFreqScaleLocal, lowFreqMixLocal, applyMode, falloffLut, disableKMeanNorm, applyStage, alphaCutoff01, noiseDependentCutoff, paperMaskMode, paperMaskTh01, paperMaskGain, paperMaskFalloffMode, baseShapeMode, paperOnlyFalloffMode, paperOnlyRadiusThNorm, paperCapMode, paperCapGain, out _);
 
             var summary = AlphaSummary.FromBitmap(_lastBitmap);
             var meanText = noise == null ? "(none)" : noise.Mean01.ToString("0.######", CultureInfo.InvariantCulture);
             var statsText = noise == null
                 ? string.Empty
-                : $"\nnoise_min={noise.Min01.ToString("0.######", CultureInfo.InvariantCulture)}\nnoise_max={noise.Max01.ToString("0.######", CultureInfo.InvariantCulture)}\nnoise_std={noise.Stddev01.ToString("0.######", CultureInfo.InvariantCulture)}\nnoise_valid={noise.ValidRatio.ToString("0.######", CultureInfo.InvariantCulture)}\nnoise_size={noise.Width}x{noise.Height}\nnoise_path={_paperNoisePath}";
+                : $"\nnoise_channel={noise.Channel}\nnoise_invalidMode={noise.InvalidMode}" +
+                  $"\nnoise_min={noise.Min01.ToString("0.######", CultureInfo.InvariantCulture)}\nnoise_max={noise.Max01.ToString("0.######", CultureInfo.InvariantCulture)}\nnoise_std={noise.Stddev01.ToString("0.######", CultureInfo.InvariantCulture)}\nnoise_valid={noise.ValidRatio.ToString("0.######", CultureInfo.InvariantCulture)}\nnoise_size={noise.Width}x{noise.Height}\nnoise_path={_paperNoisePath}";
             var warn = (noise != null && noise.Mean01 < 0.05) ? "  (noise_meanが小さく飽和しやすい)" : "";
             AlphaSummaryTextBlock.Text = $"max_alpha={summary.MaxAlpha.ToString("0.######", CultureInfo.InvariantCulture)}\nnonzero_count={summary.NonzeroCount}\nstrength={paperNoiseStrength.ToString("0.######", CultureInfo.InvariantCulture)}\nnoise_mean={meanText}{statsText}{warn}";
             UpdateAutoCompareText();
             Preview.InvalidateVisual();
+            NoisePreview.InvalidateVisual();
 
         }
 
@@ -477,6 +889,7 @@ namespace SkiaTester
         {
             if (!isLoaded) return;
             Preview.InvalidateVisual();
+            NoisePreview.InvalidateVisual();
         }
 
         private void ExportRadialCsvButton_Click(object sender, RoutedEventArgs e)
@@ -530,20 +943,21 @@ namespace SkiaTester
                     PaperNoise? noise = null;
                     if (usePaperNoise)
                     {
-                        var noisePath = PaperNoisePathTextBox.Text?.Trim();
-                        if (!string.IsNullOrWhiteSpace(noisePath))
+                        try
                         {
-                            // Render側と同じインスタンスを使う（未ロードならロード）
-                            if (!string.Equals(_paperNoisePath, noisePath, StringComparison.OrdinalIgnoreCase) || _paperNoise == null)
-                            {
-                                _paperNoise?.Dispose();
-                                _paperNoise = PaperNoise.LoadFromFile(noisePath);
-                                _paperNoisePath = noisePath;
-                            }
-                            _paperNoise.InvalidEdgeMode = PaperNoiseClampToValidCheckBox.IsChecked == true
-                                ? PaperNoise.EdgeMode.ClampToValid
-                                : PaperNoise.EdgeMode.TreatInvalidAsOne;
-                            noise = _paperNoise;
+                            noise = TryLoadPaperNoiseFromUi();
+                        }
+                        catch (IOException)
+                        {
+                            noise = null;
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                            noise = null;
+                        }
+                        catch (ArgumentException)
+                        {
+                            noise = null;
                         }
                     }
 
@@ -572,6 +986,18 @@ namespace SkiaTester
                         ? PencilDotRenderer.PaperNoiseApplyMode.StampCount
                         : PencilDotRenderer.PaperNoiseApplyMode.Alpha;
 
+                    var disableKMeanNorm = IsCheckedByName("DisableKMeanNormalizationCheckBox");
+                    var applyStage = GetPaperNoiseApplyStageFromUi();
+                    if (!TryParseAlphaCutoff(out var alphaCutoff01) || alphaCutoff01 < 0) alphaCutoff01 = 0.0;
+                    var noiseDependentCutoff = IsCheckedByName("NoiseDependentCutoffCheckBox");
+                    var paperMaskMode = GetPaperMaskModeFromUi();
+                    if (!TryParsePaperMaskThreshold(out var paperMaskTh01)) paperMaskTh01 = 0.5;
+                    if (!TryParsePaperMaskGain(out var paperMaskGain)) paperMaskGain = 1.0;
+                    var paperMaskFalloffMode = GetPaperMaskFalloffModeFromUi();
+                    var baseShapeMode = GetBaseShapeModeFromUi();
+                    var paperCapMode = GetPaperCapModeFromUi();
+                    if (!TryParsePaperCapGain(out var paperCapGain)) paperCapGain = 1.0;
+
                     if (!TryParsePaperNoiseLowFreq(out var lowFreqScaleLocal, out var lowFreqMixLocal))
                     {
                         lowFreqScaleLocal = 4.0;
@@ -592,7 +1018,7 @@ namespace SkiaTester
                         falloffLut = null;
                     }
 
-                    var alpha01 = PencilDotRenderer.RenderOutAlpha01(CanvasSizePx, s, p, n, noise, paperNoiseStrength, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY, paperNoiseGain, lowFreqScaleLocal, lowFreqMixLocal, applyMode, falloffLut, out var kStats);
+                    var alpha01 = PencilDotRenderer.RenderOutAlpha01(CanvasSizePx, s, p, n, noise, paperNoiseStrength, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY, paperNoiseGain, lowFreqScaleLocal, lowFreqMixLocal, applyMode, falloffLut, disableKMeanNorm, applyStage, alphaCutoff01, noiseDependentCutoff, paperMaskMode, paperMaskTh01, paperMaskGain, paperMaskFalloffMode, baseShapeMode, PencilDotRenderer.PaperOnlyFalloffMode.None, 1.0, paperCapMode, paperCapGain, out var kStats);
                     stats = RadialFalloff.ComputeMeanAndStddevAlphaByRadius(alpha01, CanvasSizePx, CanvasSizePx);
 
                     // 量子化前集計の場合のみ、kの分布を後続メッセージで表示する
@@ -600,7 +1026,7 @@ namespace SkiaTester
                     var noiseText = noise == null
                         ? "noise=(none)"
                         : $"noise_mean={noise.Mean01:0.###} noise_std={noise.Stddev01:0.######}";
-                    var kText = $"k(min,max,mean,std)={kStats.kMin:0.###},{kStats.kMax:0.###},{kStats.kMean:0.###},{kStats.kStddev:0.###}  kMeanNorm={kStats.kMeanNorm:0.###}  gain={paperNoiseGain:0.###}  mode={modeText}  {noiseText}";
+                    var kText = $"k(min,max,mean,std)={kStats.kMin:0.###},{kStats.kMax:0.###},{kStats.kMean:0.###},{kStats.kStddev:0.###}  kMeanNorm={kStats.kMeanNorm:0.###}  gain={paperNoiseGain:0.###}  mode={modeText}  stage={(applyStage == PencilDotRenderer.PaperNoiseApplyStage.PostComposite ? "post" : "pre")}  cutoff={alphaCutoff01:0.#####}  {noiseText}";
                     // 一時的にファイル名欄へ格納しておき、後のメッセージ表示で参照する
                     RadialCsvPathTextBox.Tag = kText;
                 }
@@ -724,6 +1150,12 @@ namespace SkiaTester
             return true;
         }
 
+        private bool TryParsePreviewScale(out double scale)
+        {
+            scale = (double)PreviewScaleNumberBox.Value;
+            return true;
+        }
+
         private bool TryParsePaperNoiseStrength(out double strength)
         {
             strength = (double)PaperNoiseStrengthNumberBox.Value;
@@ -733,6 +1165,12 @@ namespace SkiaTester
         private bool TryParsePaperNoiseScale(out double scale)
         {
             scale = (double)PaperNoiseScaleNumberBox.Value;
+            return true;
+        }
+
+        private bool TryParsePaperNoisePeriodPx(out double periodPx)
+        {
+            periodPx = (double)PaperNoisePeriodPxNumberBox.Value;
             return true;
         }
 
@@ -756,6 +1194,233 @@ namespace SkiaTester
             return true;
         }
 
+        private PencilDotRenderer.PaperNoiseApplyStage GetPaperNoiseApplyStageFromUi()
+        {
+            var idx = (FindName("PaperNoiseApplyStageComboBox") as System.Windows.Controls.Primitives.Selector)?.SelectedIndex ?? 0;
+            return idx == 1 ? PencilDotRenderer.PaperNoiseApplyStage.PostComposite : PencilDotRenderer.PaperNoiseApplyStage.PreComposite;
+        }
+
+        private void PaperNoiseApplyStageComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (!isLoaded) return;
+            Rendering();
+        }
+
+        private bool TryParseAlphaCutoff(out double cutoff01)
+        {
+            cutoff01 = (FindName("AlphaCutoffNumberBox") as ModernWpf.Controls.NumberBox)?.Value ?? 0.0;
+            return true;
+        }
+
+        private void AlphaCutoffNumberBox_ValueChanged(ModernWpf.Controls.NumberBox sender, ModernWpf.Controls.NumberBoxValueChangedEventArgs args)
+        {
+            if (!isLoaded) return;
+            Rendering();
+        }
+
+        private PencilDotRenderer.PaperMaskMode GetPaperMaskModeFromUi()
+        {
+            var idx = (FindName("PaperMaskModeComboBox") as System.Windows.Controls.Primitives.Selector)?.SelectedIndex ?? 0;
+            return idx switch
+            {
+                1 => PencilDotRenderer.PaperMaskMode.MultiplyOutAlpha,
+                2 => PencilDotRenderer.PaperMaskMode.SoftOutAlpha,
+                3 => PencilDotRenderer.PaperMaskMode.ThresholdOutAlpha,
+                _ => PencilDotRenderer.PaperMaskMode.None,
+            };
+        }
+
+        private bool TryParsePaperMaskThreshold(out double threshold01)
+        {
+            threshold01 = (FindName("PaperMaskThresholdNumberBox") as ModernWpf.Controls.NumberBox)?.Value ?? 0.5;
+            return true;
+        }
+
+        private bool TryParsePaperMaskGain(out double gain)
+        {
+            gain = (FindName("PaperMaskGainNumberBox") as ModernWpf.Controls.NumberBox)?.Value ?? 1.0;
+            return true;
+        }
+
+        private PencilDotRenderer.PaperMaskFalloffMode GetPaperMaskFalloffModeFromUi()
+        {
+            var idx = (FindName("PaperMaskFalloffModeComboBox") as System.Windows.Controls.Primitives.Selector)?.SelectedIndex ?? 0;
+            return idx switch
+            {
+                1 => PencilDotRenderer.PaperMaskFalloffMode.StrongerAtEdge,
+                2 => PencilDotRenderer.PaperMaskFalloffMode.ThresholdAtEdge,
+                _ => PencilDotRenderer.PaperMaskFalloffMode.None,
+            };
+        }
+
+        private void PaperMaskFalloffModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (!isLoaded) return;
+            Rendering();
+        }
+
+        private void PaperMaskModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (!isLoaded) return;
+            Rendering();
+        }
+
+        private PencilDotRenderer.BaseShapeMode GetBaseShapeModeFromUi()
+        {
+            var idx = (FindName("BaseShapeModeComboBox") as System.Windows.Controls.Primitives.Selector)?.SelectedIndex ?? 0;
+            return idx switch
+            {
+                1 => PencilDotRenderer.BaseShapeMode.PaperOnly,
+                _ => PencilDotRenderer.BaseShapeMode.IdealCircle,
+            };
+        }
+
+        private void BaseShapeModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (!isLoaded) return;
+            Rendering();
+        }
+
+        private PencilDotRenderer.PaperOnlyFalloffMode GetPaperOnlyFalloffModeFromUi()
+        {
+            var idx = (FindName("PaperOnlyFalloffModeComboBox") as System.Windows.Controls.Primitives.Selector)?.SelectedIndex ?? 0;
+            return idx switch
+            {
+                1 => PencilDotRenderer.PaperOnlyFalloffMode.RadiusThreshold,
+                _ => PencilDotRenderer.PaperOnlyFalloffMode.None,
+            };
+        }
+
+        private bool TryParsePaperOnlyRadiusTh(out double th)
+        {
+            th = (FindName("PaperOnlyRadiusThNumberBox") as ModernWpf.Controls.NumberBox)?.Value ?? 1.0;
+            th = Math.Clamp(th, 0.0, 1.0);
+            return true;
+        }
+
+        private void PaperOnlyFalloffModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (!isLoaded) return;
+            Rendering();
+        }
+
+        private void PaperOnlyRadiusThNumberBox_ValueChanged(ModernWpf.Controls.NumberBox sender, ModernWpf.Controls.NumberBoxValueChangedEventArgs args)
+        {
+            if (!isLoaded) return;
+            Rendering();
+        }
+
+        private PencilDotRenderer.PaperCapMode GetPaperCapModeFromUi()
+        {
+            return IsCheckedByName("PaperCapCheckBox") ? PencilDotRenderer.PaperCapMode.CapOutAlpha : PencilDotRenderer.PaperCapMode.None;
+        }
+
+        private bool TryParsePaperCapGain(out double gain)
+        {
+            gain = (FindName("PaperCapGainNumberBox") as ModernWpf.Controls.NumberBox)?.Value ?? 1.0;
+            return true;
+        }
+
+        private void PaperCapGainNumberBox_ValueChanged(ModernWpf.Controls.NumberBox sender, ModernWpf.Controls.NumberBoxValueChangedEventArgs args)
+        {
+            if (!isLoaded) return;
+            Rendering();
+        }
+
+        private int GetAlphaPreviewModeIndex()
+        {
+            return (FindName("AlphaPreviewModeComboBox") as System.Windows.Controls.Primitives.Selector)?.SelectedIndex ?? 0;
+        }
+
+        private bool UseFloatAlphaPreview() => GetAlphaPreviewModeIndex() == 1;
+        private bool UsePaperMaskPreview() => GetAlphaPreviewModeIndex() == 2;
+        private bool UseFalloffWeightPreview() => GetAlphaPreviewModeIndex() == 3;
+        private bool UseMaskUsedPreview() => GetAlphaPreviewModeIndex() == 4;
+        private bool UseOutABasePreview() => GetAlphaPreviewModeIndex() == 5;
+        private bool UseOutAMaskedPreview() => GetAlphaPreviewModeIndex() == 6;
+        private bool UseFalloffFPreview() => GetAlphaPreviewModeIndex() == 7;
+
+        private void AlphaPreviewModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (!isLoaded) return;
+            Preview.InvalidateVisual();
+        }
+
+        private void PaperMaskNumberBox_ValueChanged(ModernWpf.Controls.NumberBox sender, ModernWpf.Controls.NumberBoxValueChangedEventArgs args)
+        {
+            if (!isLoaded) return;
+            Rendering();
+        }
+
+        private void ApplyPaperNoisePeriodButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!isLoaded) return;
+            ApplyPaperNoisePeriodFromUi();
+        }
+
+        private void PresetNoisePeriod43_5Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (!isLoaded) return;
+            PaperNoisePeriodPxNumberBox.Value = 43.5;
+            ApplyPaperNoisePeriodFromUi();
+        }
+
+        private void PresetNoisePeriod348Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (!isLoaded) return;
+            PaperNoisePeriodPxNumberBox.Value = 348;
+            ApplyPaperNoisePeriodFromUi();
+        }
+
+        private void PaperNoisePeriodPxNumberBox_ValueChanged(ModernWpf.Controls.NumberBox sender, ModernWpf.Controls.NumberBoxValueChangedEventArgs args)
+        {
+            if (!isLoaded) return;
+        }
+
+        private void ApplyPaperNoisePeriodFromUi()
+        {
+            PaperNoise? noise;
+            try
+            {
+                noise = TryLoadPaperNoiseFromUi();
+            }
+            catch (ArgumentException)
+            {
+                return;
+            }
+            catch (IOException)
+            {
+                return;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return;
+            }
+            catch (InvalidOperationException)
+            {
+                return;
+            }
+
+            if (noise == null) return;
+            if (!TryParsePaperNoisePeriodPx(out var periodPx) || periodPx <= 0) return;
+
+            // 現在のノイズ画像（px）1周期が、キャンバス上でperiodPxになるように
+            // nx=(x+offset)/scale を使っているため、キャンバス周期 = noiseWidth * scale
+            // => scale = periodPx / noiseWidth
+            var denom = (double)noise.Width;
+            if (denom <= 0) return;
+
+            var recommended = periodPx / denom;
+            if (double.IsNaN(recommended) || double.IsInfinity(recommended) || recommended <= 0) return;
+
+            // UIのMin/Maxにも合わせてクランプ
+            if (recommended < 0.125) recommended = 0.125;
+            if (recommended > 1024) recommended = 1024;
+
+            PaperNoiseScaleNumberBox.Value = recommended;
+            Rendering();
+        }
+
         private void Preview_PaintSurface(object? sender, SKPaintSurfaceEventArgs e)
         {
             var canvas = e.Surface.Canvas;
@@ -773,17 +1438,317 @@ namespace SkiaTester
             var bmp = _lastBitmap;
             if (bmp == null) return;
 
+            if (!TryParsePreviewScale(out var previewScale) || previewScale <= 0)
+            {
+                previewScale = 1.0;
+            }
+
             var ignoreAlpha = IgnoreAlphaCheckBox.IsChecked == true;
+            var quantizeA8 = IsCheckedByName("QuantizeAlpha8bitCheckBox");
+
+            if (UseFloatAlphaPreview())
+            {
+                var alpha01 = _lastAlpha01;
+                if (alpha01 == null || alpha01.Length != CanvasSizePx * CanvasSizePx) return;
+
+                using var gs = BuildGrayscaleFromAlpha01(alpha01, CanvasSizePx, CanvasSizePx);
+                var dst = BuildPreviewDstRect(e.Info.Width, e.Info.Height, previewScale);
+                canvas.DrawBitmap(gs, dst);
+                return;
+            }
+
+            if (UseOutABasePreview() || UseOutAMaskedPreview() || UseFalloffFPreview())
+            {
+                if (!TryParseDiameter(out var s) || !SkiaHelpers.ValidateSize(s)) return;
+                if (!TryParsePressure(out var p) || !SkiaHelpers.ValidatePressure(p)) return;
+                if (!TryParseStampCount(out var n) || n <= 0) return;
+
+                var usePaperNoise = PaperNoiseCheckBox.IsChecked == true;
+                PaperNoise? noise = null;
+                if (usePaperNoise)
+                {
+                    try
+                    {
+                        noise = TryLoadPaperNoiseFromUi();
+                    }
+                    catch
+                    {
+                        noise = null;
+                    }
+                }
+
+                if (!TryParsePaperNoiseStrength(out var paperNoiseStrength)) paperNoiseStrength = 0.35;
+                if (!TryParsePaperNoiseScale(out var paperNoiseScale) || paperNoiseScale <= 0) paperNoiseScale = 2.0;
+                if (!TryParsePaperNoiseOffset(out var paperNoiseOffsetX, out var paperNoiseOffsetY))
+                {
+                    paperNoiseOffsetX = 0.0;
+                    paperNoiseOffsetY = 0.0;
+                }
+                if (!TryParsePaperNoiseGain(out var paperNoiseGain) || paperNoiseGain < 0) paperNoiseGain = 0.2;
+
+                if (!TryParsePaperNoiseLowFreq(out var lowFreqScaleLocal, out var lowFreqMixLocal))
+                {
+                    lowFreqScaleLocal = 4.0;
+                    lowFreqMixLocal = 0.0;
+                }
+
+                var applyMode = PaperNoiseApplyToCountCheckBox.IsChecked == true
+                    ? PencilDotRenderer.PaperNoiseApplyMode.StampCount
+                    : PencilDotRenderer.PaperNoiseApplyMode.Alpha;
+                var disableKMeanNorm = IsCheckedByName("DisableKMeanNormalizationCheckBox");
+                var applyStage = GetPaperNoiseApplyStageFromUi();
+                if (!TryParseAlphaCutoff(out var alphaCutoff01) || alphaCutoff01 < 0) alphaCutoff01 = 0.0;
+                var noiseDependentCutoff = IsCheckedByName("NoiseDependentCutoffCheckBox");
+                var paperMaskMode = GetPaperMaskModeFromUi();
+                if (!TryParsePaperMaskThreshold(out var paperMaskTh01)) paperMaskTh01 = 0.5;
+                if (!TryParsePaperMaskGain(out var paperMaskGain)) paperMaskGain = 1.0;
+                var paperMaskFalloffMode = GetPaperMaskFalloffModeFromUi();
+                var baseShapeMode = GetBaseShapeModeFromUi();
+                var paperOnlyFalloffMode = GetPaperOnlyFalloffModeFromUi();
+                if (!TryParsePaperOnlyRadiusTh(out var paperOnlyRadiusThNorm)) paperOnlyRadiusThNorm = 1.0;
+
+                NormalizedFalloffLut? falloffLut = null;
+                try
+                {
+                    falloffLut = GetNormalizedFalloffLut();
+                }
+                catch (IOException)
+                {
+                    falloffLut = null;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    falloffLut = null;
+                }
+
+                var parts = PencilDotRenderer.RenderOutAlpha01Parts(
+                    CanvasSizePx, s, p, n, noise,
+                    paperNoiseStrength, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY,
+                    paperNoiseGain, lowFreqScaleLocal, lowFreqMixLocal,
+                    applyMode, falloffLut, disableKMeanNorm, applyStage, alphaCutoff01, noiseDependentCutoff,
+                    paperMaskMode, paperMaskTh01, paperMaskGain, paperMaskFalloffMode,
+                    baseShapeMode,
+                    paperOnlyFalloffMode,
+                    paperOnlyRadiusThNorm);
+
+                var src01 = UseOutABasePreview()
+                    ? parts.OutABase01
+                    : UseOutAMaskedPreview()
+                        ? parts.OutAMasked01
+                        : parts.FalloffF01;
+
+                using var gs = BuildGrayscaleFromValue01(src01, CanvasSizePx, CanvasSizePx);
+                var dst = BuildPreviewDstRect(e.Info.Width, e.Info.Height, previewScale);
+                canvas.DrawBitmap(gs, dst);
+                return;
+            }
+
+            if (UsePaperMaskPreview())
+            {
+                var usePaperNoise = PaperNoiseCheckBox.IsChecked == true;
+                if (!usePaperNoise) return;
+
+                PaperNoise? noise;
+                try
+                {
+                    noise = TryLoadPaperNoiseFromUi();
+                }
+                catch
+                {
+                    return;
+                }
+                if (noise == null) return;
+
+                if (!TryParseDiameter(out var s) || !SkiaHelpers.ValidateSize(s)) return;
+                if (!TryParsePaperNoiseScale(out var paperNoiseScale) || paperNoiseScale <= 0) return;
+                if (!TryParsePaperNoiseOffset(out var paperNoiseOffsetX, out var paperNoiseOffsetY)) return;
+                if (!TryParsePaperNoiseLowFreq(out var lowFreqScaleLocal, out var lowFreqMixLocal))
+                {
+                    lowFreqScaleLocal = 4.0;
+                    lowFreqMixLocal = 0.0;
+                }
+
+                var paperMaskMode = GetPaperMaskModeFromUi();
+                if (!TryParsePaperMaskThreshold(out var paperMaskTh01)) paperMaskTh01 = 0.5;
+                if (!TryParsePaperMaskGain(out var paperMaskGain)) paperMaskGain = 1.0;
+
+                var paperMaskFalloffMode = GetPaperMaskFalloffModeFromUi();
+                NormalizedFalloffLut? falloffLut = null;
+                try
+                {
+                    falloffLut = GetNormalizedFalloffLut();
+                }
+                catch (IOException)
+                {
+                    falloffLut = null;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    falloffLut = null;
+                }
+
+                var mask01 = BuildPaperMask01ForPreview(CanvasSizePx, s, noise, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY, lowFreqScaleLocal, lowFreqMixLocal, paperMaskMode, paperMaskTh01, paperMaskGain, paperMaskFalloffMode, falloffLut);
+                if (InvertMaskPreviewCheckBox.IsChecked == true)
+                {
+                    ApplyInvert01IfNeeded(mask01);
+                }
+                using var gs = BuildGrayscaleFromValue01(mask01, CanvasSizePx, CanvasSizePx);
+                var dst = BuildPreviewDstRect(e.Info.Width, e.Info.Height, previewScale);
+                canvas.DrawBitmap(gs, dst);
+                return;
+            }
+
+            if (UseFalloffWeightPreview())
+            {
+                if (!TryParseDiameter(out var s) || !SkiaHelpers.ValidateSize(s)) return;
+                NormalizedFalloffLut? falloffLut = null;
+                try
+                {
+                    falloffLut = GetNormalizedFalloffLut();
+                }
+                catch (IOException)
+                {
+                    falloffLut = null;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    falloffLut = null;
+                }
+
+                var w01 = BuildFalloffWeight01ForPreview(CanvasSizePx, s, falloffLut);
+                using var gs = BuildGrayscaleFromValue01(w01, CanvasSizePx, CanvasSizePx);
+                var dst = BuildPreviewDstRect(e.Info.Width, e.Info.Height, previewScale);
+                canvas.DrawBitmap(gs, dst);
+                return;
+            }
+
+            if (UseMaskUsedPreview())
+            {
+                if (!TryParseDiameter(out var s) || !SkiaHelpers.ValidateSize(s)) return;
+                if (!TryParsePressure(out var p) || !SkiaHelpers.ValidatePressure(p)) return;
+                if (!TryParseStampCount(out var n) || n <= 0) return;
+
+                var usePaperNoise = PaperNoiseCheckBox.IsChecked == true;
+                PaperNoise? noise = null;
+                if (usePaperNoise)
+                {
+                    try
+                    {
+                        noise = TryLoadPaperNoiseFromUi();
+                    }
+                    catch
+                    {
+                        noise = null;
+                    }
+                }
+
+                if (!TryParsePaperNoiseStrength(out var paperNoiseStrength)) paperNoiseStrength = 0.35;
+                if (!TryParsePaperNoiseScale(out var paperNoiseScale) || paperNoiseScale <= 0) paperNoiseScale = 2.0;
+                if (!TryParsePaperNoiseOffset(out var paperNoiseOffsetX, out var paperNoiseOffsetY))
+                {
+                    paperNoiseOffsetX = 0.0;
+                    paperNoiseOffsetY = 0.0;
+                }
+                if (!TryParsePaperNoiseGain(out var paperNoiseGain) || paperNoiseGain < 0) paperNoiseGain = 0.2;
+
+                if (!TryParsePaperNoiseLowFreq(out var lowFreqScaleLocal, out var lowFreqMixLocal))
+                {
+                    lowFreqScaleLocal = 4.0;
+                    lowFreqMixLocal = 0.0;
+                }
+
+                var applyMode = PaperNoiseApplyToCountCheckBox.IsChecked == true
+                    ? PencilDotRenderer.PaperNoiseApplyMode.StampCount
+                    : PencilDotRenderer.PaperNoiseApplyMode.Alpha;
+                var disableKMeanNorm = IsCheckedByName("DisableKMeanNormalizationCheckBox");
+                var applyStage = GetPaperNoiseApplyStageFromUi();
+                if (!TryParseAlphaCutoff(out var alphaCutoff01) || alphaCutoff01 < 0) alphaCutoff01 = 0.0;
+                var noiseDependentCutoff = IsCheckedByName("NoiseDependentCutoffCheckBox");
+                var paperMaskMode = GetPaperMaskModeFromUi();
+                if (!TryParsePaperMaskThreshold(out var paperMaskTh01)) paperMaskTh01 = 0.5;
+                if (!TryParsePaperMaskGain(out var paperMaskGain)) paperMaskGain = 1.0;
+                var paperMaskFalloffMode = GetPaperMaskFalloffModeFromUi();
+                var baseShapeMode = GetBaseShapeModeFromUi();
+                var paperOnlyFalloffMode = GetPaperOnlyFalloffModeFromUi();
+                if (!TryParsePaperOnlyRadiusTh(out var paperOnlyRadiusThNorm)) paperOnlyRadiusThNorm = 1.0;
+
+                NormalizedFalloffLut? falloffLut = null;
+                try
+                {
+                    falloffLut = GetNormalizedFalloffLut();
+                }
+                catch (IOException)
+                {
+                    falloffLut = null;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    falloffLut = null;
+                }
+
+                var parts = PencilDotRenderer.RenderOutAlpha01Parts(
+                    CanvasSizePx, s, p, n, noise,
+                    paperNoiseStrength, paperNoiseScale, paperNoiseOffsetX, paperNoiseOffsetY,
+                    paperNoiseGain, lowFreqScaleLocal, lowFreqMixLocal,
+                    applyMode, falloffLut, disableKMeanNorm, applyStage, alphaCutoff01, noiseDependentCutoff,
+                    paperMaskMode, paperMaskTh01, paperMaskGain, paperMaskFalloffMode,
+                    baseShapeMode,
+                    paperOnlyFalloffMode,
+                    paperOnlyRadiusThNorm);
+
+                var mask01 = parts.PaperMask01;
+                if (InvertMaskPreviewCheckBox.IsChecked == true)
+                {
+                    ApplyInvert01IfNeeded(mask01);
+                }
+                using var gs = BuildGrayscaleFromValue01(mask01, CanvasSizePx, CanvasSizePx);
+                var dst = BuildPreviewDstRect(e.Info.Width, e.Info.Height, previewScale);
+                canvas.DrawBitmap(gs, dst);
+                return;
+            }
+
             if (!ignoreAlpha)
             {
-                canvas.DrawBitmap(bmp, new SKRect(0, 0, e.Info.Width, e.Info.Height));
+                using var src = quantizeA8 ? QuantizeAlpha8bit(bmp) : null;
+                var dst = BuildPreviewDstRect(e.Info.Width, e.Info.Height, previewScale);
+                canvas.DrawBitmap(src ?? bmp, dst);
                 return;
             }
 
             using (var opaque = MakeOpaque(bmp))
             {
-                canvas.DrawBitmap(opaque, new SKRect(0, 0, e.Info.Width, e.Info.Height));
+                using var q = quantizeA8 ? QuantizeAlpha8bit(opaque) : null;
+                var dst = BuildPreviewDstRect(e.Info.Width, e.Info.Height, previewScale);
+                canvas.DrawBitmap(q ?? opaque, dst);
             }
+        }
+
+        private static SKBitmap QuantizeAlpha8bit(SKBitmap src)
+        {
+            var dst = new SKBitmap(src.Width, src.Height, src.ColorType, src.AlphaType);
+            for (var y = 0; y < src.Height; y++)
+            {
+                for (var x = 0; x < src.Width; x++)
+                {
+                    var c = src.GetPixel(x, y);
+                    var a01 = c.Alpha / 255.0;
+                    var q01 = CenterAlphaSummary.QuantizeTo8Bit01(a01);
+                    var a8 = (byte)Math.Clamp((int)Math.Round(q01 * 255.0), 0, 255);
+                    dst.SetPixel(x, y, new SKColor(c.Red, c.Green, c.Blue, a8));
+                }
+            }
+            return dst;
+        }
+
+        private static SKRect BuildPreviewDstRect(int viewW, int viewH, double previewScale)
+        {
+            if (previewScale <= 0) previewScale = 1.0;
+
+            var w = (float)(viewW * previewScale);
+            var h = (float)(viewH * previewScale);
+            var cx = viewW * 0.5f;
+            var cy = viewH * 0.5f;
+            return new SKRect(cx - w * 0.5f, cy - h * 0.5f, cx + w * 0.5f, cy + h * 0.5f);
         }
 
         private static SKBitmap MakeOpaque(SKBitmap src)
@@ -888,6 +1853,12 @@ namespace SkiaTester
         {
             if (!isLoaded) return;
             Rendering();
+        }
+
+        private void PreviewScaleNumberBox_ValueChanged(ModernWpf.Controls.NumberBox sender, ModernWpf.Controls.NumberBoxValueChangedEventArgs args)
+        {
+            if (!isLoaded) return;
+            Preview.InvalidateVisual();
         }
 
         private void BrowseOutputDirectoryButton_Click(object sender, RoutedEventArgs e)

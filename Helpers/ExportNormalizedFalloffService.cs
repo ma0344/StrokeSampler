@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -35,18 +36,24 @@ namespace StrokeSampler
                 {
                     continue;
                 }
-                if (!f.Name.StartsWith("radial-falloff-", StringComparison.OrdinalIgnoreCase))
+                if (!f.Name.StartsWith("radial-falloff-", StringComparison.OrdinalIgnoreCase) && !f.Name.StartsWith("radial-falloff-hires-", StringComparison.OrdinalIgnoreCase))
                 {
-                    continue;
-                }
-
-                if (!ParseFalloffFilenameService.TryParseFalloffFilename(f.Name, out var s, out var p, out var n))
-                {
-                    skipped++;
                     continue;
                 }
 
                 var text = await FileIO.ReadTextAsync(f);
+                double s;
+                double p;
+                int n;
+                if (!ParseFalloffFilenameService.TryParseFalloffFilename(f.Name, out s, out p, out n))
+                {
+                    if (!TryParseFalloffHeader(text, out s, out p, out n))
+                    {
+                        skipped++;
+                        continue;
+                    }
+                }
+
                 if (!ParseFalloffCSV.TryParseFalloffCsv(text, out var fr))
                 {
                     skipped++;
@@ -156,6 +163,56 @@ namespace StrokeSampler
                 CloseButtonText = "OK"
             };
             await done.ShowAsync();
+        }
+
+        private static bool TryParseFalloffHeader(string csv, out double s, out double p, out int n)
+        {
+            s = default;
+            p = default;
+            n = default;
+            if (string.IsNullOrWhiteSpace(csv)) return false;
+
+            // 先頭付近のコメント行から `S=.. P=.. N=..` を拾う
+            // 例: `# S=200 P=0.1 N=50 scale=8`
+            var lines = csv.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            for (var i = 0; i < lines.Length && i < 10; i++)
+            {
+                var line = lines[i].Trim();
+                if (!line.StartsWith("#", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                double? sOpt = null;
+                double? pOpt = null;
+                int? nOpt = null;
+                var parts = line.TrimStart('#').Trim().Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    if (part.StartsWith("S=", StringComparison.OrdinalIgnoreCase) && double.TryParse(part.Substring(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var sv))
+                    {
+                        sOpt = sv;
+                    }
+                    else if (part.StartsWith("P=", StringComparison.OrdinalIgnoreCase) && double.TryParse(part.Substring(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var pv))
+                    {
+                        pOpt = pv;
+                    }
+                    else if (part.StartsWith("N=", StringComparison.OrdinalIgnoreCase) && int.TryParse(part.Substring(2), NumberStyles.Integer, CultureInfo.InvariantCulture, out var nv))
+                    {
+                        nOpt = nv;
+                    }
+                }
+
+                if (sOpt != null && pOpt != null && nOpt != null)
+                {
+                    s = sOpt.Value;
+                    p = pOpt.Value;
+                    n = nOpt.Value;
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

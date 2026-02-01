@@ -14,6 +14,58 @@ namespace StrokeSampler
 {
     internal static class RadialFalloffExportService
     {
+        internal static async Task ExportRadialFalloffCsvFromHiResPngAsync(MainPage mp)
+        {
+            var sourcePicker = new FileOpenPicker
+            {
+                SuggestedStartLocation = PickerLocationId.PicturesLibrary
+            };
+            sourcePicker.FileTypeFilter.Add(".png");
+
+            var sourceFile = await sourcePicker.PickSingleFileAsync();
+            if (sourceFile is null)
+            {
+                return;
+            }
+
+            if (!ParseFalloffFilenameService.TryParseFalloffMeta(sourceFile.Name, out var meta) || meta.ExportScale is null)
+            {
+                var dlg = new ContentDialog
+                {
+                    Title = "HiRes radial-falloff",
+                    Content = "ファイル名から S/P/N/scale を取得できませんでした。例: ...-S200-P0.1-N50-scale8-...png",
+                    CloseButtonText = "OK"
+                };
+                await dlg.ShowAsync();
+                return;
+            }
+
+            var savePicker = new FileSavePicker
+            {
+                SuggestedStartLocation = PickerLocationId.PicturesLibrary,
+                SuggestedFileName = $"radial-falloff-hires-S{meta.S:0.##}-P{meta.P:0.####}-N{meta.N}-scale{meta.ExportScale}"
+            };
+            savePicker.FileTypeChoices.Add("CSV", new List<string> { ".csv" });
+            var saveFile = await savePicker.PickSaveFileAsync();
+            if (saveFile is null)
+            {
+                return;
+            }
+
+            var device = CanvasDevice.GetSharedDevice();
+            using (var sourceStream = await sourceFile.OpenAsync(FileAccessMode.Read))
+            using (var bitmap = await CanvasBitmap.LoadAsync(device, sourceStream))
+            {
+                var bytes = bitmap.GetPixelBytes();
+                var width = (int)bitmap.SizeInPixels.Width;
+                var height = (int)bitmap.SizeInPixels.Height;
+
+                var frPx = ComputeRadialMeanAlphaD(bytes, width, height);
+                var frDip = ResampleRadialByExportScale(frPx, meta.ExportScale.Value);
+                var csv = BuildRadialFalloffCsv(frDip, meta.S, meta.P, meta.N, meta.ExportScale);
+                await FileIO.WriteTextAsync(saveFile, csv, UnicodeEncoding.Utf8);
+            }
+        }
         internal static async Task ExportRadialFalloffBatchPsSizesNsAsync(MainPage mp)
         {
             var ps = UIHelpers.GetRadialFalloffBatchPs(mp);

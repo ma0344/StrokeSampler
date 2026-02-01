@@ -26,6 +26,16 @@
                           Icon="Delete"
                           Label="クリア"
                           Click="ClearButton_Click" />
+
+            <AppBarSeparator />
+            <AppBarButton x:Name="DrawS200StrokeButton"
+                          Icon="Edit"
+                          Label="S200 Stroke"
+                          Click="DrawS200StrokeButton_Click" />
+            <AppBarButton x:Name="DrawS200StrokeVerticalButton"
+                          Icon="Edit"
+                          Label="S200 Stroke (V)"
+                          Click="DrawS200StrokeVerticalButton_Click" />
             <AppBarSeparator />
             <AppBarButton x:Name="ExportMaterialButton"
                           Icon="Save"
@@ -35,6 +45,18 @@
                           Icon="Save"
                           Label="確認用PNG（白+ラベル）"
                           Click="ExportPreviewButton_Click" />
+
+            <AppBarSeparator />
+            <AppBarButton x:Name="EstimateTilePeriodButton"
+                          Icon="Find"
+                          Label="Tile周期推定"
+                          Click="EstimateTilePeriodButton_Click" />
+
+            <AppBarSeparator />
+            <AppBarButton x:Name="ExportRadialFalloffHiResFromPngButton"
+                          Icon="Save"
+                          Label="HiRes Falloff CSV"
+                          Click="ExportRadialFalloffHiResFromPngButton_Click" />
         </CommandBar>
         <Grid Grid.Row="1"
               Grid.Column="0"
@@ -43,10 +65,12 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <ScrollViewer 
+                          x:Name="InkScrollViewer"
                           Grid.Column="0"
                           ZoomMode="Enabled"
                           MinZoomFactor="1"
                           MaxZoomFactor="255"
+                          ViewChanged="InkScrollViewer_ViewChanged"
                           VerticalScrollBarVisibility="Visible"
                           HorizontalScrollBarVisibility="Visible"
                           Margin="0">
@@ -73,6 +97,7 @@
                                VerticalAlignment="Stretch"/>
                 </Grid>
             </ScrollViewer>
+            
          </Grid>
         <StackPanel Grid.Row="2"
                     Grid.Column="0"
@@ -81,16 +106,58 @@
             <StackPanel Orientation="Horizontal"
                         Padding="12"
                         Spacing="12">
-            <TextBlock Text="Pressure段階:"
-                       VerticalAlignment="Center" />
-            <TextBlock Text="0.2 / 0.5 / 0.8 / 1.0"
-                       VerticalAlignment="Center" />
+            <TextBlock Text="Zoom:" VerticalAlignment="Center" />
+            <TextBlock x:Name="ZoomFactorTextBlock" Text="1.00" VerticalAlignment="Center" />
 
-            <TextBlock Text="Stroke幅:"
-                       VerticalAlignment="Center" />
-            <TextBlock Text="InkToolbarの選択値"
-                       VerticalAlignment="Center" />
+            <TextBlock Text="SetZoom:" VerticalAlignment="Center" />
+            <TextBox x:Name="ZoomFactorInputTextBox" Width="80" Text="1.0" />
+            <Button x:Name="ApplyZoomButton" Content="Apply" Click="ApplyZoomButton_Click" />
 
+            <TextBlock Text="ExportScale:" VerticalAlignment="Center" />
+                <TextBox x:Name="ExportScaleTextBox"
+                         Width="60"
+                         Text="2"
+                         x:FieldModifier="Public" />
+            <TextBlock Text="ExportDpi:" VerticalAlignment="Center" />
+                <TextBox x:Name="ExportDpiTextBox"
+                         Width="70"
+                         Text="96"
+                         x:FieldModifier="Public" />
+            <TextBlock Text="Start(X,Y):" VerticalAlignment="Center" />
+            <TextBox x:Name="StartPositionTextBox" Width="110" Text="260,440" />
+            <TextBlock Text="End(X,Y):" VerticalAlignment="Center" />
+            <TextBox x:Name="EndPositionTextBox" Width="110" Text="1260,440" />
+            <TextBlock Text="StairDY:" VerticalAlignment="Center" />
+            <TextBox x:Name="StairDyTextBox" Width="60" Text="2" />
+            <TextBlock Text="StairCount:" VerticalAlignment="Center" />
+            <TextBox x:Name="StairCountTextBox" Width="60" Text="20" />
+            <Button x:Name="DrawStairLinesButton" Content="Draw Stair Lines" Click="DrawStairLinesButton_Click" />
+            <TextBlock Text="S200Mode:" VerticalAlignment="Center" />
+            <ComboBox x:Name="S200StrokeModeComboBox" Width="140" SelectedIndex="0">
+                <ComboBoxItem Content="2 points" />
+                <ComboBoxItem Content="step=4" />
+            </ComboBox>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
+
+                <TextBlock Text="TileSize:" VerticalAlignment="Center" />
+            <TextBox x:Name="TileSizeTextBox" Width="70" Text="348" />
+            <TextBlock Text="TileOffset(X,Y):" VerticalAlignment="Center" />
+            <TextBox x:Name="TileOffsetTextBox" Width="110" Text="0,0" />
+            <CheckBox x:Name="AutoTileOffsetCheckBox" Content="AutoOffset" IsChecked="True" VerticalAlignment="Center" />
+            <CheckBox x:Name="FlattenTileCheckBox" Content="Flatten" IsChecked="True" VerticalAlignment="Center" />
+            <TextBlock Text="FlattenRadius:" VerticalAlignment="Center" />
+            <TextBox x:Name="FlattenRadiusTextBox" Width="60" Text="32" />
+            <Button x:Name="ExportAveragedTileButton" Content="Export Avg Tile" Click="ExportAveragedTileButton_Click" />
+            <Button x:Name="ExportAveragedTileTransparentButton" Content="Export Avg Tile (Transparent)" Click="ExportAveragedTileTransparentButton_Click" />
+
+            <TextBlock Text="PeriodAxis:" VerticalAlignment="Center" />
+            <ComboBox x:Name="TilePeriodAxisComboBox" Width="80" SelectedIndex="0">
+                <ComboBoxItem Content="X" />
+                <ComboBoxItem Content="Y" />
+            </ComboBox>
             <TextBlock Text="出力幅:"
                        VerticalAlignment="Center" />
             <TextBox x:Name="ExportWidthTextBox"
@@ -107,9 +174,46 @@
                      Text="4096"
                      IsReadOnly="False" />
 
-            <AppBarSeparator />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
+                <Button x:Name="ExportHighResPngButton" Content="Export HiRes PNG" Click="ExportHighResPngButton_Click" />
+            <Button x:Name="ExportHighResPngTransparentButton" Content="Export HiRes PNG (Transparent)" Click="ExportHighResPngTransparentButton_Click" />
+            <Button x:Name="ExportHighResPngCroppedButton" Content="Export HiRes PNG (Cropped)" Click="ExportHighResPngCroppedButton_Click" />
+            <Button x:Name="ExportHighResPngCroppedTransparentButton" Content="Export HiRes PNG (Cropped+Transparent)" Click="ExportHighResPngCroppedTransparentButton_Click" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
+                <Button x:Name="ExportHiResLastStrokeCroppedTransparentButton" Content="Export HiRes LastStroke (Cropped+Transparent)" Click="ExportHiResLastStrokeCroppedTransparentButton_Click" />
+             <Button x:Name="ExportHiResPreSaveAlphaStatsCanvasButton" Content="Export HiRes PreSave α Stats (Canvas)" Click="ExportHiResPreSaveAlphaStatsCanvasButton_Click" />
+             <Button x:Name="ExportHiResPreSaveAlphaStatsLastStrokeButton" Content="Export HiRes PreSave α Stats (LastStroke)" Click="ExportHiResPreSaveAlphaStatsLastStrokeButton_Click" />
+             <Button x:Name="ExportHiResSimulatedCompositeButton" Content="Export HiRes Simulated Composite (SO/Add/Max)" Click="ExportHiResSimulatedCompositeButton_Click" />
 
-            <TextBlock Text="重ね塗りPressure:"
+            <Button x:Name="DrawDotButton" Content="Draw Dot" Click="DrawDotButton_Click" />
+
+            <TextBlock Text="TilePeriod:" VerticalAlignment="Center" />
+            <TextBlock x:Name="TilePeriodTextBlock" Text="(n/a)" VerticalAlignment="Center" />
+
+
+            <TextBlock Text="Pressure段階:"
+                       VerticalAlignment="Center" />
+            <TextBlock Text="0.2 / 0.5 / 0.8 / 1.0"
+                       VerticalAlignment="Center" />
+
+            <TextBlock Text="Stroke幅:"
+                       VerticalAlignment="Center" />
+            <TextBlock Text="InkToolbarの選択値"
+                       VerticalAlignment="Center" />
+
+            <AppBarSeparator />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
+
+                <TextBlock Text="重ね塗りPressure:"
                        VerticalAlignment="Center" />
             <TextBox x:Name="OverwritePressureNumberBox"
                          x:FieldModifier="Public"
@@ -143,6 +247,9 @@
                         Content="Dotグリッド生成"
                         Click="GenerateDotGridButton_Click" />
 
+                <Button x:Name="GenerateDotGridFixedConditionButton"
+                        Content="Dotグリッド(同条件)"
+                        Click="GenerateDotGridFixedConditionButton_Click" />
                 <AppBarSeparator />
 
                 <TextBlock Text="半径bin(px):"
@@ -383,10 +490,6 @@
                         Content="正規化mean/stddev"
                         Click="ExportNormalizedFalloffButton_Click" />
 
-            </StackPanel>
-            <StackPanel Orientation="Horizontal"
-                        Padding="12"
-                        Spacing="12">
 
 
                 <TextBlock Text="N一覧:"
@@ -401,6 +504,10 @@
                         Click="ExportRadialFalloffBatchSizesNsButton_Click" />
 
                 <AppBarSeparator />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal"
+                    Padding="12"
+                    Spacing="12">
 
                 <TextBlock Text="P一覧:"
                            VerticalAlignment="Center" />
@@ -435,6 +542,10 @@
                 <AppBarSeparator />
 
             </StackPanel>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal"
+                    Padding="12"
+                    Spacing="12">
         </StackPanel>
     </Grid>
 </Page>

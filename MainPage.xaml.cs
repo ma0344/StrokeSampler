@@ -2,6 +2,7 @@
 using Microsoft.Graphics.Canvas.Text;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
 using System.Reflection;
@@ -65,6 +66,61 @@ namespace StrokeSampler
             InkCanvasControl.InkPresenter.InputDeviceTypes = Windows.UI.Core.CoreInputDeviceTypes.Mouse
                                                             | Windows.UI.Core.CoreInputDeviceTypes.Pen
                                                             | Windows.UI.Core.CoreInputDeviceTypes.Touch;
+
+            UpdateZoomFactorText();
+        }
+
+        private void InkScrollViewer_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
+        {
+            // ViewChanged中は継続的に値が変化するので、UIスレッド後段でもう一度読み直す
+            UpdateZoomFactorText();
+            _ = Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Low, UpdateZoomFactorText);
+        }
+
+        private void UpdateZoomFactorText()
+        {
+            if (InkScrollViewer == null || ZoomFactorTextBlock == null) return;
+            var z = InkScrollViewer.ZoomFactor;
+            var zx = z.ToString("0.00", CultureInfo.InvariantCulture);
+            var zp = (z * 100.0).ToString("0", CultureInfo.InvariantCulture);
+            var zRaw = z.ToString("0.######", CultureInfo.InvariantCulture);
+            ZoomFactorTextBlock.Text = $"{zx}x ({zp}%)  raw={zRaw}";
+
+            if (ZoomFactorInputTextBox != null && ZoomFactorInputTextBox.FocusState == Windows.UI.Xaml.FocusState.Unfocused)
+            {
+                // 操作中は上書きしない（数値入力を邪魔しない）
+                ZoomFactorInputTextBox.Text = zRaw;
+            }
+        }
+
+        private void ApplyZoomButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (InkScrollViewer == null) return;
+
+            var text = ZoomFactorInputTextBox?.Text;
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            double z;
+            if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out z))
+            {
+                // 日本ロケール向けにカンマも許容
+                if (!double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out z))
+                {
+                    return;
+                }
+            }
+
+            if (z <= 0) return;
+
+            // XAMLで設定しているMin/Maxに合わせる
+            var min = (double)InkScrollViewer.MinZoomFactor;
+            var max = (double)InkScrollViewer.MaxZoomFactor;
+            if (z < min) z = min;
+            if (z > max) z = max;
+
+            // 現在の中心を維持したままズーム
+            InkScrollViewer.ChangeView(null, null, (float)z, disableAnimation: true);
+            UpdateZoomFactorText();
         }
         private void GenerateButton_Click(object sender, RoutedEventArgs e)
         {
@@ -81,6 +137,348 @@ namespace StrokeSampler
             GenerateHelper.GenerateDotGrid(this);
         }
 
+        private void GenerateDotGridFixedConditionButton_Click(object sender, RoutedEventArgs e)
+        {
+            GenerateHelper.GenerateDotGridFixedCondition(this);
+        }
+
+        private void DrawS200StrokeButton_Click(object sender, RoutedEventArgs e)
+        {
+            // 200px幅のPencilストロークを生成して、紙目のサンプル範囲を広げる
+            var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(this);
+            var strokeWidth = UIHelpers.GetDot512SizeOrNull(this) ?? 200.0;
+            attributes.Size = new Size(strokeWidth, strokeWidth);
+
+            // Start/End入力があればそれを使う。未指定は従来値。
+            var startX = 260f;
+            var y = 440f;
+            if (TryParsePointText(StartPositionTextBox?.Text, out var sx, out var sy))
+            {
+                startX = sx;
+                y = sy;
+            }
+
+            var endX = startX + 1000f;
+            if (TryParsePointText(EndPositionTextBox?.Text, out var ex, out var ey))
+            {
+                endX = ex;
+                // End側は自由入力だが、yが未指定の場合の補助として一致させる
+                if (Math.Abs(ey - y) > 0.01f)
+                {
+                    // 横線なのでStart側yを優先
+                }
+            }
+            float pressure = UIHelpers.GetDot512Pressure(this);
+
+            InkStroke stroke;
+            var modeIndex = S200StrokeModeComboBox?.SelectedIndex ?? 0;
+            if (modeIndex == 1)
+            {
+                // step=4
+                stroke = StrokeHelpers.CreatePencilStroke(startX, endX, y, pressure, attributes);
+            }
+            else
+            {
+                // 2 points
+                stroke = StrokeHelpers.CreatePencilStroke2Points(startX, endX, y, pressure, attributes);
+            }
+
+            InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(stroke);
+        }
+
+        private void DrawDotButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!TryParsePointText(StartPositionTextBox?.Text, out var x, out var y))
+            {
+                x = 260;
+                y = 440;
+            }
+
+            var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(this);
+            var size = UIHelpers.GetDot512SizeOrNull(this);
+            if (size.HasValue)
+            {
+                attributes.Size = new Size(size.Value, size.Value);
+            }
+
+            var pressure = UIHelpers.GetDot512Pressure(this);
+            var stroke = StrokeHelpers.CreatePencilDot(x, y, pressure, attributes);
+            InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(stroke);
+        }
+
+        private void DrawStairLinesButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Start/End入力を基準に、水平線をdyずつずらして複数本描画
+            var startX = 260f;
+            var y0 = 440f;
+            if (TryParsePointText(StartPositionTextBox?.Text, out var sx, out var sy))
+            {
+                startX = sx;
+                y0 = sy;
+            }
+
+            var endX = startX + 1000f;
+            if (TryParsePointText(EndPositionTextBox?.Text, out var ex, out _))
+            {
+                endX = ex;
+            }
+
+            int count;
+            if (!int.TryParse(StairCountTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out count))
+            {
+                if (!int.TryParse(StairCountTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out count))
+                {
+                    count = 20;
+                }
+            }
+            if (count < 1) count = 1;
+            if (count > 500) count = 500;
+
+            float dy;
+            if (!float.TryParse(StairDyTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out dy))
+            {
+                if (!float.TryParse(StairDyTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out dy))
+                {
+                    dy = 2f;
+                }
+            }
+            if (Math.Abs(dy) < 0.1f) dy = 0.1f;
+
+            var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(this);
+            var strokeWidth = UIHelpers.GetDot512SizeOrNull(this) ?? 200.0;
+            attributes.Size = new Size(strokeWidth, strokeWidth);
+            var pressure = UIHelpers.GetDot512Pressure(this);
+
+            var modeIndex = S200StrokeModeComboBox?.SelectedIndex ?? 0;
+            for (var i = 0; i < count; i++)
+            {
+                var y = y0 + i * dy;
+                InkStroke stroke = modeIndex == 1
+                    ? StrokeHelpers.CreatePencilStroke(startX, endX, y, pressure, attributes)
+                    : StrokeHelpers.CreatePencilStroke2Points(startX, endX, y, pressure, attributes);
+                InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(stroke);
+            }
+        }
+
+        private static bool TryParsePointText(string text, out float x, out float y)
+        {
+            x = 0;
+            y = 0;
+            if (string.IsNullOrWhiteSpace(text)) return false;
+
+            var parts = text.Split(',');
+            if (parts.Length != 2) return false;
+
+            if (!float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out x))
+            {
+                if (!float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.CurrentCulture, out x)) return false;
+            }
+
+            if (!float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out y))
+            {
+                if (!float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.CurrentCulture, out y)) return false;
+            }
+
+            return true;
+        }
+
+        private async void ExportAveragedTileButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExportAveragedTileCoreAsync(transparentOutput: false);
+        }
+
+        private async void ExportAveragedTileTransparentButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExportAveragedTileCoreAsync(transparentOutput: true);
+        }
+
+        private async System.Threading.Tasks.Task ExportAveragedTileCoreAsync(bool transparentOutput)
+        {
+            int tileSize;
+            if (!int.TryParse(TileSizeTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out tileSize))
+            {
+                if (!int.TryParse(TileSizeTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out tileSize))
+                {
+                    return;
+                }
+            }
+
+            int ox = 0;
+            int oy = 0;
+            if (!string.IsNullOrWhiteSpace(TileOffsetTextBox?.Text))
+            {
+                if (TryParsePointText(TileOffsetTextBox.Text, out var fx, out var fy))
+                {
+                    ox = (int)Math.Round(fx);
+                    oy = (int)Math.Round(fy);
+                }
+            }
+
+            if (tileSize <= 0) return;
+            var autoOffset = AutoTileOffsetCheckBox?.IsChecked == true;
+
+            var flatten = FlattenTileCheckBox?.IsChecked == true;
+            int flattenRadius;
+            if (!int.TryParse(FlattenRadiusTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out flattenRadius))
+            {
+                if (!int.TryParse(FlattenRadiusTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out flattenRadius))
+                {
+                    flattenRadius = 32;
+                }
+            }
+
+            if (flattenRadius < 1) flattenRadius = 1;
+
+            await ExportTileAveragedPaperNoise.ExportAsync(tileSize, ox, oy, transparentOutput, autoOffset, flatten, flattenRadius);
+        }
+
+        private void DrawS200StrokeVerticalButton_Click(object sender, RoutedEventArgs e)
+        {
+            var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(this);
+            var strokeWidth = UIHelpers.GetDot512SizeOrNull(this) ?? 200.0;
+            attributes.Size = new Size(strokeWidth, strokeWidth);
+
+            // Start/End入力があればそれを使う。未指定は従来値。
+            var x = 360f;
+            var startY = 260f;
+            if (TryParsePointText(StartPositionTextBox?.Text, out var sx, out var sy))
+            {
+                x = sx;
+                startY = sy;
+            }
+
+            var endY = startY + 1000f;
+            if (TryParsePointText(EndPositionTextBox?.Text, out var ex, out var ey))
+            {
+                // 縦線なのでxはStart側を優先し、End側はYのみ採用
+                endY = ey;
+                if (Math.Abs(ex - x) > 0.01f)
+                {
+                    // 縦線なのでStart側xを優先
+                }
+            }
+            float pressure = UIHelpers.GetDot512Pressure(this);
+
+            InkStroke stroke;
+            var modeIndex = S200StrokeModeComboBox?.SelectedIndex ?? 0;
+            if (modeIndex == 1)
+            {
+                stroke = StrokeHelpers.CreatePencilStrokeVertical(x, startY, endY, pressure, attributes);
+            }
+            else
+            {
+                stroke = StrokeHelpers.CreatePencilStrokeVertical2Points(x, startY, endY, pressure, attributes);
+            }
+
+            InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(stroke);
+        }
+
+        private async void EstimateTilePeriodButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var picker = new FileOpenPicker
+                {
+                    SuggestedStartLocation = PickerLocationId.PicturesLibrary,
+                    ViewMode = PickerViewMode.Thumbnail
+                };
+                picker.FileTypeFilter.Add(".png");
+                picker.FileTypeFilter.Add(".jpg");
+                picker.FileTypeFilter.Add(".jpeg");
+
+                var file = await picker.PickSingleFileAsync();
+                if (file == null) return;
+
+                byte[] pixels;
+                int w;
+                int h;
+                using (var stream = await file.OpenReadAsync())
+                {
+                    var decoder = await Windows.Graphics.Imaging.BitmapDecoder.CreateAsync(stream);
+                    var pixelProvider = await decoder.GetPixelDataAsync();
+                    pixels = pixelProvider.DetachPixelData();
+                    w = (int)decoder.PixelWidth;
+                    h = (int)decoder.PixelHeight;
+                }
+                if (w <= 0 || h <= 0)
+                {
+                    TilePeriodTextBlock.Text = "(invalid)";
+                    return;
+                }
+
+                var stride = w * 4;
+                var axisIndex = TilePeriodAxisComboBox?.SelectedIndex ?? 0;
+                if (axisIndex == 1)
+                {
+                    // Y方向: 縦線の描画列（目安: x=360）付近を優先。範囲外なら中央。
+                    var x = w / 2;
+                    if (w > 400) x = 360;
+                    var col = new double[h];
+                    for (var y = 0; y < h; y++)
+                    {
+                        var i = y * stride + x * 4;
+                        if ((uint)(i + 3) >= (uint)pixels.Length)
+                        {
+                            col[y] = 0;
+                            continue;
+                        }
+                        var b = pixels[i + 0];
+                        var g = pixels[i + 1];
+                        var r = pixels[i + 2];
+                        col[y] = (r + g + b) / (3.0 * 255.0);
+                    }
+
+                    var minLag = Math.Max(8, h / 256);
+                    var maxLag = Math.Min(h / 2, 4096);
+                    var result = TilePeriodEstimator.EstimatePeriodByAutocorrelation(col, minLag, maxLag);
+                    if (result == null)
+                    {
+                        TilePeriodTextBlock.Text = "(n/a)";
+                        return;
+                    }
+                    TilePeriodTextBlock.Text = $"{result.PeriodPx}px (score={result.Score:0.###})";
+                    return;
+                }
+
+                // X方向: 横線の描画行（目安: y=440）付近を優先。範囲外なら中央。
+                var yRow = h / 2;
+                if (h > 480) yRow = 440;
+                var row = new double[w];
+                var baseIdx = yRow * stride;
+                for (var x = 0; x < w; x++)
+                {
+                    var i = baseIdx + x * 4;
+                    if ((uint)(i + 3) >= (uint)pixels.Length)
+                    {
+                        row[x] = 0;
+                        continue;
+                    }
+                    var b = pixels[i + 0];
+                    var g = pixels[i + 1];
+                    var r = pixels[i + 2];
+                    row[x] = (r + g + b) / (3.0 * 255.0);
+                }
+
+                var minLagX = Math.Max(8, w / 256);
+                var maxLagX = Math.Min(w / 2, 4096);
+                var resultX = TilePeriodEstimator.EstimatePeriodByAutocorrelation(row, minLagX, maxLagX);
+                if (resultX == null)
+                {
+                    TilePeriodTextBlock.Text = "(n/a)";
+                    return;
+                }
+
+                TilePeriodTextBlock.Text = $"{resultX.PeriodPx}px (score={resultX.Score:0.###})";
+            }
+            catch (ArgumentException ex)
+            {
+                TilePeriodTextBlock.Text = ex.GetType().Name;
+            }
+            catch (InvalidOperationException ex)
+            {
+                TilePeriodTextBlock.Text = ex.GetType().Name;
+            }
+        }
         private void ClearButton_Click(object sender, RoutedEventArgs e)
         {
             InkCanvasControl.InkPresenter.StrokeContainer.Clear();
@@ -129,6 +527,11 @@ namespace StrokeSampler
             await RadialFalloffExportService.ExportRadialFalloffBatchAsync(this);
         }
 
+        private async void ExportRadialFalloffHiResFromPngButton_Click(object sender, RoutedEventArgs e)
+        {
+            await RadialFalloffExportService.ExportRadialFalloffCsvFromHiResPngAsync(this);
+        }
+
         private async void ExportMaterialButton_Click(object sender, RoutedEventArgs e)
         {
             await ExportPngService.ExportAsync(mp: this,isTransparentBackground: true,includeLabels: false,suggestedFileName: "pencil-material");
@@ -137,6 +540,76 @@ namespace StrokeSampler
         private async void ExportPreviewButton_Click(object sender, RoutedEventArgs e)
         {
             await ExportPngService.ExportAsync(mp: this,isTransparentBackground: false,includeLabels: true,suggestedFileName: "pencil-preview");
+        }
+
+        private async void ExportHighResPngButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExportHighResPngCoreAsync(transparentBackground: false, cropToBounds: false);
+        }
+
+        private async void ExportHighResPngTransparentButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExportHighResPngCoreAsync(transparentBackground: true, cropToBounds: false);
+        }
+
+        private async void ExportHighResPngCroppedButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExportHighResPngCoreAsync(transparentBackground: false, cropToBounds: true);
+        }
+
+        private async void ExportHighResPngCroppedTransparentButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExportHighResPngCoreAsync(transparentBackground: true, cropToBounds: true);
+        }
+
+        private async void ExportHiResLastStrokeCroppedTransparentButton_Click(object sender, RoutedEventArgs e)
+        {
+            await TestMethods.ExportHiResLastStrokeAsync(this, transparentBackground: true, cropToBounds: true);
+        }
+
+        private async void ExportHiResPreSaveAlphaStatsCanvasButton_Click(object sender, RoutedEventArgs e)
+        {
+            await TestMethods.ExportHiResPreSaveAlphaStatsAsync(this, useLastStrokeOnly: false, transparentBackground: true, cropToBounds: true);
+        }
+
+        private async void ExportHiResPreSaveAlphaStatsLastStrokeButton_Click(object sender, RoutedEventArgs e)
+        {
+            await TestMethods.ExportHiResPreSaveAlphaStatsAsync(this, useLastStrokeOnly: true, transparentBackground: true, cropToBounds: true);
+        }
+
+        private async void ExportHiResSimulatedCompositeButton_Click(object sender, RoutedEventArgs e)
+        {
+            await TestMethods.ExportHiResSimulatedCompositeAsync(this, transparentBackground: true, cropToBounds: true);
+        }
+
+        private async System.Threading.Tasks.Task ExportHighResPngCoreAsync(bool transparentBackground, bool cropToBounds)
+        {
+            int scale;
+            if (!int.TryParse(ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out scale))
+            {
+                if (!int.TryParse(ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out scale))
+                {
+                    return;
+                }
+            }
+
+            double dpiD;
+            if (!double.TryParse(ExportDpiTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out dpiD))
+            {
+                if (!double.TryParse(ExportDpiTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out dpiD))
+                {
+                    return;
+                }
+            }
+
+            if (scale <= 0) return;
+            if (dpiD <= 0) return;
+
+            var s = UIHelpers.GetDot512SizeOrNull(this);
+            var p = (double)UIHelpers.GetDot512Pressure(this);
+            var n = UIHelpers.GetDot512Overwrite(this);
+            var ctx = new ExportHighResInk.ExportContext(s, p, n, exportScale: scale);
+            await ExportHighResInk.ExportAsync(this, scale, (float)dpiD, transparentBackground, cropToBounds, ctx);
         }
         private async void ExportDot512MaterialButton_Click(object sender, RoutedEventArgs e)
         {

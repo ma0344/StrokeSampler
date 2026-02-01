@@ -161,7 +161,7 @@ namespace StrokeSampler
         {
             if (int.TryParse(mp.ExportWidthTextBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var width))
             {
-                return Math.Clamp(width, 256, 16384);
+                return Math.Clamp(width, 16, 16384);
             }
 
             return 4096;
@@ -171,7 +171,7 @@ namespace StrokeSampler
         {
             if (int.TryParse(mp.ExportHeightTextBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var height))
             {
-                return Math.Clamp(height, 256, 16384);
+                return Math.Clamp(height, 16, 16384);
             }
 
             return 4096;

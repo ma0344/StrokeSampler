@@ -4,6 +4,39 @@
 このスレッドで実施した変更内容・現状を、別スレッド（別担当/別Copilot）に引き継ぐためのメモです。
 
 ## 進め方（方針）
+## InkCanvas重ね塗り（Dot/S200）: 確定事項の整理（2026-02）
+- 目的: 低圧/高圧での見た目差（等高線化、飽和帯、谷が残る等）が「スタンプ生成」か「InkCanvas累積合成」かを切り分け。
+- 手順: `DrawDotButton` を同一座標にN回押してInkCanvasに累積 → `ExportHighResPngCroppedTransparentButton` で8bit alpha PNG出力 → ImageMagickでα差分統計。
+- 実装: 切り分けのため「最後に追加したStrokeのみ」をHiResで出力するボタンを追加（出力名に `-laststroke` を付与）。
+- 確定1: laststroke（1回分）の差分は P=0.1/P=1 ともに N1-N2, N2-N3 が完全一致（mean=0, stddev=0）。
+  - 結論: 同一座標・同一筆圧・紙目ワールド固定なら、スタンプ生成は決定的で毎回同一。
+- 確定2: canvas（累積）差分は P で挙動が異なる。
+  - P=0.1: Δ12=Δ23、ΔΔ=0（増分が完全に一定）。
+  - P=1: Δ23 < Δ12、ΔΔ≠0（飽和に近づくほど増分が減る挙動と整合）。
+  - 結論: P依存の見た目差は主に InkCanvas 側の累積（合成・飽和・8bit量子化）で生じる。
+
+詳細: `docs/inkcanvas-stack-analysis.md` に確定事項を整理。
+
+## 追加実装: HiResエクスポートの保存前α統計CSV（2026-02）
+- 目的: 8bit量子化が「PNG保存時のみ」か「描画ターゲット時点（CanvasRenderTarget BGRA8）」で既に起きているかを観測で切り分ける。
+- UI: `Export HiRes PreSave α Stats (Canvas)` / `Export HiRes PreSave α Stats (LastStroke)`
+- 出力: `pencil-highres-pre-save-alpha-...-pre-save-alpha-canvas...csv` / `...-pre-save-alpha-laststroke...csv`
+- 集計項目: `alpha_min`, `alpha_max`, `alpha_mean(0..1)`, `alpha_stddev(0..1)`, `alpha_unique(0..256)`
+
+## 方針決定: 合成式の推定（2026-02）
+- 目的: InkCanvas累積の見た目をなるべく再現する。
+- 方針: 合成候補を `source-over` / `add` / `max` の3つで実装し、HiResエクスポート（Win2Dレンダ）の `canvas` 出力と一致度（統計/差分）比較で推定する。
+
+## 追加実装: HiRes Simulated Composite（2026-02）
+- UI: `Export HiRes Simulated Composite (SO/Add/Max)`
+- 入力: 現在の最後のStroke（`laststroke`）をHiResレンダしてα(BGRA8)を取得
+- 出力: 合成式 `source-over` / `add` / `max` を N 回（`Dot512Overwrite`）適用したPNGと、pre-save α統計CSV
+
+## 確定: HiResレンダ経路の累積はBGRA8上のsource-over（2026-02）
+- P=1, N=3 で simulated source-over と実測canvas（pre-save）が統計完全一致。
+- P=0.1 は N=3 では add と source-over が一致して見えるが、N=50 で add と source-over が分離。
+- P=0.1, N=50 および P=1, N=50 で simulated source-over と実測canvas（pre-save）が統計完全一致。
+- 結論: HiResエクスポート（Win2D `CanvasRenderTarget` + `DrawInk`）の累積合成は **BGRA8（8bit）** の上で **source-over** と見なしてよい。
 - `MainPage.xaml.cs` の各イベントハンドラは、原則として **処理本体をヘルパー/サービスへ移し、UI側は1行委譲**にする。
 - 目的は「移動（責務分離）」で、挙動変更や最適化は基本的に行わない。
 - ビルドが通ることを都度確認。
@@ -78,6 +111,57 @@
   - 上記4メソッドを `ExportDot512.*` への **1行委譲**に置換（呼び出し互換維持）。
 
 ### 8) Normalized falloff
+
+## （追記）SkiaTester / PencilDotRenderer（紙目・マスク・プレビュー強化）
+
+### 目的
+- UWPの鉛筆ドットに近い雰囲気（紙目で「乗りやすさ/乗りにくさ」が出る）をSkia側で検証できるようにする。
+
+### 追加した主な機能（SkiaTester側）
+- `Preview` の表示モードを増設
+  - `8bit` / `float` / `paperMask` / `falloffWeight` / `maskUsed`
+  - `invert mask view`（mask系プレビューの反転表示）
+- `PaperMask` のマスクモードに `soft(outA)` を追加（しきい値2値ではなく、床付きの連続マスク）
+- `MaskFalloff` の方式選択を追加
+  - `none` / `gain@edge` / `th@edge`
+
+### 追加した主な機能（PencilDotRenderer側）
+- `PaperCapMode.CapOutAlpha`（紙目で outA の上限を作る）
+- `BaseShapeMode`（ベース形状の切替）
+  - `IdealCircle` / `PaperOnly`（UI上は `paper+falloff`）
+- `PaperMaskMode` 拡張
+  - `SoftOutAlpha`（連続マスク）
+- `PaperMaskFalloffMode` 拡張
+  - `StrongerAtEdge`（外縁ほど gain を強める）
+  - `ThresholdAtEdge`（外縁ほど threshold を上げる）
+
+### 現状の論点（未解決）
+- `paperMask` / `maskUsed` プレビューでは外縁の変化（falloff連動）が確認できるが、`float`（最終 outA）表示では中心/外縁で同タイミングに見えるケースが残っている。
+- 次の切り分け候補: `outA` の中間値（mask適用前/後）の可視化を追加して、どの段で差が消えているかを特定する。
+
+### （追記）切り分け強化
+- `PencilDotRenderer.RenderOutAlpha01Parts(...)` を追加し、`RenderOutAlpha01` と同一の計算経路で `outA_base`（mask前）/`outA_masked`（mask後）を取得できるようにした。
+- `SkiaTester` の `Preview: outA_base/outA_masked` はUI側で再実装せず、本APIの結果を表示するように置換した（UI側再実装のズレを排除）。
+- `SkiaTester` の `Preview: paperMask` は `_paperNoise` キャッシュではなく `TryLoadPaperNoiseFromUi()` の結果を使うように変更し、`maskUsed/outA_masked` と同じノイズ取得経路に統一した。
+
+### （追記）paper-only の falloff を閾値化
+- `PencilDotRenderer.PaperOnlyFalloffMode` を追加（`None` / `RadiusThreshold`）。
+- `BaseShapeMode.PaperOnly` のとき、半径閾値 `PaperOnlyTh`（0..1）で `f(r)` を2値化できるようにした。
+- `SkiaTester` UIに `PaperOnlyFalloff` と `PaperOnlyTh` を追加し、`Render/RenderOutAlpha01/RenderOutAlpha01Parts` に渡すようにした。
+
+### DotLab（新WPFプロジェクト）を追加
+- SkiaTester が検証UI/分岐で肥大化してきたため、Dot再現の最小実験環境として `DotLab` を新設した。
+- SkiaSharp（`SkiaSharp.Views.WPF`）を継続採用し、紙目の高さはPNGのAlpha（0..1）を使用する。
+- ノイズはタイルとして繰り返しサンプリングし、オフセット方向は既存検証の合意（X増加でノイズ右、Y増加でノイズ上）に合わせる。
+
+### DotLabの新モデル（壁貫通モデル）
+- GIMPの手動分解で得た仮説を実装優先の形に落とし込み、以下の式を `DotLab.Rendering.DotModel` として実装した。
+  - `B = P * f(r)`
+  - `H = T(x,y)`（紙目の高さ＝alpha）
+  - `wall = 1 - H`
+  - `V = clamp((B - wall) / k, 0..1)`
+  - `outA = 1 - (1 - V)^N`
+- まずは中間値 `V/B/H/wall/outA` のプレビュー表示を優先し、SkiaTester側で起きた「UI計算と本体計算のズレ」を避ける（同一ループで算出した配列を表示）。
 - `Helpers/ExportNormalizedFalloffService.cs`
   - `ExportNormalizedFalloffService.ExportAsync(MainPage mp)` を実装（旧 `ExportHelpers.ExportNormalizedFalloffAsync` の処理本体を移植）。
   - 内部で使う `TryParseFalloffFilename/TryParseFalloffCsv/SampleLinear/BuildNormalizedFalloffCsv` は `StrokeHelpers` にあるため、`using static StrokeSampler.StrokeHelpers;` を使用。
