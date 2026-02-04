@@ -2,20 +2,23 @@
 using Microsoft.Graphics.Canvas.Effects;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Threading.Tasks;
+using Windows.Foundation;
 using Windows.Storage;
 using Windows.Storage.Pickers;
-using Windows.UI.Xaml.Controls;
-using Windows.UI;
-using Windows.Foundation;
-using Windows.Storage.Streams;
-using Windows.UI.Input.Inking;
 using Windows.Storage.Provider;
+using Windows.Storage.Streams;
+using Windows.UI;
+using Windows.UI.Input.Inking;
+using Windows.UI.Xaml.Controls;
 using static StrokeSampler.StrokeHelpers;
 
 namespace StrokeSampler
@@ -28,6 +31,8 @@ namespace StrokeSampler
             Add,
             Max,
         }
+
+        // (removed) duplicate point parser and duplicate DrawLine/Hold fixed helpers
 
         internal static async Task ExportHiResSimulatedCompositeAsync(MainPage mp, bool transparentBackground, bool cropToBounds)
         {
@@ -372,6 +377,255 @@ namespace StrokeSampler
             var ctx = new ExportHighResInk.ExportContext(s, p, n, exportScale: scale, tag: $"pre-save-alpha-{tag}");
             await ExportHighResInk.ExportPreSaveAlphaStatsCsvAsync(mp, scale, (float)dpiD, transparentBackground, cropToBounds, targetStrokes, ctx);
         }
+
+        internal static void DrawLineStrokeFixed(MainPage mp, string? startText, string? endText, string? pointCountText, string? pointStepText, bool ignorePressure = false)
+        {
+            if (mp is null) throw new ArgumentNullException(nameof(mp));
+
+            var startX = 260f;
+            var startY = 440f;
+            if (TryParsePointTextLocal(startText, out var sx, out var sy))
+            {
+                startX = sx;
+                startY = sy;
+            }
+
+            var endX = startX + 1000f;
+            var endY = startY;
+            if (TryParsePointTextLocal(endText, out var ex, out var ey))
+            {
+                endX = ex;
+                endY = ey;
+            }
+
+            var pointCount = UIHelpers.ParseLinePointCount(pointCountText);
+            var step = UIHelpers.ParseLinePointStep(pointStepText);
+
+            var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(mp);
+            if (ignorePressure) attributes.IgnorePressure = true;
+            var strokeWidth = UIHelpers.GetDot512SizeOrNull(mp) ?? 200.0;
+            attributes.Size = new Size(strokeWidth, strokeWidth);
+            var pressure = UIHelpers.GetDot512Pressure(mp);
+
+            // 生成した点列を同時にダンプするため、pointsを生成してstroke化する。
+            var points = StrokeHelpers.CreateLineInkPointsFixed(startX, startY, endX, endY, pointCount, step, pressure);
+            var stroke = StrokeHelpers.CreatePencilStrokeFromInkPoints(points, attributes);
+            mp.InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(stroke);
+
+            // ダンプはベストエフォート（失敗しても描画は維持）。
+            _ = DumpInkPointsJsonBestEffortAsync(points, attributes);
+        }
+
+        internal static void DrawHoldStrokeFixed(MainPage mp, string? startText, string? pointCountText, bool ignorePressure = false)
+        {
+            if (mp is null) throw new ArgumentNullException(nameof(mp));
+
+            var x = 260f;
+            var y = 440f;
+            if (TryParsePointTextLocal(startText, out var sx, out var sy))
+            {
+                x = sx;
+                y = sy;
+            }
+
+            var pointCount = UIHelpers.ParseLinePointCount(pointCountText);
+
+            var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(mp);
+            if (ignorePressure) attributes.IgnorePressure = true;
+            var strokeWidth = UIHelpers.GetDot512SizeOrNull(mp) ?? 200.0;
+            attributes.Size = new Size(strokeWidth, strokeWidth);
+            var pressure = UIHelpers.GetDot512Pressure(mp);
+
+            var points = StrokeHelpers.CreateHoldInkPointsFixed(x, y, pointCount, pressure);
+            var stroke = StrokeHelpers.CreatePencilStrokeFromInkPoints(points, attributes);
+            mp.InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(stroke);
+
+            _ = DumpInkPointsJsonBestEffortAsync(points, attributes);
+        }
+
+        public static async Task<(bool sucsess,string ret)> isDirExists(string path)
+        {
+            bool isDirectoryExists;
+            Exception exception = null;
+            try
+            {
+                Directory.GetFiles(path);
+
+                // フォルダがある
+                isDirectoryExists = true;
+                exception = null;
+            }
+            catch (ArgumentNullException e)
+            {
+                // パスがnull（フォルダがない）
+                isDirectoryExists = false;
+                exception = e;
+            }
+            catch (ArgumentException e)
+            {
+                // パスに禁止文字あり（フォルダがない）
+                isDirectoryExists = false;
+                exception = e;
+            }
+            catch (PathTooLongException e)
+            {
+                // パスが長い（フォルダはあるかもしれない）
+                isDirectoryExists = true;
+                exception = e;
+            }
+            catch (DirectoryNotFoundException e)
+            {
+                // フォルダがない
+                isDirectoryExists = false;
+                exception = e;
+            }
+            catch (UnauthorizedAccessException e)
+            {
+                // 権限がない（フォルダがある）
+                isDirectoryExists = true;
+                exception = e;
+            }
+            catch (IOException e)
+            {
+                // その他（フォルダはあるかもしれない）
+                isDirectoryExists = true;
+                exception = e;
+            }
+
+            if (isDirectoryExists)
+            {
+                var retVal = exception?.Message ?? string.Empty;
+                return (sucsess:true,ret:path);   // フォルダがある（かもしれない）
+            }
+            else
+            {
+                // フォルダがない
+                return (sucsess:false,ret:exception.Message);
+            }
+        }
+
+        public async static Task<string> GetGitRootPath(string path = null)
+        {
+            // 引数がなければ現在の実行ディレクトリを使用
+                path ??= Directory.GetCurrentDirectory();
+            var directory = new DirectoryInfo(path);
+            while (directory != null)
+            {
+                var dirname = Path.Combine(path, ".git");
+                (bool isExists,string retVal) = await isDirExists(dirname);
+                if (isExists)
+                {
+                    return new DirectoryInfo(path).FullName;
+                }
+                try
+                {
+                    string newPath = new DirectoryInfo(path).Parent.FullName;
+                    path = newPath;
+                }
+                catch (NullReferenceException)
+                {
+                    return null;
+                }
+            }
+                return null;
+        }
+        private static async Task DumpInkPointsJsonBestEffortAsync(IReadOnlyList<InkPoint> points, InkDrawingAttributes attributes)
+        {
+            try
+            {
+                var json = BuildInkPointsDumpJson(points);
+
+                var s = attributes.Size.Width;
+                var fname = $"stroke_{DateTimeOffset.Now:yyyyMMdd-HHmmssfff}_S{s:0.#}_P{points[0].Pressure:0.####}_N{points.Count}_step{ComputeStepFromPoints(points):0.###}_points.json";
+                fname = fname.Replace(':', '_');
+                var rootPath = await GetGitRootPath();
+                // まずはユーザーが参照しやすいリポジトリルート（StrokeSampler\InkPointsDump）へ保存する。
+                // 失敗した場合のみ LocalFolder へフォールバックする。
+                StorageFolder? rootFolder = await StorageFolder.GetFolderFromPathAsync(rootPath ?? string.Empty);
+                StorageFolder folder;
+                try
+                {
+                    folder = await rootFolder.CreateFolderAsync("InkPointsDump", Windows.Storage.CreationCollisionOption.OpenIfExists);
+                }
+                catch
+                {
+                    folder = await Windows.Storage.ApplicationData.Current.LocalFolder.CreateFolderAsync(
+                        "InkPointsDump",
+                        Windows.Storage.CreationCollisionOption.OpenIfExists);
+                }
+
+                var file = await folder.CreateFileAsync(fname, Windows.Storage.CreationCollisionOption.ReplaceExisting);
+                await Windows.Storage.FileIO.WriteTextAsync(file, json, Windows.Storage.Streams.UnicodeEncoding.Utf8);
+            }
+            catch
+            {
+                // 解析補助のためのベストエフォートなので握りつぶす。
+            }
+        }
+
+        private static double ComputeStepFromPoints(IReadOnlyList<InkPoint> points)
+        {
+            if (points.Count < 2) return 0;
+            var p0 = points[0].Position;
+            var p1 = points[1].Position;
+            var dx = p1.X - p0.X;
+            var dy = p1.Y - p0.Y;
+            return Math.Sqrt(dx * dx + dy * dy);
+        }
+
+        private static string BuildInkPointsDumpJson(IReadOnlyList<InkPoint> points)
+        {
+            // DotLab/Sample/InkPointsDump と同形式（timestanp typoも踏襲）
+            var sb = new StringBuilder(points.Count * 96);
+            sb.AppendLine("[");
+
+            // 制御ストロークのdtが0になって解析できないのを避けるため、固定刻みのtimestampを付与する。
+            const long dtMs = 4;
+            var baseTs = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+            for (var i = 0; i < points.Count; i++)
+            {
+                var p = points[i];
+                var pos = p.Position;
+                var ts = baseTs + (dtMs * i);
+
+                sb.AppendLine("  {");
+                sb.Append("    \"x\": ").Append(pos.X.ToString("0.###############", CultureInfo.InvariantCulture)).AppendLine(",");
+                sb.Append("    \"y\": ").Append(pos.Y.ToString("0.###############", CultureInfo.InvariantCulture)).AppendLine(",");
+                sb.Append("    \"pressure\": ").Append(p.Pressure.ToString("0.########", CultureInfo.InvariantCulture)).AppendLine(",");
+                sb.AppendLine("    \"tiltX\": 0,");
+                sb.AppendLine("    \"tiltY\": 0,");
+                sb.Append("    \"timestanp\": ").Append(ts.ToString(CultureInfo.InvariantCulture)).AppendLine();
+                sb.Append("  }");
+                if (i + 1 < points.Count) sb.Append(',');
+                sb.AppendLine();
+            }
+            sb.AppendLine("]");
+            return sb.ToString();
+        }
+
+        private static bool TryParsePointTextLocal(string? text, out float x, out float y)
+        {
+            x = 0;
+            y = 0;
+            if (string.IsNullOrWhiteSpace(text)) return false;
+
+            var parts = text.Split(',');
+            if (parts.Length != 2) return false;
+
+            if (!float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out x))
+            {
+                if (!float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.CurrentCulture, out x)) return false;
+            }
+
+            if (!float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out y))
+            {
+                if (!float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.CurrentCulture, out y)) return false;
+            }
+
+            return true;
+        }
+
+        
         internal static void AssertCanParseFalloffFileNameFormats()
         {
             if (!ParseFalloffFilenameService.TryParseFalloffFilename("radial-falloff-S200-P0.1-N50.csv", out var s0, out var p0, out var n0))

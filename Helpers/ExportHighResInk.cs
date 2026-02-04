@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
+using Windows.Foundation;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Provider;
@@ -32,7 +33,11 @@ namespace StrokeSampler
         }
 
         internal static async Task ExportAsync(MainPage mp, int scale, float dpi, bool transparentBackground, bool cropToBounds)
-            => await ExportAsync(mp, scale, dpi, transparentBackground, cropToBounds, default);
+        {
+            if (mp == null) throw new ArgumentNullException(nameof(mp));
+            var strokes = mp.InkCanvasControl.InkPresenter.StrokeContainer.GetStrokes();
+            await ExportAsync(mp, scale, dpi, transparentBackground, cropToBounds, strokes, default);
+        }
 
         internal static async Task ExportPreSaveAlphaStatsCsvAsync(MainPage mp, int scale, float dpi, bool transparentBackground, bool cropToBounds, IReadOnlyList<Windows.UI.Input.Inking.InkStroke> strokes, ExportContext ctx)
         {
@@ -110,6 +115,8 @@ namespace StrokeSampler
             _ = status;
         }
 
+        // (実描画ピクセルに基づくクロップの実装は、ExportAsync内で実装する)
+
         internal static async Task ExportAsync(MainPage mp, int scale, float dpi, bool transparentBackground, bool cropToBounds, IReadOnlyList<Windows.UI.Input.Inking.InkStroke> strokes, ExportContext ctx)
         {
             if (mp == null) throw new ArgumentNullException(nameof(mp));
@@ -125,32 +132,47 @@ namespace StrokeSampler
                 return;
             }
 
-            Windows.Foundation.Rect bounds;
+            var device = CanvasDevice.GetSharedDevice();
+
+            Rect dipBounds;
             if (cropToBounds)
             {
-                if (!StrokeHelpers.TryGetStrokesBoundingRect(strokes, out bounds))
+                using var fullTarget = new CanvasRenderTarget(device, baseWidth * scale, baseHeight * scale, dpi);
+                using (var ds = fullTarget.CreateDrawingSession())
+                {
+                    ds.Clear(transparentBackground ? Color.FromArgb(0, 0, 0, 0) : Colors.White);
+                    ds.Transform = System.Numerics.Matrix3x2.CreateScale(scale);
+                    ds.DrawInk(strokes);
+                }
+
+                var pixels = fullTarget.GetPixelBytes();
+                if (!TryGetRenderedPixelBounds(pixels, baseWidth * scale, baseHeight * scale, transparentBackground, out var pxBounds))
                 {
                     return;
                 }
 
-                // 範囲外になったケースへの保護
-                if (bounds.X < 0) bounds.X = 0;
-                if (bounds.Y < 0) bounds.Y = 0;
-                if (bounds.Width <= 0 || bounds.Height <= 0) return;
+                // アンチエイリアス等による極薄αの端が切れるのを避けるため、1pxマージンを付ける
+                var x0 = Math.Max(0, pxBounds.X - 1);
+                var y0 = Math.Max(0, pxBounds.Y - 1);
+                var x1 = Math.Min((baseWidth * scale) - 1, pxBounds.X + pxBounds.Width);
+                var y1 = Math.Min((baseHeight * scale) - 1, pxBounds.Y + pxBounds.Height);
+                var wPx = Math.Max(1, x1 - x0 + 1);
+                var hPx = Math.Max(1, y1 - y0 + 1);
+                dipBounds = new Rect(x0 / (double)scale, y0 / (double)scale, wPx / (double)scale, hPx / (double)scale);
+                if (dipBounds.Width <= 0 || dipBounds.Height <= 0) return;
             }
             else
             {
-                bounds = new Windows.Foundation.Rect(0, 0, baseWidth, baseHeight);
+                dipBounds = new Rect(0, 0, baseWidth, baseHeight);
             }
 
             checked
             {
-                var width = (int)Math.Ceiling(bounds.Width * scale);
-                var height = (int)Math.Ceiling(bounds.Height * scale);
+                var width = (int)Math.Ceiling(dipBounds.Width * scale);
+                var height = (int)Math.Ceiling(dipBounds.Height * scale);
                 if (width <= 0 || height <= 0) return;
 
                 var meta = BuildMetaSuffix(ctx, scale);
-
                 var picker = new FileSavePicker
                 {
                     SuggestedStartLocation = PickerLocationId.PicturesLibrary,
@@ -159,36 +181,24 @@ namespace StrokeSampler
                 picker.FileTypeChoices.Add("PNG", new List<string> { ".png" });
 
                 var file = await picker.PickSaveFileAsync();
-                if (file == null)
-                {
-                    return;
-                }
+                if (file == null) return;
 
                 CachedFileManager.DeferUpdates(file);
 
                 using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
                 {
-                    var device = CanvasDevice.GetSharedDevice();
-
-                    using (var target = new CanvasRenderTarget(device, width, height, dpi))
+                    using var target = new CanvasRenderTarget(device, width, height, dpi);
+                    using (var ds = target.CreateDrawingSession())
                     {
-                        using (var ds = target.CreateDrawingSession())
-                        {
-                            ds.Clear(transparentBackground ? Color.FromArgb(0, 0, 0, 0) : Colors.White);
+                        ds.Clear(transparentBackground ? Color.FromArgb(0, 0, 0, 0) : Colors.White);
 
-                            // 既定がDIP座標で描かれているストロークを、ピクセル数を増やしたターゲットへ拡大して描く
-                            var translate = System.Numerics.Matrix3x2.CreateTranslation((float)-bounds.X, (float)-bounds.Y);
-                            var scaleM = System.Numerics.Matrix3x2.CreateScale(scale);
-                            ds.Transform = translate * scaleM;
-                            ds.DrawInk(strokes);
-                        }
-
-                        // 解析用: 保存前のピクセル（BGRA8）を取得して統計用に使う。
-                        // 実際の保存（PNG化）前にどう見えているかを観測するためのフック。
-                        // 本処理は呼び出し側が必要なときのみ行う。
-
-                        await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
+                        var translate = System.Numerics.Matrix3x2.CreateTranslation((float)-dipBounds.X, (float)-dipBounds.Y);
+                        var scaleM = System.Numerics.Matrix3x2.CreateScale(scale);
+                        ds.Transform = translate * scaleM;
+                        ds.DrawInk(strokes);
                     }
+
+                    await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
                 }
 
                 FileUpdateStatus status = await CachedFileManager.CompleteUpdatesAsync(file);
@@ -197,6 +207,53 @@ namespace StrokeSampler
                     // UI側での通知は呼び出し側に任せる
                 }
             }
+        }
+
+        private static bool TryGetRenderedPixelBounds(byte[] bgra, int w, int h, bool transparentBackground, out Rect bounds)
+        {
+            bounds = default;
+            if (bgra is null || w <= 0 || h <= 0) return false;
+            if (bgra.Length < (w * h * 4)) return false;
+
+            var minX = w;
+            var minY = h;
+            var maxX = -1;
+            var maxY = -1;
+
+            var stride = w * 4;
+            for (var y = 0; y < h; y++)
+            {
+                var row = y * stride;
+                for (var x = 0; x < w; x++)
+                {
+                    var i = row + x * 4;
+                    var b = bgra[i + 0];
+                    var g = bgra[i + 1];
+                    var r = bgra[i + 2];
+                    var a = bgra[i + 3];
+
+                    bool hit;
+                    if (transparentBackground)
+                    {
+                        hit = a != 0;
+                    }
+                    else
+                    {
+                        hit = !(r == 255 && g == 255 && b == 255);
+                    }
+
+                    if (!hit) continue;
+
+                    if (x < minX) minX = x;
+                    if (y < minY) minY = y;
+                    if (x > maxX) maxX = x;
+                    if (y > maxY) maxY = y;
+                }
+            }
+
+            if (maxX < minX || maxY < minY) return false;
+            bounds = new Rect(minX, minY, (maxX - minX + 1), (maxY - minY + 1));
+            return bounds.Width > 0 && bounds.Height > 0;
         }
 
         internal static async Task ExportAsync(MainPage mp, int scale, float dpi, bool transparentBackground, bool cropToBounds, ExportContext ctx)
@@ -210,76 +267,6 @@ namespace StrokeSampler
 
             var strokes = mp.InkCanvasControl.InkPresenter.StrokeContainer.GetStrokes();
             await ExportAsync(mp, scale, dpi, transparentBackground, cropToBounds, strokes, ctx);
-            return;
-
-            Windows.Foundation.Rect bounds;
-            if (cropToBounds)
-            {
-                if (!StrokeHelpers.TryGetStrokesBoundingRect(strokes, out bounds))
-                {
-                    return;
-                }
-
-                // 境界が負になるケースへの保険
-                if (bounds.X < 0) bounds.X = 0;
-                if (bounds.Y < 0) bounds.Y = 0;
-                if (bounds.Width <= 0 || bounds.Height <= 0) return;
-            }
-            else
-            {
-                bounds = new Windows.Foundation.Rect(0, 0, baseWidth, baseHeight);
-            }
-
-            checked
-            {
-                var width = (int)Math.Ceiling(bounds.Width * scale);
-                var height = (int)Math.Ceiling(bounds.Height * scale);
-                if (width <= 0 || height <= 0) return;
-
-                var meta = BuildMetaSuffix(ctx, scale);
-
-                var picker = new FileSavePicker
-                {
-                    SuggestedStartLocation = PickerLocationId.PicturesLibrary,
-                    SuggestedFileName = $"pencil-highres-{width}x{height}-dpi{dpi.ToString("0.##", CultureInfo.InvariantCulture)}{meta}" + (transparentBackground ? "-transparent" : "") + (cropToBounds ? "-cropped" : "")
-                };
-                picker.FileTypeChoices.Add("PNG", new List<string> { ".png" });
-
-                var file = await picker.PickSaveFileAsync();
-                if (file == null)
-                {
-                    return;
-                }
-
-                CachedFileManager.DeferUpdates(file);
-
-                using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
-                {
-                    var device = CanvasDevice.GetSharedDevice();
-
-                    using (var target = new CanvasRenderTarget(device, width, height, dpi))
-                    {
-                        using (var ds = target.CreateDrawingSession())
-                        {
-                            ds.Clear(transparentBackground ? Color.FromArgb(0, 0, 0, 0) : Colors.White);
-
-                            // 元のDIP座標で描かれているストロークを、ピクセル数を増やしたターゲットへ拡大して描画する
-                            var translate = System.Numerics.Matrix3x2.CreateTranslation((float)-bounds.X, (float)-bounds.Y);
-                            var scaleM = System.Numerics.Matrix3x2.CreateScale(scale);
-                            ds.Transform = translate * scaleM;
-                            ds.DrawInk(strokes);
-                        }
-
-                        await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
-                    }
-                }
-
-                FileUpdateStatus status = await CachedFileManager.CompleteUpdatesAsync(file);
-                if (status != FileUpdateStatus.Complete)
-                {
-                    // UI側での通知は呼び出し元に任せる
-                }
-            }
         }
 
         private static string BuildMetaSuffix(ExportContext ctx, int fallbackScale)

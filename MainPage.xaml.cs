@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Threading;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -23,6 +24,7 @@ namespace StrokeSampler
 {
     public sealed partial class MainPage : Page
     {
+        private int _lineSyncGuard;
 
         public const double PencilStrokeWidthMin = 0.5;
         // 解析目的で大きいSizeも扱えるように上限を拡張する。
@@ -63,11 +65,133 @@ namespace StrokeSampler
         {
             InitializeComponent();
 
+            HookLineAutoCalcEvents();
+
             InkCanvasControl.InkPresenter.InputDeviceTypes = Windows.UI.Core.CoreInputDeviceTypes.Mouse
                                                             | Windows.UI.Core.CoreInputDeviceTypes.Pen
                                                             | Windows.UI.Core.CoreInputDeviceTypes.Touch;
 
             UpdateZoomFactorText();
+        }
+
+        private void HookLineAutoCalcEvents()
+        {
+            // UI補助機能（失敗してもアプリの本体機能には影響させない）
+            try
+            {
+                if (LineTotalLengthTextBox != null)
+                {
+                    LineTotalLengthTextBox.TextChanged += LineTotalLengthTextBox_TextChanged;
+                }
+                if (LinePointStepTextBox != null)
+                {
+                    LinePointStepTextBox.TextChanged += LinePointStepTextBox_TextChanged;
+                }
+                if (LinePointCountTextBox != null)
+                {
+                    LinePointCountTextBox.TextChanged += LinePointCountTextBox_TextChanged;
+                }
+
+                UpdateLineTotalLengthFromStepAndPts();
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private void LineTotalLengthTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (Interlocked.Exchange(ref _lineSyncGuard, 1) != 0) return;
+            try
+            {
+                if (TryGetLinePts(out var pts) && TryGetLineTotalLength(out var l) && pts >= 2)
+                {
+                    var denom = pts - 1;
+                    if (denom <= 0) return;
+                    var step = l / denom;
+                    if (LinePointStepTextBox != null)
+                    {
+                        LinePointStepTextBox.Text = step.ToString("0.############", CultureInfo.InvariantCulture);
+                    }
+                }
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _lineSyncGuard, 0);
+            }
+        }
+
+        private void LinePointStepTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (Interlocked.Exchange(ref _lineSyncGuard, 1) != 0) return;
+            try
+            {
+                UpdateLineTotalLengthFromStepAndPts();
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _lineSyncGuard, 0);
+            }
+        }
+
+        private void LinePointCountTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (Interlocked.Exchange(ref _lineSyncGuard, 1) != 0) return;
+            try
+            {
+                UpdateLineTotalLengthFromStepAndPts();
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _lineSyncGuard, 0);
+            }
+        }
+
+        private void UpdateLineTotalLengthFromStepAndPts()
+        {
+            if (LineTotalLengthTextBox == null) return;
+            if (!TryGetLinePts(out var pts) || pts < 2) return;
+            if (!TryGetLineStep(out var step)) return;
+
+            var l = step * (pts - 1);
+            LineTotalLengthTextBox.Text = l.ToString("0.############", CultureInfo.InvariantCulture);
+        }
+
+        private bool TryGetLinePts(out int pts)
+        {
+            pts = 0;
+            var s = LinePointCountTextBox?.Text;
+            if (string.IsNullOrWhiteSpace(s)) return false;
+            if (!int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out pts))
+            {
+                if (!int.TryParse(s, NumberStyles.Integer, CultureInfo.CurrentCulture, out pts)) return false;
+            }
+            return true;
+        }
+
+        private bool TryGetLineStep(out double step)
+        {
+            step = 0;
+            var s = LinePointStepTextBox?.Text;
+            if (string.IsNullOrWhiteSpace(s)) return false;
+            if (!double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out step))
+            {
+                if (!double.TryParse(s, NumberStyles.Float, CultureInfo.CurrentCulture, out step)) return false;
+            }
+            return true;
+        }
+
+        private bool TryGetLineTotalLength(out double l)
+        {
+            l = 0;
+            var s = LineTotalLengthTextBox?.Text;
+            if (string.IsNullOrWhiteSpace(s)) return false;
+            if (!double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out l))
+            {
+                if (!double.TryParse(s, NumberStyles.Float, CultureInfo.CurrentCulture, out l)) return false;
+            }
+            return true;
         }
 
         private void InkScrollViewer_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
@@ -146,6 +270,7 @@ namespace StrokeSampler
         {
             // 200px幅のPencilストロークを生成して、紙目のサンプル範囲を広げる
             var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(this);
+            if (IgnorePressureCheckBox?.IsChecked == true) attributes.IgnorePressure = true;
             var strokeWidth = UIHelpers.GetDot512SizeOrNull(this) ?? 200.0;
             attributes.Size = new Size(strokeWidth, strokeWidth);
 
@@ -195,6 +320,7 @@ namespace StrokeSampler
             }
 
             var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(this);
+            if (IgnorePressureCheckBox?.IsChecked == true) attributes.IgnorePressure = true;
             var size = UIHelpers.GetDot512SizeOrNull(this);
             if (size.HasValue)
             {
@@ -245,6 +371,7 @@ namespace StrokeSampler
             if (Math.Abs(dy) < 0.1f) dy = 0.1f;
 
             var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(this);
+            if (IgnorePressureCheckBox?.IsChecked == true) attributes.IgnorePressure = true;
             var strokeWidth = UIHelpers.GetDot512SizeOrNull(this) ?? 200.0;
             attributes.Size = new Size(strokeWidth, strokeWidth);
             var pressure = UIHelpers.GetDot512Pressure(this);
@@ -335,6 +462,7 @@ namespace StrokeSampler
         private void DrawS200StrokeVerticalButton_Click(object sender, RoutedEventArgs e)
         {
             var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(this);
+            if (IgnorePressureCheckBox?.IsChecked == true) attributes.IgnorePressure = true;
             var strokeWidth = UIHelpers.GetDot512SizeOrNull(this) ?? 200.0;
             attributes.Size = new Size(strokeWidth, strokeWidth);
 
@@ -495,6 +623,106 @@ namespace StrokeSampler
             await ExportRadialSamplesSummary.ExportAsync(this);
          }
 
+        private async void ExportS200AlignedDotIndexRepeatButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!int.TryParse(ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var scale))
+            {
+                if (!int.TryParse(ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out scale)) return;
+            }
+
+            // P は Dot512 Pressure を使う
+            var pressure = 0.5f;
+            if (float.TryParse(Dot512PressureNumberBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var p))
+            {
+                pressure = p;
+            }
+            else if (float.TryParse(Dot512PressureNumberBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out p))
+            {
+                pressure = p;
+            }
+
+            if (!TryParsePointText(StartPositionTextBox?.Text, out var sxF, out var syF)) return;
+            if (!TryParsePointText(EndPositionTextBox?.Text, out var exF, out var eyF)) return;
+
+            var sx = (double)sxF;
+            var sy = (double)syF;
+            var ex = (double)exF;
+            var ey = (double)eyF;
+
+            var lDip = Math.Sqrt(((ex - sx) * (ex - sx)) + ((ey - sy) * (ey - sy)));
+            if (double.TryParse(LineTotalLengthTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var lTmp) && lTmp > 0)
+            {
+                lDip = lTmp;
+            }
+            else if (double.TryParse(LineTotalLengthTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out lTmp) && lTmp > 0)
+            {
+                lDip = lTmp;
+            }
+
+            if (!int.TryParse(ExportWidthTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var outW))
+            {
+                if (!int.TryParse(ExportWidthTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out outW)) return;
+            }
+            if (!int.TryParse(ExportHeightTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var outH))
+            {
+                if (!int.TryParse(ExportHeightTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out outH)) return;
+            }
+
+            var periodStepDip = 1.75;
+            if (double.TryParse(S200AlignedPeriodDipTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var pd) && pd > 0)
+            {
+                periodStepDip = pd;
+            }
+            else if (double.TryParse(S200AlignedPeriodDipTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out pd) && pd > 0)
+            {
+                periodStepDip = pd;
+            }
+
+            var dotCount = 12;
+            if (int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dc) && dc > 0)
+            {
+                dotCount = dc;
+            }
+            else if (int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out dc) && dc > 0)
+            {
+                dotCount = dc;
+            }
+            dotCount = Math.Clamp(dotCount, 1, 200);
+
+            var repeat = 50;
+            if (int.TryParse(S200AlignedRepeatTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var rep) && rep > 0)
+            {
+                repeat = rep;
+            }
+            else if (int.TryParse(S200AlignedRepeatTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out rep) && rep > 0)
+            {
+                repeat = rep;
+            }
+            repeat = Math.Clamp(repeat, 1, 10000);
+
+            var folderPicker = new Windows.Storage.Pickers.FolderPicker { SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary };
+            folderPicker.FileTypeFilter.Add(".png");
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder is null) return;
+
+            await ExportS200Service.ExportAlignedDotIndexSeriesRepeatedAsync(
+                mp: this,
+                folder: folder,
+                isTransparentBackground: true,
+                pressure: pressure,
+                exportScale: scale,
+                dotCount: dotCount,
+                repeat: repeat,
+                periodStepDip: periodStepDip,
+                startXDip: sx,
+                startYDip: sy,
+                lDip: lDip,
+                outWidthDip: outW,
+                outHeightDip: outH,
+                roiLeftDip: 0,
+                roiTopDip: 0);
+        }
+
         // XAMLのイベントハンドラが参照しているため、欠落するとビルドが失敗する。
         private async void ComparePaperNoiseModelsButton_Click(object sender, RoutedEventArgs e)
         {
@@ -542,6 +770,224 @@ namespace StrokeSampler
             await ExportPngService.ExportAsync(mp: this,isTransparentBackground: false,includeLabels: true,suggestedFileName: "pencil-preview");
         }
 
+        private async void ExportS200AlignedDotIndexButton_Click(object sender, RoutedEventArgs e)
+        {
+            // S=200 の「n番目の更新点（スタンプ）が同一点に来る」連番PNGを出力
+            // 既存の運用パラメータに合わせたデフォルト。
+            if (!int.TryParse(ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var scale))
+            {
+                if (!int.TryParse(ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out scale))
+                {
+                    return;
+                }
+            }
+
+            // AlignedDotsのPは Dot512 Pressure 入力に合わせる（OverwritePressureは別用途）
+            var pressure = 0.5f;
+            if (float.TryParse(Dot512PressureNumberBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var p))
+            {
+                pressure = p;
+            }
+            else if (float.TryParse(Dot512PressureNumberBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out p))
+            {
+                pressure = p;
+            }
+
+            if (!TryParsePointText(StartPositionTextBox?.Text, out var sxF, out var syF)) return;
+            if (!TryParsePointText(EndPositionTextBox?.Text, out var exF, out var eyF)) return;
+
+            var sx = (double)sxF;
+            var sy = (double)syF;
+            var ex = (double)exF;
+            var ey = (double)eyF;
+
+            var lDip = Math.Sqrt(((ex - sx) * (ex - sx)) + ((ey - sy) * (ey - sy)));
+            if (double.TryParse(LineTotalLengthTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var lTmp) && lTmp > 0)
+            {
+                lDip = lTmp;
+            }
+            else if (double.TryParse(LineTotalLengthTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out lTmp) && lTmp > 0)
+            {
+                lDip = lTmp;
+            }
+
+            if (!int.TryParse(ExportWidthTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var outW))
+            {
+                if (!int.TryParse(ExportWidthTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out outW)) return;
+            }
+            if (!int.TryParse(ExportHeightTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var outH))
+            {
+                if (!int.TryParse(ExportHeightTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out outH)) return;
+            }
+
+            var periodStepDip = 1.75;
+            if (double.TryParse(S200AlignedPeriodDipTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var pd) && pd > 0)
+            {
+                periodStepDip = pd;
+            }
+            else if (double.TryParse(S200AlignedPeriodDipTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out pd) && pd > 0)
+            {
+                periodStepDip = pd;
+            }
+
+            var dotCount = 12;
+            if (int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dc) && dc > 0)
+            {
+                dotCount = dc;
+            }
+            else if (int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out dc) && dc > 0)
+            {
+                dotCount = dc;
+            }
+
+            dotCount = Math.Clamp(dotCount, 1, 200);
+
+            await ExportS200Service.ExportAlignedDotIndexSeriesAsync(
+                mp: this,
+                isTransparentBackground: true,
+                pressure: pressure,
+                exportScale: scale,
+                dotCount: dotCount,
+                periodStepDip: periodStepDip,
+                startXDip: sx,
+                startYDip: sy,
+                lDip: lDip,
+                outWidthDip: outW,
+                outHeightDip: outH,
+                roiLeftDip: 0,
+                roiTopDip: 0);
+        }
+
+        private async void ExportS200AlignedDotIndexBatchButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!int.TryParse(ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var scale))
+            {
+                if (!int.TryParse(ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out scale)) return;
+            }
+
+            if (!TryParsePointText(StartPositionTextBox?.Text, out var sxF, out var syF)) return;
+            if (!TryParsePointText(EndPositionTextBox?.Text, out var exF, out var eyF)) return;
+
+            var sx = (double)sxF;
+            var sy = (double)syF;
+            var ex = (double)exF;
+            var ey = (double)eyF;
+
+            var lDip = Math.Sqrt(((ex - sx) * (ex - sx)) + ((ey - sy) * (ey - sy)));
+            if (double.TryParse(LineTotalLengthTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var lTmp) && lTmp > 0)
+            {
+                lDip = lTmp;
+            }
+            else if (double.TryParse(LineTotalLengthTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out lTmp) && lTmp > 0)
+            {
+                lDip = lTmp;
+            }
+
+            if (!int.TryParse(ExportWidthTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var outW))
+            {
+                if (!int.TryParse(ExportWidthTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out outW)) return;
+            }
+            if (!int.TryParse(ExportHeightTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var outH))
+            {
+                if (!int.TryParse(ExportHeightTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out outH)) return;
+            }
+
+            var periodStepDip = 1.75;
+            if (double.TryParse(S200AlignedPeriodDipTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var pd) && pd > 0)
+            {
+                periodStepDip = pd;
+            }
+            else if (double.TryParse(S200AlignedPeriodDipTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out pd) && pd > 0)
+            {
+                periodStepDip = pd;
+            }
+
+            var dotCount = 12;
+            if (int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dc) && dc > 0)
+            {
+                dotCount = dc;
+            }
+            else if (int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out dc) && dc > 0)
+            {
+                dotCount = dc;
+            }
+            dotCount = Math.Clamp(dotCount, 1, 200);
+
+            // 現在のUI入力値から圧力を取得（Dot512 Pressure）
+            var basePressure = 0.5f;
+            if (float.TryParse(Dot512PressureNumberBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var p))
+            {
+                basePressure = p;
+            }
+            else if (float.TryParse(Dot512PressureNumberBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out p))
+            {
+                basePressure = p;
+            }
+
+            // basePressure は未使用（UI互換のため保持）
+            _ = basePressure;
+
+            var folderPicker = new Windows.Storage.Pickers.FolderPicker { SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary };
+            folderPicker.FileTypeFilter.Add(".png");
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder is null) return;
+
+            var pStart = 0.01;
+            var pEnd = 1.0;
+            var pStep = 0.05;
+
+            if (!double.TryParse(S200AlignedBatchPStartTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out pStart))
+            {
+                _ = double.TryParse(S200AlignedBatchPStartTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out pStart);
+            }
+            if (!double.TryParse(S200AlignedBatchPEndTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out pEnd))
+            {
+                _ = double.TryParse(S200AlignedBatchPEndTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out pEnd);
+            }
+            if (!double.TryParse(S200AlignedBatchPStepTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out pStep))
+            {
+                _ = double.TryParse(S200AlignedBatchPStepTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out pStep);
+            }
+
+            if (pStep <= 0) return;
+            if (pStart < 0) pStart = 0;
+            if (pEnd < pStart)
+            {
+                var tmp = pStart;
+                pStart = pEnd;
+                pEnd = tmp;
+            }
+
+            // ガード: 誤入力で無限/大量生成しない
+            var maxCount = 2000;
+            var count = (int)Math.Floor(((pEnd - pStart) / pStep) + 1.0 + 1e-9);
+            if (count < 1) count = 1;
+            if (count > maxCount) count = maxCount;
+
+            for (var idx = 0; idx < count; idx++)
+            {
+                var pVal = pStart + (pStep * idx);
+                if (pVal > pEnd + 1e-12) break;
+                var pressure = (float)Math.Clamp(pVal, 0.0, 1.0);
+
+                await ExportS200Service.ExportAlignedDotIndexSeriesAsync(
+                    mp: this,
+                    folder: folder,
+                    isTransparentBackground: true,
+                    pressure: pressure,
+                    exportScale: scale,
+                    dotCount: dotCount,
+                    periodStepDip: periodStepDip,
+                    startXDip: sx,
+                    startYDip: sy,
+                    lDip: lDip,
+                    outWidthDip: outW,
+                    outHeightDip: outH,
+                    roiLeftDip: 0,
+                    roiTopDip: 0);
+            }
+        }
+
         private async void ExportHighResPngButton_Click(object sender, RoutedEventArgs e)
         {
             await ExportHighResPngCoreAsync(transparentBackground: false, cropToBounds: false);
@@ -580,6 +1026,25 @@ namespace StrokeSampler
         private async void ExportHiResSimulatedCompositeButton_Click(object sender, RoutedEventArgs e)
         {
             await TestMethods.ExportHiResSimulatedCompositeAsync(this, transparentBackground: true, cropToBounds: true);
+        }
+
+        private void DrawLineStrokeFixedButton_Click(object sender, RoutedEventArgs e)
+        {
+            var startText = (FindName("StartPositionTextBox") as TextBox)?.Text;
+            var endText = (FindName("EndPositionTextBox") as TextBox)?.Text;
+            var pointCountText = (FindName("LinePointCountTextBox") as TextBox)?.Text;
+            var pointStepText = (FindName("LinePointStepTextBox") as TextBox)?.Text;
+
+            var ignorePressure = IgnorePressureCheckBox?.IsChecked == true;
+            TestMethods.DrawLineStrokeFixed(this, startText, endText, pointCountText, pointStepText, ignorePressure);
+        }
+
+        private void DrawHoldStrokeFixedButton_Click(object sender, RoutedEventArgs e)
+        {
+            var startText = (FindName("StartPositionTextBox") as TextBox)?.Text;
+            var pointCountText = (FindName("LinePointCountTextBox") as TextBox)?.Text;
+            var ignorePressure = IgnorePressureCheckBox?.IsChecked == true;
+            TestMethods.DrawHoldStrokeFixed(this, startText, pointCountText, ignorePressure);
         }
 
         private async System.Threading.Tasks.Task ExportHighResPngCoreAsync(bool transparentBackground, bool cropToBounds)

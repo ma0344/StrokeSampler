@@ -1,6 +1,7 @@
 ﻿using Microsoft.Graphics.Canvas;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Windows.Foundation;
 using System.Linq;
 using System.Text;
@@ -9,11 +10,214 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using Windows.UI;
+using Windows.UI.Input.Inking;
 
 namespace StrokeSampler
 {
     internal class ExportS200Service
     {
+        internal static async Task ExportAlignedDotIndexSeriesAsync(
+            MainPage mp,
+            bool isTransparentBackground,
+            float pressure,
+            int exportScale,
+            int dotCount,
+            double periodStepDip,
+            double startXDip,
+            double startYDip,
+            double lDip,
+            int outWidthDip,
+            int outHeightDip,
+            double roiLeftDip,
+            double roiTopDip)
+        {
+            if (mp is null) throw new ArgumentNullException(nameof(mp));
+            if (exportScale <= 0) throw new ArgumentOutOfRangeException(nameof(exportScale));
+            if (dotCount <= 0) throw new ArgumentOutOfRangeException(nameof(dotCount));
+            if (periodStepDip <= 0) throw new ArgumentOutOfRangeException(nameof(periodStepDip));
+            if (lDip <= 0) throw new ArgumentOutOfRangeException(nameof(lDip));
+            if (outWidthDip <= 0 || outHeightDip <= 0) throw new ArgumentOutOfRangeException(nameof(outWidthDip));
+
+            var folderPicker = new FolderPicker { SuggestedStartLocation = PickerLocationId.PicturesLibrary };
+            folderPicker.FileTypeFilter.Add(".png");
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder is null) return;
+
+            await ExportAlignedDotIndexSeriesAsync(
+                mp,
+                folder,
+                isTransparentBackground,
+                pressure,
+                exportScale,
+                dotCount,
+                periodStepDip,
+                startXDip,
+                startYDip,
+                lDip,
+                outWidthDip,
+                outHeightDip,
+                roiLeftDip,
+                roiTopDip);
+        }
+
+        internal static async Task ExportAlignedDotIndexSeriesAsync(
+            MainPage mp,
+            StorageFolder folder,
+            bool isTransparentBackground,
+            float pressure,
+            int exportScale,
+            int dotCount,
+            double periodStepDip,
+            double startXDip,
+            double startYDip,
+            double lDip,
+            int outWidthDip,
+            int outHeightDip,
+            double roiLeftDip,
+            double roiTopDip)
+        {
+            if (folder is null) throw new ArgumentNullException(nameof(folder));
+
+            var usePen = mp.S200AlignedUsePenCheckBox?.IsChecked == true;
+            var attributes = usePen
+                ? StrokeHelpers.CreatePenAttributesForComparison(mp)
+                : StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(mp);
+            attributes.Size = new Size(200, 200);
+
+            var ctxBase = new ExportHighResInk.ExportContext(200, pressure, 1, exportScale, tag: "aligned-dot-index");
+
+            // n番目の更新点が同一点（startX/startY）に来るように、開始点を左にずらして線を引く。
+            // 1pxマージン（DIP）を維持するために、開始点は r+1 の利用を想定。
+            for (var n = 1; n <= dotCount; n++)
+            {
+                // 内部の更新点間隔がpx基準の量子化を含むため、HiRes出力scale分を掛けたシフト量で揃える。
+                // periodStepDip は「1ステップのDIP量」。実際の入力座標はpx量子化の影響を受けるため、scaleを掛ける。
+                var shift = (n - 1) * (periodStepDip * exportScale);
+                var x0 = startXDip - shift;
+                var y0 = startYDip;
+                var x1 = x0 + lDip;
+                var y1 = y0;
+
+                // pointCount=2 の場合、CreateLineInkPointsFixed は start + step にしかならず end(x1)を保証しないため
+                // ここでは明示的に2点を与える（サブピクセル含むDIP座標を維持）。
+                IReadOnlyList<InkPoint> points = new List<InkPoint>
+                {
+                    new InkPoint(new Point(x0, y0), pressure),
+                    new InkPoint(new Point(x1, y1), pressure),
+                };
+                var stroke = StrokeHelpers.CreatePencilStrokeFromInkPoints(points, attributes);
+
+                var strokes = new[] { stroke };
+                var ctx = new ExportHighResInk.ExportContext(200, pressure, n, exportScale, tag: "aligned");
+
+                // 画像サイズはDIPで固定し、exportScaleでHiRes化する。
+                var device = CanvasDevice.GetSharedDevice();
+                var widthPx = checked((int)Math.Ceiling(outWidthDip * (double)exportScale));
+                var heightPx = checked((int)Math.Ceiling(outHeightDip * (double)exportScale));
+
+                var fileName = $"pencil-highres-{widthPx}x{heightPx}-dpi96-S200-P{pressure.ToString("0.##", CultureInfo.InvariantCulture)}-alignedN{n}-scale{exportScale}" + (isTransparentBackground ? "-transparent" : "") + ".png";
+                var pTag = pressure.ToString("0.########", CultureInfo.InvariantCulture);
+                fileName = $"pencil-highres-{widthPx}x{heightPx}-dpi96-S200-P{pTag}-alignedN{n}-scale{exportScale}" + (isTransparentBackground ? "-transparent" : "") + ".png";
+                var file = await folder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
+
+                using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                using (var target = new CanvasRenderTarget(device, widthPx, heightPx, 96))
+                {
+                    using (var ds = target.CreateDrawingSession())
+                    {
+                        ds.Clear(isTransparentBackground ? Color.FromArgb(0, 0, 0, 0) : Colors.White);
+
+                        // ユーザー指定の座標系（Start(X,Y)）をそのまま維持してHiRes化する。
+                        // roiLeft/roiTop は将来的なROI切り出し用に残すが、ここでは適用しない。
+                        ds.Transform = System.Numerics.Matrix3x2.CreateScale(exportScale);
+                        ds.DrawInk(strokes);
+                    }
+
+                    await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
+                }
+
+                _ = ctx;
+                _ = ctxBase;
+            }
+        }
+
+        internal static async Task ExportAlignedDotIndexSeriesRepeatedAsync(
+            MainPage mp,
+            StorageFolder folder,
+            bool isTransparentBackground,
+            float pressure,
+            int exportScale,
+            int dotCount,
+            int repeat,
+            double periodStepDip,
+            double startXDip,
+            double startYDip,
+            double lDip,
+            int outWidthDip,
+            int outHeightDip,
+            double roiLeftDip,
+            double roiTopDip)
+        {
+            if (mp is null) throw new ArgumentNullException(nameof(mp));
+            if (folder is null) throw new ArgumentNullException(nameof(folder));
+            if (exportScale <= 0) throw new ArgumentOutOfRangeException(nameof(exportScale));
+            if (dotCount <= 0) throw new ArgumentOutOfRangeException(nameof(dotCount));
+            if (repeat <= 0) throw new ArgumentOutOfRangeException(nameof(repeat));
+            if (periodStepDip <= 0) throw new ArgumentOutOfRangeException(nameof(periodStepDip));
+            if (lDip <= 0) throw new ArgumentOutOfRangeException(nameof(lDip));
+            if (outWidthDip <= 0 || outHeightDip <= 0) throw new ArgumentOutOfRangeException(nameof(outWidthDip));
+
+            var usePen = mp.S200AlignedUsePenCheckBox?.IsChecked == true;
+            var attributes = usePen
+                ? StrokeHelpers.CreatePenAttributesForComparison(mp)
+                : StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(mp);
+            attributes.Size = new Size(200, 200);
+
+            var device = CanvasDevice.GetSharedDevice();
+            var widthPx = checked((int)Math.Ceiling(outWidthDip * (double)exportScale));
+            var heightPx = checked((int)Math.Ceiling(outHeightDip * (double)exportScale));
+
+            for (var n = 1; n <= dotCount; n++)
+            {
+                var shift = (n - 1) * (periodStepDip * exportScale);
+                var x0 = startXDip - shift;
+                var y0 = startYDip;
+                var x1 = x0 + lDip;
+                var y1 = y0;
+
+                IReadOnlyList<InkPoint> points = new List<InkPoint>
+                {
+                    new InkPoint(new Point(x0, y0), pressure),
+                    new InkPoint(new Point(x1, y1), pressure),
+                };
+                var stroke = StrokeHelpers.CreatePencilStrokeFromInkPoints(points, attributes);
+
+                var pTag = pressure.ToString("0.########", CultureInfo.InvariantCulture);
+                var fileName = $"pencil-highres-{widthPx}x{heightPx}-dpi96-S200-P{pTag}-alignedN{n}-scale{exportScale}-repeat{repeat}" + (isTransparentBackground ? "-transparent" : "") + ".png";
+                var file = await folder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);
+
+                using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                using (var target = new CanvasRenderTarget(device, widthPx, heightPx, 96))
+                {
+                    using (var ds = target.CreateDrawingSession())
+                    {
+                        ds.Clear(isTransparentBackground ? Color.FromArgb(0, 0, 0, 0) : Colors.White);
+                        ds.Transform = System.Numerics.Matrix3x2.CreateScale(exportScale);
+
+                        for (var r = 0; r < repeat; r++)
+                        {
+                            ds.DrawInk(new[] { stroke });
+                        }
+                    }
+
+                    await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
+                }
+
+                _ = roiLeftDip;
+                _ = roiTopDip;
+            }
+        }
+
         internal static async System.Threading.Tasks.Task ExportAsync(MainPage mp, bool isTransparentBackground, bool includeLabels, string suggestedFileName)
         {
 

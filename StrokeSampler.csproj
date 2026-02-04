@@ -18,7 +18,7 @@
     <ProjectTypeGuids>{A5A43C5B-DE2A-4C0C-9213-0A381AF9435A};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WindowsXamlEnableOverview>true</WindowsXamlEnableOverview>
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
-	<LangVersion>latest</LangVersion>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
     <DebugSymbols>true</DebugSymbols>
@@ -161,6 +161,87 @@
     </AppxManifest>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="InkPointsDump\S100\pencil-highres-2400x816-dpi96-S100-P0.25-N8-scale8-transparent.png" />
+    <Content Include="InkPointsDump\S100\pencil-highres-3000x1020-dpi96-S100-P0.25-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S100\pencil-highres-3600x1224-dpi96-S100-P0.25-N1-scale12-transparent.png" />
+    <Content Include="InkPointsDump\S120\pencil-highres-1920x968-dpi96-S120-P0.2-N1-scale8-transparent.png" />
+    <Content Include="InkPointsDump\S120\pencil-highres-2400x1210-dpi96-S120-P0.2-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S120\pencil-highres-2880x1452-dpi96-S120-P0.2-N1-scale12-transparent.png" />
+    <Content Include="InkPointsDump\S150\pencil-highres-2400x1216-dpi96-S150-P0.25-N1-scale8-transparent.png" />
+    <Content Include="InkPointsDump\S150\pencil-highres-3000x1520-dpi96-S150-P0.25-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S150\pencil-highres-3020x1520-dpi96-S150-P0.25-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S150\pencil-highres-3120x1520-dpi96-S150-P0.25-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S150\pencil-highres-3500x1520-dpi96-S150-P0.25-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S150\pencil-highres-3600x1824-dpi96-S150-P0.25-N1-scale12-transparent.png" />
+    <Content Include="InkPointsDump\S180\pencil-highres-2880x1448-dpi96-S180-P0.2-N1-scale8-transparent.png" />
+    <Content Include="InkPointsDump\S180\pencil-highres-3600x1810-dpi96-S180-P0.2-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S180\pencil-highres-4320x2172-dpi96-S180-P0.2-N1-scale12-transparent.png" />
+    <Content Include="InkPointsDump\S200\alpha-diff-pencil-highres-2005x2000-dpi96-S200-P1-N50-scale10-transparent-cropped-vs-pencil-highres-sim-2005x2000-dpi96-sim-sourceover-n50-p1.png" />
+    <Content Include="InkPointsDump\S200\alpha-diff-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-step0.1-pts5-vs-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10.png" />
+    <Content Include="InkPointsDump\S200\alpha-diff-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-vs-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-pts2.png" />
+    <Content Include="InkPointsDump\S200\alpha-diff-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-vs-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-pts50.png" />
+    <Content Include="InkPointsDump\S200\alpha-diff-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-vs-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-step0.1-pts50.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2000x2000-dpi96-S200-P1-N1-scale10-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2000x2000-dpi96-S200-P1-N1-scale10-Pts0.35-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2000x2000-dpi96-S200-P1-N1-scale10-Pts0.36-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2000x2000-dpi96-S200-P1-N1-scale10-Pts0.361-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2000x2000-dpi96-S200-P1-N1-scale10-Pts0.365-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2000x2000-dpi96-S200-P1-N1-scale10-Pts0.366-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2000x2000-dpi96-S200-P1-N1-scale10-Pts0.367-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2000x2000-dpi96-S200-P1-N1-scale10-Pts0.367346838116-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2000x2000-dpi96-S200-P1-N1-scale10-Pts0.367346838117-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2000x2000-dpi96-S200-P1-N1-scale10-Pts0.368-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2002x2002-dpi96-S200-P0.6-N1-scale10-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2005x2000-dpi96-S200-P0.5-N1-scale10-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2020x2020-dpi96-S200-P0.25-N2-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2020x2020-dpi96-S200-P0.25-N2-scale10-transparent2.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2049x2000-dpi96-S200-P0.5-N1-scale10-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2099x2000-dpi96-S200-P0.5-N1-scale10-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2110x2000-dpi96-S200-P1-N1-scale10-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2162x2000-dpi96-S200-P0.5-N1-scale10-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2167x2000-dpi96-S200-P0.5-N1-scale10-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2172x2000-dpi96-S200-P0.5-N1-scale10-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2182x2002-dpi96-S200-P1-N1-scale10-laststroke-transparent-cropped.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-pts10.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-pts2.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-pts50.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-step0.1-pts5.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-step0.1-pts50.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2210x2210-dpi96-S200-P1-N1-scale10-pts10.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2210x2210-dpi96-S200-P1-N1-scale10-pts2.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2210x2210-dpi96-S200-P1-N1-scale10-Pts50-steps0.361.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2210x2210-dpi96-S200-P1-N1-scale10-pts50.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-2210x2210-dpi96-S200-P1-N1-scale10.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-3000x2210-dpi96-S200-P1-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-3200x1616-dpi96-S200-P0.2-N1-scale8-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-3200x1616-dpi96-S200-P0.5-N1-scale8-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4000x2020-dpi96-S200-P0.2-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4010x2020-dpi96-S200-P0.25-N2-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4020x2020-dpi96-S200-P0.25-N2-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4200x2210-dpi96-S200-P0.25-N2-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.25-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.25-N10-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.25-N11-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.25-N2-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.25-N3-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.25-N4-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.25-N5-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.25-N6-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.25-N7-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.25-N8-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.25-N9-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P0.5-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4400x2210-dpi96-S200-P1-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4410x2210-dpi96-S200-P0.25-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4788x2424-dpi96-S200-P0.2-N1-scale12-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4800x2424-dpi96-S200-P0.2-N1-scale12-transparent.png" />
+    <Content Include="InkPointsDump\S200\pencil-highres-4800x2424-dpi96-S200-P0.5-N5-scale12-transparent.png" />
+    <Content Include="InkPointsDump\S40\pencil-highres-640x328-dpi96-S40-P0.2-N1-scale8-transparent.png" />
+    <Content Include="InkPointsDump\S40\pencil-highres-800x410-dpi96-S40-P0.2-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S40\pencil-highres-960x492-dpi96-S40-P0.2-N1-scale12-transparent.png" />
+    <Content Include="InkPointsDump\S80\pencil-highres-1280x648-dpi96-S80-P0.2-N1-scale8-transparent.png" />
+    <Content Include="InkPointsDump\S80\pencil-highres-1600x810-dpi96-S80-P0.2-N1-scale10-transparent.png" />
+    <Content Include="InkPointsDump\S80\pencil-highres-1920x972-dpi96-S80-P0.2-N1-scale12-transparent.png" />
     <Content Include="Properties\Default.rd.xml" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -1670,6 +1751,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Helpers\Skia\" />
+    <Folder Include="InkPointsDump\Aligns\" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".github\copilot-instructions.md" />
@@ -1691,6 +1773,7 @@
     <None Include="docs\Issues\issue-11-validate-exported-png.md" />
     <None Include="docs\pencil-stroke-sampler-roadmap.md" />
     <None Include="docs\representative-sample-subset.md" />
+    <None Include="docs\sampling-loop-workflow.md" />
     <None Include="docs\skia-handover-reply-src-over-and-stacking.md" />
     <None Include="docs\skia-migration-uwp-pencil-model.md" />
     <None Include="docs\skia-overstamp-mitigation-algorithm.md" />
@@ -1699,6 +1782,42 @@
     <None Include="docs\skia-validation-decision-order.md" />
     <None Include="docs\uwp-skia-pre-save-alpha-findings.md" />
     <None Include="Drow to InkCanvas with Pencil Strokes from code.md" />
+    <None Include="InkPointsDump\inkpointsdump-dd-dt-stats-20260202-131351.csv" />
+    <None Include="InkPointsDump\S100\alpha-window-profile-pencil-highres-2400x816-dpi96-S100-P0.25-N8-scale8-transparent.csv" />
+    <None Include="InkPointsDump\S100\alpha-window-profile-pencil-highres-3000x1020-dpi96-S100-P0.25-N1-scale10-transparent.csv" />
+    <None Include="InkPointsDump\S100\alpha-window-profile-pencil-highres-3600x1224-dpi96-S100-P0.25-N1-scale12-transparent.csv" />
+    <None Include="InkPointsDump\S150\alpha-window-profile-pencil-highres-2400x1216-dpi96-S150-P0.25-N1-scale8-transparent.csv" />
+    <None Include="InkPointsDump\S150\alpha-window-profile-pencil-highres-3000x1520-dpi96-S150-P0.25-N1-scale10-transparent.csv" />
+    <None Include="InkPointsDump\S150\alpha-window-profile-pencil-highres-3600x1824-dpi96-S150-P0.25-N1-scale12-transparent.csv" />
+    <None Include="InkPointsDump\S200\alpha-diff-pencil-highres-2005x2000-dpi96-S200-P1-N50-scale10-transparent-cropped-vs-pencil-highres-sim-2005x2000-dpi96-sim-sourceover-n50-p1.csv" />
+    <None Include="InkPointsDump\S200\alpha-diff-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-step0.1-pts5-vs-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10.csv" />
+    <None Include="InkPointsDump\S200\alpha-diff-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-vs-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-pts2.csv" />
+    <None Include="InkPointsDump\S200\alpha-diff-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-vs-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-pts50.csv" />
+    <None Include="InkPointsDump\S200\alpha-diff-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-vs-pencil-highres-2210x2210-dpi96-S200-P0.5-N1-scale10-step0.1-pts50.csv" />
+    <None Include="InkPointsDump\S200\alpha-hist-pencil-highres-4400x2210-dpi96-S200-P0.25-N1-scale10-transparent-summary.csv" />
+    <None Include="InkPointsDump\S200\alpha-hist-pencil-highres-4400x2210-dpi96-S200-P0.25-N1-scale10-transparent.csv" />
+    <None Include="InkPointsDump\S200\alpha-hist-pencil-highres-4400x2210-dpi96-S200-P0.25-N2-scale10-transparent-summary.csv" />
+    <None Include="InkPointsDump\S200\alpha-hist-pencil-highres-4400x2210-dpi96-S200-P0.25-N2-scale10-transparent.csv" />
+    <None Include="InkPointsDump\S200\alpha-hist-pencil-highres-4400x2210-dpi96-S200-P0.25-N3-scale10-transparent-summary.csv" />
+    <None Include="InkPointsDump\S200\alpha-hist-pencil-highres-4400x2210-dpi96-S200-P0.25-N3-scale10-transparent.csv" />
+    <None Include="InkPointsDump\S200\alpha-hist-pencil-highres-4400x2210-dpi96-S200-P0.25-N4-scale10-transparent-summary.csv" />
+    <None Include="InkPointsDump\S200\alpha-hist-pencil-highres-4400x2210-dpi96-S200-P0.25-N4-scale10-transparent.csv" />
+    <None Include="InkPointsDump\S200\alpha-hist-pencil-highres-4400x2210-dpi96-S200-P0.25-N5-scale10-transparent-summary.csv" />
+    <None Include="InkPointsDump\S200\alpha-hist-pencil-highres-4400x2210-dpi96-S200-P0.25-N5-scale10-transparent.csv" />
+    <None Include="InkPointsDump\S200\alpha-window-profile-pencil-highres-3200x1616-dpi96-S200-P0.2-N1-scale8-transparent.csv" />
+    <None Include="InkPointsDump\S200\alpha-window-profile-pencil-highres-3200x1616-dpi96-S200-P0.5-N1-scale8-transparent.csv" />
+    <None Include="InkPointsDump\S200\alpha-window-profile-pencil-highres-3368x1768-dpi96-S200-P0.2-N1-scale8-transparent.csv" />
+    <None Include="InkPointsDump\S200\alpha-window-profile-pencil-highres-4000x2020-dpi96-S200-P0.2-N1-scale10-transparent.csv" />
+    <None Include="InkPointsDump\S200\alpha-window-profile-pencil-highres-4800x2424-dpi96-S200-P0.2-N1-scale12-transparent.csv" />
+    <None Include="InkPointsDump\S200\alpha-window-profile-pencil-highres-4800x2424-dpi96-S200-P0.5-N5-scale12-transparent.csv" />
+    <None Include="InkPointsDump\S200\inkpointsdump-dd-dt-stats-20260202-173320.csv" />
+    <None Include="InkPointsDump\stroke_0000_points.json" />
+    <None Include="InkPointsDump\stroke_0001_points.json" />
+    <None Include="InkPointsDump\stroke_0002_points.json" />
+    <None Include="InkPointsDump\stroke_0003_points.json" />
+    <None Include="InkPointsDump\stroke_0004_points.json" />
+    <None Include="InkPointsDump\stroke_0005_points.json" />
+    <None Include="Sample\Alpha Model.xlsm" />
     <None Include="Sample\Compair\CSV\normalized-falloff-S0200-P1-N1.csv" />
     <None Include="Sample\Compair\CSV\N\alpha-samples-vs-N-vs-P.csv" />
     <None Include="Sample\Compair\CSV\N\center-alpha-vs-N-vs-P.csv" />

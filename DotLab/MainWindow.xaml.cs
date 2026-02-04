@@ -5,6 +5,7 @@ using SkiaSharp;
 using SkiaSharp.Views.Desktop;
 using SkiaSharp.Views.WPF;
 using SkiaSharp.Views;
+using DotLab.Analysis;
 
 namespace DotLab {
 
@@ -28,6 +29,61 @@ namespace DotLab {
         {
             InitializeComponent();
             Loaded += MainWindow_Loaded;
+        }
+
+        private async void ExportInkPointsDumpStatsButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await InkPointsDumpAnalyzer.ExportInkPointsDumpStatsCsvAsync(this);
+        }
+
+        private async void ExportAlphaDiffButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaDiff.ExportAlphaDiffAsync(this);
+        }
+
+        private async void ExportAlphaBoundsButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaBounds.ExportAlphaBoundsCsvAsync(this);
+        }
+
+        private async void ExportAlphaHistogramButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaHistogram.ExportAlphaHistogramCsvAsync(this);
+        }
+
+        private async void ExportAlphaHistogramBatchButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaHistogram.ExportAlphaHistogramCsvBatchAsync(this);
+        }
+
+        private async void ExportAlphaWindowProfileButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaWindowProfile.ExportAlphaWindowProfileCsvAsync(this);
+        }
+
+        private async void ExportAlphaWindowProfileBatchButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaWindowProfile.ExportAlphaWindowProfileCsvBatchAsync(this);
+        }
+
+        private async void AnalyzeAlphaWindowProfileSummaryButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await AlphaWindowProfileSummaryAnalyzer.AnalyzeAsync(this);
+        }
+
+        private async void ExportS200MaskButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await S200RegionMaskExporter.ExportAsync(this);
+        }
+
+        private async void AnalyzeAlignedDiffSeriesButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await AlignedDiffSeriesAnalyzer.AnalyzeAsync(this);
+        }
+
+        private async void AnalyzeAlignedDiffSeriesMaskedButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await DotLab.Analysis.AlignedDiffSeriesMaskedAnalyzer.AnalyzeAsync(this);
         }
 
         private void MainWindow_Loaded(object sender, System.Windows.RoutedEventArgs e)

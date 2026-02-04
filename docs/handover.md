@@ -60,6 +60,93 @@
 - `InkToolbar.GetInkingAttributes()` も存在しない。
 - `InkToolbarPencilButton.SelectedBrush` は `Brush` で、常に `Color` を持つとは限らない。
 
+## 確定事項（Verified Findings）
+この節は「今後ひっくり返りにくい検証済みの事実」を集積する。
+
+### Rendering / 合成
+- HiResレンダ経路（Win2D `CanvasRenderTarget` + `DrawInk`）の累積合成は **BGRA8（8bit）上の source-over** と見なしてよい。
+  - 根拠はPNG保存後の観測ではなく、`CanvasRenderTarget.GetPixelBytes()` による **pre-save（保存前BGRA8）** の統計一致。
+  - ただし、統計CSV（mean/stddev/unique 等）の算出ロジック自体の信頼性をより盤石にするため、必要に応じて **byte配列のhash一致やヒストグラム一致で再検証することを推奨**。
+  - 詳細: `docs/inkcanvas-stack-analysis.md`（合成式推定と N=50 での追認を含む）
+
+### InkCanvas 重ね塗り（同一点反復）の切り分け
+同一座標・同条件での反復で、低圧/高圧の見た目差がどこから来るかを切り分けた。
+
+- `laststroke`（1回分のスタンプ）は完全一致する（回数に応じてスタンプ自体が変化しているわけではない）
+- 見た目差は主に **InkCanvas側の累積（合成・飽和・8bit量子化）**で発生する
+  - ※ここでの「8bit」はレンダーターゲットが BGRA8 であることを指し、PNG保存処理が原因という意味ではない。
+- 低圧域（例: `P=0.1, N=3`）では `add` と `source-over` の差が統計上出ない範囲がある（飽和が小さい）
+- `P=1` では `add`/`max` は不一致で、`source-over` が一致する
+
+根拠（詳細）: `docs/inkcanvas-stack-analysis.md`
+
+### Stage 2（距離・点間隔）: 総移動距離 L が支配的
+条件（制御系列）:
+- `S=200`, `P=0.5`
+- 横方向（`Start/End` を水平）
+- `Draw Line (Fixed)`
+
+結果:
+- 描画が「出ない→出る」に切り替わる判定は `LineStep`/`LinePts` の個別値ではなく、総移動距離
+
+  `L = LineStep(px) * (LinePts - 1)`
+
+  に強く支配される。
+- `LinePts` を変えても同一 L で同じ判定になることを確認（例: `LinePts=18` でも同判定）。
+- 閾値は `L0 ≈ 18.0000 ± 0.0001`
+  - 区間同定: `L0 ∈ (17.9998952, 18.0000952]`
+
+追加の確定事項（Stage 2 / 直線・等圧・等速の制御系列）:
+- **18px周期**で「有効な更新点（スタンプ/セグメントの追加）」が発生するように見える。
+  - 18px周期の根拠: `S=18` のDotを描画して周期を測定。
+- 入力点密度（`LinePts`）や `LineStep` を変えても、`L` が同一であれば **同一の線**になるケースが確認できた。
+  - 例: `P=0.5, step=100, L=1700` で `LinePts=18` と `LinePts=171` が同一
+  - 例: `P=0.5, LinePts=39/20, step=25/50, L=950` が同一
+
+周期のスケール換算（補足）:
+- HiRes出力で `scale` を変えても、周期をDIP換算した値が揃うことを確認。
+  - `scale=8` で `period_px=14` → `period_dip=1.75`
+  - `scale=12` で `period_px=21` → `period_dip=1.75`
+  - よって周期は、HiRes上で固定18pxではなく **DIP基準で約1.75** の可能性が高い（scale10では 17.5px 相当のため 18px に見える）。
+
+追加観測（周期のP非依存・S依存の可能性）:
+- Pを変えても周期は変わららない（少なくとも検証範囲ではP非依存）。
+- Sを変えると `period_dip` が変化した:
+  - `S=120`: `period_dip=1.0`
+  - `S=80`: `period_dip≈0.75`（scale10では丸めにより 0.8 寄りになり得る）
+  - `S=40`: `period_dip=0.5`
+  - `S=30`: `period_dip≈0.25`（scale10では丸めにより 0.3 寄りになり得る）
+  - `S=100`: `period_dip=1.0`（scale8/10/12で `period_px=8/10/12`）
+  - `S=150`: `period_dip≈1.2〜1.25`（scale8/10/12で `period_px=10/12/15`）
+  - `S=180`: `period_dip=1.5`（scale8/10/12で `period_px=12/15/18`）
+  - `S=200`: `period_dip≈1.75`（scale8/12で `period_px=14/21`）
+  - よって周期はSに依存し、さらに内部で丸め/量子化が入っている可能性がある（例: S150でscale10のみ 1.2）。
+
+### HiRes LastStroke のクロップ
+- `InkStroke.BoundingRect` ベースのクロップは、点列由来で範囲だけが広がり「透明余白」が増えることがある。
+- そのため `Export HiRes LastStroke (Cropped+Transparent)` のクロップは、**実描画ピクセル（透明背景なら alpha>0）**から最小矩形を取り、そこへ 1px マージンを付けて切り出す方式に変更した。
+
+### DotLab: PNG出力の互換性
+- `ExportAlphaDiffAsync` の出力PNGが Gimp / Windows ビューアで「破損」扱いになるケースがあった。
+- 対応として、PNG書き込みを `IRandomAccessStream` への直接書き込みから **`FileStream` への書き込み**に変更。
+- 併せて差分画像は **Gray8（1ch）+ 不透明**で保存する（ビューア互換性を優先）。
+
+### InkPointsDump: 保存先
+- `InkPointsDump` の保存先は、まず `KnownFolders.PicturesLibrary/StrokeSampler/InkPointsDump` を試し、失敗時は `ApplicationData.Current.LocalFolder/InkPointsDump` にフォールバックする。
+
+### UWP: 保存先をコードで指定する場合の権限（要注意）
+- ファイル/フォルダ選択ダイアログ（Picker）を使わずに保存先をコードで固定すると、UWPの制約により **権限エラー**になり得る。
+- 回避には `appxmanifest` の capability 設定だけでなく、環境によっては **Windowsの設定で当該アプリにファイルシステムアクセスを許可**する必要がある。
+- 「保存先が内部ディレクトリ（LocalFolder）になる」問題も、この許可設定が未反映だと発生し得る。
+
+### Hold（同一点列）の退化対策
+- 全点が完全に同一座標の `InkPoint` 列だと、ストロークが退化して描画されないケースがある。
+- `Draw Hold (Fixed)` の点列生成では、サブピクセルの微小オフセット（例: x+0.5）を混ぜて退化を回避する。
+
+### 紙目（ノイズ）の固定性（High confidence observation）
+- 解析・再現モデル上、紙目（ノイズ）が **ワールド座標に固定**されている（描画位置に応じて位相が決まる）挙動が強く示唆される。
+- ただしこれはAPI仕様として明文化できていないため、ここでは「高確度の観測/仮説」として扱う。
+
 ## 依存関係
 - NuGet: `Win2D.uwp`（`StrokeSampler.csproj` に `PackageReference` 追加済み）
 

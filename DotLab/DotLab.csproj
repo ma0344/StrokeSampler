@@ -10,6 +10,12 @@
 
   <ItemGroup>
     <None Remove="Sample\dot512-material-cropped.png" />
+    <None Remove="Sample\InkPointsDump\stroke_0000_points.json" />
+    <None Remove="Sample\InkPointsDump\stroke_0001_points.json" />
+    <None Remove="Sample\InkPointsDump\stroke_0002_points.json" />
+    <None Remove="Sample\InkPointsDump\stroke_0003_points.json" />
+    <None Remove="Sample\InkPointsDump\stroke_0004_points.json" />
+    <None Remove="Sample\InkPointsDump\stroke_0005_points.json" />
     <None Remove="Sample\NoiseSheet-Transparent-RGB.png" />
     <None Remove="Sample\NoiseSheet-WhiteBack2-RGB.png" />
     <None Remove="Sample\NoiseSheet-WhiteBack2-Transparent.png" />
@@ -23,6 +29,24 @@
 
   <ItemGroup>
     <Content Include="Sample\dot512-material-cropped.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Sample\InkPointsDump\stroke_0000_points.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Sample\InkPointsDump\stroke_0001_points.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Sample\InkPointsDump\stroke_0002_points.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Sample\InkPointsDump\stroke_0003_points.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Sample\InkPointsDump\stroke_0004_points.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Sample\InkPointsDump\stroke_0005_points.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Sample\NoiseSheet-Transparent-RGB.png">

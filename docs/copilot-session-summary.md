@@ -37,6 +37,23 @@
 - P=0.1 は N=3 では add と source-over が一致して見えるが、N=50 で add と source-over が分離。
 - P=0.1, N=50 および P=1, N=50 で simulated source-over と実測canvas（pre-save）が統計完全一致。
 - 結論: HiResエクスポート（Win2D `CanvasRenderTarget` + `DrawInk`）の累積合成は **BGRA8（8bit）** の上で **source-over** と見なしてよい。
+
+## 追加実装: DotLab Analysis（2026-02）
+- InkPointsDump解析: `DotLab/Sample/InkPointsDump/stroke_*_points.json` を読み、dd/dt（点間距離/時間差）統計をCSV出力するボタンを追加。
+  - UI: `Export InkPointsDump Stats (dd/dt CSV)`
+  - 出力: 選択フォルダに `inkpointsdump-dd-dt-stats-YYYYMMDD-HHmmss.csv`
+  - 備考: dumpの `timestanp` typo と `timestamp` の両方に対応。
+- α差分出力: 実測canvas PNG と sim PNG を選択し、αの絶対差画像（PNG）と統計CSVを出力するボタンを追加。
+  - UI: `Export Alpha Diff (Canvas vs Sim)`
+
+## 追加実装: StrokeSampler 直線ストローク（指定条件）描画（2026-02）
+- UI: `Draw Line (Fixed)` を追加（点数/点間隔を指定して直線ストロークを生成）
+- 入力: Start/End座標（既存TextBox）、LinePts（点数）、LineStep(px)（点間隔）、P（Dot512 Pressure）、S（Dot512 Size）
+- 生成: `InkStrokeBuilder.CreateStrokeFromInkPoints` により、指定点列でPencilStrokeを作成し `StrokeContainer.AddStroke` で描画
+
+## 追加実装: StrokeSampler InkPointsDump自動保存（2026-02）
+- `Draw Line (Fixed)` 実行時に、生成したInkPoint列を `ApplicationData.Current.LocalFolder/InkPointsDump` 配下へJSON自動保存する。
+- 形式は `DotLab/Sample/InkPointsDump` と互換（キーは `timestanp` のtypoも踏襲）。
 - `MainPage.xaml.cs` の各イベントハンドラは、原則として **処理本体をヘルパー/サービスへ移し、UI側は1行委譲**にする。
 - 目的は「移動（責務分離）」で、挙動変更や最適化は基本的に行わない。
 - ビルドが通ることを都度確認。

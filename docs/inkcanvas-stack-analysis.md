@@ -116,3 +116,25 @@ P=0.1/P=1 ともに N=50 で実測（HiRes pre-save canvas）と simulated source-over が
 
 結論:
 - HiResレンダ経路（Win2D `CanvasRenderTarget` + `DrawInk`）の累積は **BGRA8（8bit）** の上で **source-over** で行われると見なしてよい。
+
+## 調査の進め方（直線ストローク：点列→描画の変換を観測）
+作業手順のループフローは `docs/sampling-loop-workflow.md` を参照。
+
+### 目的
+実デバイス由来の点列（InkPointsDump）と、制御した点列（直線固定）を比較し、「点間隔（dd）」「時間差（dt）」「点列の描画変換（補間/埋め）」の影響を分離して観測する。
+
+### 手順（推奨）
+1. StrokeSamplerでキャンバスをクリアする
+2. `Dot512 Pressure` と `Dot512 Size` を設定する（例: P=0.1/1.0、S=200）
+3. Start/Endを水平直線に設定する（例: Start=260,440 End=1260,440）
+4. `LinePts` と `LineStep(px)` を変えて `Draw Line (Fixed)` を実行する
+   - 実行すると、ストロークを描画しつつ `LocalFolder/InkPointsDump` に points JSON を自動保存する
+5. 直後にHiRes出力を行う（`Export HiRes PNG (Cropped+Transparent)` など）
+6. DotLabで以下を実行する
+   - `Export InkPointsDump Stats (dd/dt CSV)` で、dumpフォルダからdd/dt統計CSVを生成する
+   - `Export Alpha Diff (Canvas vs Sim)` で、実測canvas PNG と sim-sourceover PNG のα差分を生成する
+
+### 観測の見方（目安）
+- `LineStep(px)` を大きくしても線が埋まる → Inkの補間（点増し/連続形状化）の可能性
+- `LineStep(px)` が大きいと途切れが出る → 点列の離散性（スタンプ間隔）に依存
+- dd/dt統計で `dd=0` が多いのに濃淡が変わる → 同一点でpressure変化による累積の影響

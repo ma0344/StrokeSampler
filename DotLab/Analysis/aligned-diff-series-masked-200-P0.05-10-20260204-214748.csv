@@ -1,0 +1,17 @@
+pressure,prev_file,next_file,prev_n,next_n,width,height,mask_nonzero_px,diff_nonzero_px,diff_nonzero_ratio,diff_abs_mean,diff_abs_stddev,diff_abs_max,diff_signed_mean,diff_signed_stddev,diff_signed_min,diff_signed_max
+0.05,(virtual N0),pencil-highres-180x2020-dpi96-S200-P0.05-alignedN1-scale10-repeat500-transparent.png,0,1,180,2020,112558,0,0,0,0,0,0,0,0,0
+0.05,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN1-scale10-repeat500-transparent.png,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN2-scale10-repeat500-transparent.png,1,2,180,2020,112558,0,0,0,0,0,0,0,0,0
+0.05,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN2-scale10-repeat500-transparent.png,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN3-scale10-repeat500-transparent.png,2,3,180,2020,112558,0,0,0,0,0,0,0,0,0
+0.05,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN3-scale10-repeat500-transparent.png,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN4-scale10-repeat500-transparent.png,3,4,180,2020,112558,0,0,0,0,0,0,0,0,0
+0.05,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN4-scale10-repeat500-transparent.png,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN5-scale10-repeat500-transparent.png,4,5,180,2020,112558,0,0,0,0,0,0,0,0,0
+0.05,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN5-scale10-repeat500-transparent.png,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN6-scale10-repeat500-transparent.png,5,6,180,2020,112558,0,0,0,0,0,0,0,0,0
+0.05,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN6-scale10-repeat500-transparent.png,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN7-scale10-repeat500-transparent.png,6,7,180,2020,112558,0,0,0,0,0,0,0,0,0
+0.05,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN7-scale10-repeat500-transparent.png,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN8-scale10-repeat500-transparent.png,7,8,180,2020,112558,0,0,0,0,0,0,0,0,0
+0.05,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN8-scale10-repeat500-transparent.png,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN9-scale10-repeat500-transparent.png,8,9,180,2020,112558,0,0,0,0,0,0,0,0,0
+0.05,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN9-scale10-repeat500-transparent.png,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN10-scale10-repeat500-transparent.png,9,10,180,2020,112558,0,0,0,0,0,0,0,0,0
+0.05,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN10-scale10-repeat500-transparent.png,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN11-scale10-repeat500-transparent.png,10,11,180,2020,112558,0,0,0,0,0,0,0,0,0
+0.05,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN11-scale10-repeat500-transparent.png,pencil-highres-180x2020-dpi96-S200-P0.05-alignedN12-scale10-repeat500-transparent.png,11,12,180,2020,112558,0,0,0,0,0,0,0,0,0
+# summary_group,0.05,first_abs_mean01=0,first_nonzero_ratio=0,peak_abs_mean01=0,peak_nonzero_ratio=0,steady_tail_abs_mean01=0,steady_tail_nonzero_ratio=0,first_vs_peak=0,first_vs_steady=0
+# features,0.05,first_vs_peak_abs=0,first_vs_steady_abs=0,first_vs_peak_area=0,first_vs_steady_area=0
+
+# summary,wrote_any=True,skipped_decode=0,skipped_size_mismatch=0,skipped_mask_empty=0

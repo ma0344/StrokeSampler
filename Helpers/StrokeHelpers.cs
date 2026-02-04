@@ -52,6 +52,78 @@ namespace StrokeSampler
             return stroke;
         }
 
+        internal static IReadOnlyList<InkPoint> CreateLineInkPointsFixed(float startX, float startY, float endX, float endY, int pointCount, float pointStepPx, float pressure)
+        {
+            pointCount = Math.Clamp(pointCount, 2, 10000);
+            pointStepPx = Math.Clamp(pointStepPx, 0.1f, 2000f);
+
+            var dx = endX - startX;
+            var dy = endY - startY;
+            var len = (float)Math.Sqrt(dx * dx + dy * dy);
+            var ux = len > 1e-6f ? dx / len : 0f;
+            var uy = len > 1e-6f ? dy / len : 0f;
+
+            var points = new List<InkPoint>(pointCount);
+            for (var i = 0; i < pointCount; i++)
+            {
+                var x = startX + (ux * pointStepPx * i);
+                var y = startY + (uy * pointStepPx * i);
+                points.Add(new InkPoint(new Point(x, y), pressure));
+            }
+            return points;
+        }
+
+        internal static IReadOnlyList<InkPoint> CreateHoldInkPointsFixed(float x, float y, int pointCount, float pressure)
+        {
+            pointCount = Math.Clamp(pointCount, 2, 20000);
+
+            var points = new List<InkPoint>(pointCount);
+            for (var i = 0; i < pointCount; i++)
+            {
+                // 全点が完全に同一座標だとストロークが退化して描画されないケースがあるため、
+                // Dot用の対策と同様にサブピクセルの微小オフセットを混ぜる。
+                var ox = (i & 1) == 1 ? 0.5f : 0.0f;
+                points.Add(new InkPoint(new Point(x + ox, y), pressure));
+            }
+            return points;
+        }
+
+        internal static InkStroke CreatePencilStrokeFromInkPoints(IReadOnlyList<InkPoint> points, InkDrawingAttributes attributes)
+        {
+            var strokeBuilder = new InkStrokeBuilder();
+            var stroke = strokeBuilder.CreateStrokeFromInkPoints(points, Matrix3x2.Identity, null, null);
+            stroke.DrawingAttributes = attributes;
+            return stroke;
+        }
+
+        internal static InkStroke CreatePencilStrokeLineFixed(float startX, float startY, float endX, float endY, int pointCount, float pointStepPx, float pressure, InkDrawingAttributes attributes)
+        {
+            var strokeBuilder = new InkStrokeBuilder();
+
+            pointCount = Math.Clamp(pointCount, 2, 10000);
+            pointStepPx = Math.Clamp(pointStepPx, 0.1f, 2000f);
+
+            var dx = endX - startX;
+            var dy = endY - startY;
+            var len = (float)Math.Sqrt(dx * dx + dy * dy);
+
+            // pointCount優先。lenが短い場合は同一点が増えるが、それも観測対象。
+            var ux = len > 1e-6f ? dx / len : 0f;
+            var uy = len > 1e-6f ? dy / len : 0f;
+
+            var points = new List<InkPoint>(pointCount);
+            for (var i = 0; i < pointCount; i++)
+            {
+                var x = startX + (ux * pointStepPx * i);
+                var y = startY + (uy * pointStepPx * i);
+                points.Add(new InkPoint(new Point(x, y), pressure));
+            }
+
+            var stroke = strokeBuilder.CreateStrokeFromInkPoints(points, Matrix3x2.Identity, null, null);
+            stroke.DrawingAttributes = attributes;
+            return stroke;
+        }
+
         internal static InkStroke CreatePencilStrokeVertical(float x, float startY, float endY, float pressure, InkDrawingAttributes attributes)
         {
             var strokeBuilder = new InkStrokeBuilder();
@@ -161,6 +233,15 @@ namespace StrokeSampler
                 }
             }
 
+            return attributes;
+        }
+
+        internal static InkDrawingAttributes CreatePenAttributesForComparison(MainPage mp)
+        {
+            // UWP Ink は Pencil/Ink のファクトリは環境差があるため、比較用にPencil属性をベースにして
+            // 圧力を無視する設定で「床（pressure floor）」の影響を切り分ける。
+            var attributes = CreatePencilAttributesFromToolbarBestEffort(mp);
+            attributes.IgnorePressure = true;
             return attributes;
         }
 

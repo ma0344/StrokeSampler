@@ -36,6 +36,10 @@
                           Icon="Edit"
                           Label="S200 Stroke (V)"
                           Click="DrawS200StrokeVerticalButton_Click" />
+            <AppBarButton x:Name="ExportS200AlignedDotIndexButton"
+                          Icon="Save"
+                          Label="S200 AlignedDots"
+                          Click="ExportS200AlignedDotIndexButton_Click" />
             <AppBarSeparator />
             <AppBarButton x:Name="ExportMaterialButton"
                           Icon="Save"
@@ -116,7 +120,7 @@
             <TextBlock Text="ExportScale:" VerticalAlignment="Center" />
                 <TextBox x:Name="ExportScaleTextBox"
                          Width="60"
-                         Text="2"
+                         Text="10"
                          x:FieldModifier="Public" />
             <TextBlock Text="ExportDpi:" VerticalAlignment="Center" />
                 <TextBox x:Name="ExportDpiTextBox"
@@ -124,19 +128,51 @@
                          Text="96"
                          x:FieldModifier="Public" />
             <TextBlock Text="Start(X,Y):" VerticalAlignment="Center" />
-            <TextBox x:Name="StartPositionTextBox" Width="110" Text="260,440" />
+            <TextBox x:Name="StartPositionTextBox" x:FieldModifier="Public" Width="110" Text="110,110" />
             <TextBlock Text="End(X,Y):" VerticalAlignment="Center" />
-            <TextBox x:Name="EndPositionTextBox" Width="110" Text="1260,440" />
-            <TextBlock Text="StairDY:" VerticalAlignment="Center" />
+            <TextBox x:Name="EndPositionTextBox" x:FieldModifier="Public" Width="110" Text="1260,110" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
+
+                <TextBlock Text="StairDY:" VerticalAlignment="Center" />
             <TextBox x:Name="StairDyTextBox" Width="60" Text="2" />
             <TextBlock Text="StairCount:" VerticalAlignment="Center" />
             <TextBox x:Name="StairCountTextBox" Width="60" Text="20" />
             <Button x:Name="DrawStairLinesButton" Content="Draw Stair Lines" Click="DrawStairLinesButton_Click" />
-            <TextBlock Text="S200Mode:" VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Padding="12"
+                        Spacing="12">
+                <TextBlock Text="S200Mode:" VerticalAlignment="Center" />
             <ComboBox x:Name="S200StrokeModeComboBox" Width="140" SelectedIndex="0">
                 <ComboBoxItem Content="2 points" />
                 <ComboBoxItem Content="step=4" />
             </ComboBox>
+            <TextBlock Text="AlignedPeriodDip:" VerticalAlignment="Center" />
+            <TextBox x:Name="S200AlignedPeriodDipTextBox" x:FieldModifier="Public" Width="90" Text="1.75" />
+            <TextBlock Text="AlignedN:" VerticalAlignment="Center" />
+            <TextBox x:Name="S200AlignedDotCountTextBox" x:FieldModifier="Public" Width="70" Text="12" />
+            <TextBlock Text="BatchP start/end/step:" VerticalAlignment="Center" />
+            <TextBox x:Name="S200AlignedBatchPStartTextBox" x:FieldModifier="Public" Width="70" Text="0.01" />
+            <TextBox x:Name="S200AlignedBatchPEndTextBox" x:FieldModifier="Public" Width="70" Text="0.05" />
+            <TextBox x:Name="S200AlignedBatchPStepTextBox" x:FieldModifier="Public" Width="70" Text="0.002" />
+            <TextBlock Text="LinePts:" VerticalAlignment="Center" />
+            <TextBox x:Name="LinePointCountTextBox" x:FieldModifier="Public" Width="60" Text="2" />
+            <TextBlock Text="LineStep(px):" VerticalAlignment="Center" />
+            <TextBox x:Name="LinePointStepTextBox" x:FieldModifier="Public" Width="200" Text="4" />
+            <TextBlock Text="L(px):" VerticalAlignment="Center" />
+            <TextBox x:Name="LineTotalLengthTextBox" Width="200" Text="" />
+            <TextBlock Text="S200 aligned repeat (for low P)" />
+            <TextBox x:Name="S200AlignedRepeatTextBox" Text="50" />
+            <CheckBox x:Name="S200AlignedUsePenCheckBox" x:FieldModifier="Public" Content="Use Pen (not Pencil)" IsChecked="False" />
+            <CheckBox x:Name="IgnorePressureCheckBox" x:FieldModifier="Public" Content="Ignore Pressure (force full)" IsChecked="False" />
+            <TextBlock x:Name="LineTotalLengthHintTextBlock" Text="L=step*(pts-1)" VerticalAlignment="Center" Opacity="0.65" />
+            <Button x:Name="DrawLineStrokeFixedButton" Content="Draw Line (Fixed)" Click="DrawLineStrokeFixedButton_Click" />
+            <Button x:Name="DrawHoldStrokeFixedButton" Content="Draw Hold (Fixed)" Click="DrawHoldStrokeFixedButton_Click" />
+            <Button x:Name="ExportS200AlignedDotIndexBatchButton" Content="Export AlignedDots (Batch P)" Click="ExportS200AlignedDotIndexBatchButton_Click" />
+            <Button x:Name="ExportS200AlignedDotIndexRepeatButton" Content="Export AlignedDots (Repeat N)" Click="ExportS200AlignedDotIndexRepeatButton_Click" />
             </StackPanel>
             <StackPanel Orientation="Horizontal"
                         Padding="12"
@@ -163,7 +199,7 @@
             <TextBox x:Name="ExportWidthTextBox"
                      x:FieldModifier="Public"
                      Width="100"
-                     Text="4096"
+                     Text="221"
                      IsReadOnly="False" />
 
             <TextBlock Text="出力高:"
@@ -171,7 +207,7 @@
             <TextBox x:Name="ExportHeightTextBox"
                          x:FieldModifier="Public"
                          Width="100"
-                     Text="4096"
+                     Text="221"
                      IsReadOnly="False" />
 
             </StackPanel>
@@ -307,7 +343,7 @@
                 <TextBox x:Name="Dot512SizeTextBox"
                          x:FieldModifier="Public"
                          Width="70"
-                         Text=""
+                         Text="200"
                          PlaceholderText="(tool)"
                          IsReadOnly="False" />
 

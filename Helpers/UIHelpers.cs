@@ -217,6 +217,32 @@ namespace StrokeSampler
             return 1;
         }
 
+        internal static int ParseLinePointCount(string? text)
+        {
+            if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
+            {
+                return Math.Clamp(n, 2, 10000);
+            }
+            if (int.TryParse(text, NumberStyles.Integer, CultureInfo.CurrentCulture, out n))
+            {
+                return Math.Clamp(n, 2, 10000);
+            }
+            return 2;
+        }
+
+        internal static float ParseLinePointStep(string? text)
+        {
+            if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var step))
+            {
+                return Math.Clamp(step, 0.1f, 2000f);
+            }
+            if (float.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out step))
+            {
+                return Math.Clamp(step, 0.1f, 2000f);
+            }
+            return 4f;
+        }
+
         internal static double? GetDot512SizeOrNull(MainPage mp)
         {
             var raw = mp.Dot512SizeTextBox.Text;
