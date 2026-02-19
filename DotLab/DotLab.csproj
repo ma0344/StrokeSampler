@@ -6,9 +6,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="LUT\Dot P1 LUT.crv" />
+    <None Remove="LUT\DotP1AlphaLut.csv" />
     <None Remove="Sample\dot512-material-cropped.png" />
     <None Remove="Sample\InkPointsDump\stroke_0000_points.json" />
     <None Remove="Sample\InkPointsDump\stroke_0001_points.json" />
@@ -28,6 +31,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="LUT\Dot P1 LUT.crv">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="LUT\DotP1AlphaLut.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Sample\dot512-material-cropped.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

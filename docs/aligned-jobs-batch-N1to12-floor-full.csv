@@ -1,0 +1,17 @@
+# AlignedJobs CSV (FULL): export alignedN1..12 for a pressure sweep around the N1 floor
+#
+# This version pins layout/output parameters in the CSV so the batch is reproducible
+# without relying on current UI values.
+#
+# Columns used by current implementation:
+# - pressure_start, pressure_end, pressure_step
+# - aligned_n
+# - trials
+# - runTag
+# - start, end ("x,y" in DIP)
+# - out_w, out_h (DIP)
+# - scale
+# - period_step_dip
+
+pressure_start,pressure_end,pressure_step,aligned_n,trials,runTag,start,end,out_w,out_h,scale,period_step_dip
+0.07428,0.07430,0.00001,12,10,floor-N1to12,"100,101","500,101",18,202,10,1.75

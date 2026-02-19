@@ -1,0 +1,8 @@
+# Export aligned-dot-index single-N images for pressure sweep
+#
+# Columns: pressure_start,pressure_end,pressure_step,aligned_n,trials,runTag,start,end,out_w,out_h,scale,period_step_dip,transparent
+# Notes:
+# - Set aligned_n to a single integer N to export only alignedN{N} per pressure/trial.
+# - Use runTag containing 'aligned-dot-index' so DotLab matcher recognizes dot candidates.
+pressure_start,pressure_end,pressure_step,aligned_n,trials,runTag,start,end,out_w,out_h,scale,period_step_dip,transparent
+0.03,1.0,0.0001,,1,aligned-dot-index,,,,,,,true

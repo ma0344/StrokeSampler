@@ -1,4 +1,4 @@
-﻿using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Text;
 using System;
 using System.Collections.Generic;
@@ -13,6 +13,9 @@ using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using StrokeSampler.Helpers;
+using System.IO;
+using System.Threading.Tasks;
 using Windows.Storage.Streams;
 using Windows.UI;
 using Windows.UI.Input.Inking;
@@ -358,7 +361,7 @@ namespace StrokeSampler
                 }
             }
             if (count < 1) count = 1;
-            if (count > 500) count = 500;
+            //if (count > 500) count = 500;
 
             float dy;
             if (!float.TryParse(StairDyTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out dy))
@@ -368,7 +371,7 @@ namespace StrokeSampler
                     dy = 2f;
                 }
             }
-            if (Math.Abs(dy) < 0.1f) dy = 0.1f;
+            if (Math.Abs(dy) < 0.001f) dy = 0.001f;
 
             var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(this);
             if (IgnorePressureCheckBox?.IsChecked == true) attributes.IgnorePressure = true;
@@ -623,6 +626,356 @@ namespace StrokeSampler
             await ExportRadialSamplesSummary.ExportAsync(this);
          }
 
+        private async void RunAlignedN1To12PresetButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var baseSettings = ReadS200AlignedBatchSettingsFromUi();
+                if (baseSettings is null) return;
+
+                var startUI = StartPositionTextBox?.Text ?? "";
+                var endUI = EndPositionTextBox?.Text ?? "";
+
+                // pressure は aligned 系の既存運用に合わせて Dot512 Pressure を使用
+                var pressure = UIHelpers.GetDot512Pressure(this);
+
+                var chooseDialog = new ContentDialog
+                {
+                    Title = "AlignedN 1..12 preset",
+                    Content = "Choose output folder for alignedN=1..12 series.",
+                    PrimaryButtonText = "Choose folder",
+                    SecondaryButtonText = "Use LocalFolder",
+                    CloseButtonText = "Cancel"
+                };
+                var choice = await chooseDialog.ShowAsync();
+                if (choice == ContentDialogResult.None) return;
+
+                StorageFolder folder;
+                if (choice == ContentDialogResult.Secondary)
+                {
+                    folder = await GetAlignedJobsDefaultOutputFolderAsync();
+                }
+                else
+                {
+                    var folderPicker = new FolderPicker { SuggestedStartLocation = PickerLocationId.PicturesLibrary };
+                    folderPicker.FileTypeFilter.Add(".png");
+                    folder = await folderPicker.PickSingleFolderAsync();
+                    if (folder is null) return;
+                }
+
+                var runTag = baseSettings.RunTag;
+                if (string.IsNullOrWhiteSpace(runTag))
+                {
+                    runTag = "alignedN1to12-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+                }
+
+                var suggested = BuildAlignedJobsSuggestedFolderName(
+                    purpose: "AlignedPreset_N1-12",
+                    baseSettings: baseSettings,
+                    startUI: startUI,
+                    endUI: endUI,
+                    runTag: runTag,
+                    pStart: pressure,
+                    pEnd: pressure,
+                    pStep: null);
+                folder = await folder.CreateFolderAsync(suggested, CreationCollisionOption.OpenIfExists);
+
+                // ExportAlignedDotIndexSeriesAsync は 1..dotCount の連番を一括生成する。
+                // ここでは dotCount=12 を1回だけ呼んで、alignedN1..12 を一発で出す。
+                await ExportS200Service.ExportAlignedDotIndexSeriesAsync(
+                    mp: this,
+                    folder: folder,
+                    isTransparentBackground: S200AlignedTransparentOutputCheckBox?.IsChecked == true,
+                    pressure: pressure,
+                    exportScale: baseSettings.ExportScale,
+                    dotCount: 12,
+                    periodStepDip: baseSettings.PeriodStepDip,
+                    startXDip: baseSettings.StartXDip,
+                    startYDip: baseSettings.StartYDip,
+                    lDip: baseSettings.LineLengthDip,
+                    outWidthDip: baseSettings.OutWidthDip,
+                    outHeightDip: baseSettings.OutHeightDip,
+                    roiLeftDip: 0,
+                    roiTopDip: 0,
+                    runTag: runTag);
+
+                _ = new ContentDialog
+                {
+                    Title = "AlignedN 1..12 preset",
+                    Content = $"Done.\nfolder={folder.Path}",
+                    CloseButtonText = "OK"
+                }.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                _ = new ContentDialog
+                {
+                    Title = "Error",
+                    Content = ex.ToString(),
+                    CloseButtonText = "OK"
+                }.ShowAsync();
+            }
+        }
+
+        private static async Task<StorageFolder> GetAlignedJobsDefaultOutputFolderAsync()
+        {
+            var root = ApplicationData.Current.LocalFolder;
+            var runs = await root.CreateFolderAsync("AlignedJobsRuns", CreationCollisionOption.OpenIfExists);
+            return runs;
+        }
+
+        private static string SanitizeFolderName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return "run";
+            foreach (var c in Path.GetInvalidFileNameChars())
+            {
+                name = name.Replace(c, '_');
+            }
+            return name.Trim();
+        }
+
+        private static string BuildAlignedJobsSuggestedFolderName(
+            string purpose,
+            S200AlignedBatchSettings baseSettings,
+            string startUI,
+            string endUI,
+            string runTag,
+            double? pStart,
+            double? pEnd,
+            double? pStep)
+        {
+            string pPart;
+            if (pStart.HasValue && pEnd.HasValue && pStep.HasValue)
+            {
+                pPart = $"P{pStart.Value:0.########}-P{pEnd.Value:0.########}_step{pStep.Value:0.########}";
+            }
+            else if (pStart.HasValue)
+            {
+                pPart = $"P{pStart.Value:0.########}";
+            }
+            else
+            {
+                pPart = "P";
+            }
+
+            var ts = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+            var name = $"{purpose}_{pPart}_scale{baseSettings.ExportScale}_W{baseSettings.OutWidthDip}H{baseSettings.OutHeightDip}_start{startUI}_end{endUI}_{runTag}_{ts}";
+            return SanitizeFolderName(name);
+        }
+
+        private async void RunS200AlignedJobsCsvButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // sanity: click is wired
+                Debug.WriteLine("RunS200AlignedJobsCsvButton_Click: start");
+
+                var picker = new FileOpenPicker
+                {
+                    SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+                    ViewMode = PickerViewMode.List
+                };
+                picker.FileTypeFilter.Add(".csv");
+
+                var csvFile = await picker.PickSingleFileAsync();
+                if (csvFile is null) return;
+
+                // UWPでは csvFile.Path が空/アクセス不可になることがあるため、StorageFileから直接読む
+                var csvPath = csvFile.Path;
+                if (string.IsNullOrWhiteSpace(csvPath))
+                {
+                    Debug.WriteLine("RunS200AlignedJobsCsvButton_Click: csvFile.Path is empty (UWP)");
+                }
+
+                var baseSettings = ReadS200AlignedBatchSettingsFromUi();
+                if (baseSettings is null) return;
+
+                var startUI = StartPositionTextBox?.Text ?? "";
+                var endUI = EndPositionTextBox?.Text ?? "";
+
+                var useDefaultFolder = false;
+                var chooseDialog = new ContentDialog
+                {
+                    Title = "AlignedJobs",
+                    Content = "Choose output folder. If FolderPicker is problematic in your environment, you can use the app LocalFolder instead.",
+                    PrimaryButtonText = "Choose folder",
+                    SecondaryButtonText = "Use LocalFolder",
+                    CloseButtonText = "Cancel"
+                };
+                var choice = await chooseDialog.ShowAsync();
+                if (choice == ContentDialogResult.None) return;
+                useDefaultFolder = choice == ContentDialogResult.Secondary;
+
+                StorageFolder folder;
+                if (useDefaultFolder)
+                {
+                    folder = await GetAlignedJobsDefaultOutputFolderAsync();
+                }
+                else
+                {
+                    var folderPicker = new Windows.Storage.Pickers.FolderPicker { SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary };
+                    folderPicker.FileTypeFilter.Add(".png");
+                    folder = await folderPicker.PickSingleFolderAsync();
+                    if (folder is null) return;
+                }
+                var jobs = await AlignedJobsCsv.ReadAsync(csvFile);
+                Debug.WriteLine($"RunS200AlignedJobsCsvButton_Click: jobs={jobs.Count}");
+
+                // Use first job to annotate P range if available
+                double? pStartMeta = null;
+                double? pEndMeta = null;
+                double? pStepMeta = null;
+                if (jobs.Count > 0)
+                {
+                    pStartMeta = jobs[0].PressureStart;
+                    pEndMeta = jobs[0].PressureEnd;
+                    pStepMeta = jobs[0].PressureStep;
+                }
+
+                var effectiveRunTag = baseSettings.RunTag;
+                if (jobs.Count > 0 && !string.IsNullOrWhiteSpace(jobs[0].RunTag))
+                {
+                    effectiveRunTag = jobs[0].RunTag!;
+                }
+                var suggested = BuildAlignedJobsSuggestedFolderName(
+                    purpose: "AlignedJobs",
+                    baseSettings: baseSettings,
+                    startUI: startUI,
+                    endUI: endUI,
+                    runTag: effectiveRunTag,
+                    pStart: pStartMeta,
+                    pEnd: pEndMeta,
+                    pStep: pStepMeta);
+                folder = await folder.CreateFolderAsync(suggested, CreationCollisionOption.OpenIfExists);
+                foreach (var job in jobs)
+                {
+                    // start/endはUIの書式（"x,y"）をそのまま使う前提
+                    var sx = baseSettings.StartXDip;
+                    var sy = baseSettings.StartYDip;
+                    var lDip = baseSettings.LineLengthDip;
+                    if (!string.IsNullOrWhiteSpace(job.StartXY) && TryParsePointText(job.StartXY, out var x, out var y))
+                    {
+                        sx = x;
+                        sy = y;
+                    }
+                    if (job.LineLengthDip.HasValue && job.LineLengthDip.Value > 0)
+                    {
+                        lDip = job.LineLengthDip.Value;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(job.EndXY)
+                        && TryParsePointText(job.EndXY, out var ex, out var ey))
+                    {
+                        var dx = ex - sx;
+                        var dy = ey - sy;
+                        lDip = Math.Sqrt((dx * dx) + (dy * dy));
+                    }
+
+                    var mode = (job.AlignedMode ?? "").Trim();
+                    if (string.Equals(mode, "dot-index-single", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var outWDip = job.OutWidthDip ?? baseSettings.OutWidthDip;
+                        var outHDip = job.OutHeightDip ?? baseSettings.OutHeightDip;
+                        var scale = job.ExportScale ?? baseSettings.ExportScale;
+                        var periodStepDip = job.PeriodStepDip ?? baseSettings.PeriodStepDip;
+                        var trials = job.Trials ?? baseSettings.Trials;
+                        var runTag = job.RunTag ?? baseSettings.RunTag;
+                        var isTransparent = job.Transparent ?? (S200AlignedTransparentOutputCheckBox?.IsChecked == true);
+                        var nSingle = job.SingleN ?? job.DotCount ?? (baseSettings.DotCount > 0 ? baseSettings.DotCount : 1);
+                        nSingle = Math.Clamp(nSingle, 1, 200);
+
+                        var pStart = job.PressureStart ?? baseSettings.BatchPStart;
+                        var pEnd = job.PressureEnd ?? baseSettings.BatchPEnd;
+                        var pStep = job.PressureStep ?? baseSettings.BatchPStep;
+                        if (pStep <= 0) pStep = 0.01;
+                        if (pEnd < pStart) { var tmp = pStart; pStart = pEnd; pEnd = tmp; }
+
+                        for (var t = 1; t <= trials; t++)
+                        {
+                            var tagT = new S200AlignedBatchSettings(
+                                outWidthDip: outWDip,
+                                outHeightDip: outHDip,
+                                exportScale: scale,
+                                periodStepDip: periodStepDip,
+                                dotCount: 1,
+                                trials: trials,
+                                runTag: runTag,
+                                batchPStart: pStart,
+                                batchPEnd: pEnd,
+                                batchPStep: pStep,
+                                startXDip: sx,
+                                startYDip: sy,
+                                lineLengthDip: lDip,
+                                isTransparentBackground: isTransparent);
+
+                            var effectiveTag = tagT.BuildEffectiveRunTag(t);
+                            for (var p = pStart; p <= pEnd + 1e-12; p += pStep)
+                            {
+                                await ExportS200Service.ExportAlignedDotIndexSingleAsync(
+                                    mp: this,
+                                    folder: folder,
+                                    isTransparentBackground: isTransparent,
+                                    pressure: (float)p,
+                                    exportScale: scale,
+                                    n: nSingle,
+                                    periodStepDip: periodStepDip,
+                                    startXDip: sx,
+                                    startYDip: sy,
+                                    lDip: lDip,
+                                    outWidthDip: outWDip,
+                                    outHeightDip: outHDip,
+                                    runTag: effectiveTag);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var settings = new S200AlignedBatchSettings(
+                            outWidthDip: job.OutWidthDip ?? baseSettings.OutWidthDip,
+                            outHeightDip: job.OutHeightDip ?? baseSettings.OutHeightDip,
+                            exportScale: job.ExportScale ?? baseSettings.ExportScale,
+                            periodStepDip: job.PeriodStepDip ?? baseSettings.PeriodStepDip,
+                            dotCount: job.DotCount
+                                ?? (baseSettings.DotCount > 0
+                                    ? baseSettings.DotCount
+                                    : (job.OutWidthDip ?? baseSettings.OutWidthDip)),
+                            trials: job.Trials ?? baseSettings.Trials,
+                            runTag: job.RunTag ?? baseSettings.RunTag,
+                            batchPStart: job.PressureStart ?? baseSettings.BatchPStart,
+                            batchPEnd: job.PressureEnd ?? baseSettings.BatchPEnd,
+                            batchPStep: job.PressureStep ?? baseSettings.BatchPStep,
+                            startXDip: sx,
+                            startYDip: sy,
+                            lineLengthDip: lDip,
+                            isTransparentBackground: job.Transparent ?? (S200AlignedTransparentOutputCheckBox?.IsChecked == true));
+
+                        await RunS200AlignedBatchAsync(folder, settings);
+                    }
+                }
+
+                _ = new ContentDialog
+                {
+                    Title = "AlignedJobs",
+                    Content = $"Done. jobs={jobs.Count}\n" +
+                              $"start={startUI}\n" +
+                              $"end={endUI}\n" +
+                              $"outW/outH={baseSettings.OutWidthDip}x{baseSettings.OutHeightDip} (DIP)\n" +
+                              $"scale={baseSettings.ExportScale}\n" +
+                              $"period_step_dip={baseSettings.PeriodStepDip:0.########}\n" +
+                              $"folder={folder.Path}",
+                    CloseButtonText = "OK"
+                }.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                _ = new ContentDialog
+                {
+                    Title = "Error",
+                    Content = ex.ToString(),
+                    CloseButtonText = "OK"
+                }.ShowAsync();
+            }
+        }
+
         private async void ExportS200AlignedDotIndexRepeatButton_Click(object sender, RoutedEventArgs e)
         {
             if (!int.TryParse(ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var scale))
@@ -679,15 +1032,16 @@ namespace StrokeSampler
             }
 
             var dotCount = 12;
-            if (int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dc) && dc > 0)
+            if (int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dc)
+                || int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out dc))
             {
-                dotCount = dc;
+                // Allow 0 as "unspecified" to trigger downstream fallbacks.
+                dotCount = Math.Clamp(dc, 0, 200);
             }
-            else if (int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out dc) && dc > 0)
+            else
             {
-                dotCount = dc;
+                dotCount = Math.Clamp(dotCount, 1, 200);
             }
-            dotCount = Math.Clamp(dotCount, 1, 200);
 
             var repeat = 50;
             if (int.TryParse(S200AlignedRepeatTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var rep) && rep > 0)
@@ -708,7 +1062,7 @@ namespace StrokeSampler
             await ExportS200Service.ExportAlignedDotIndexSeriesRepeatedAsync(
                 mp: this,
                 folder: folder,
-                isTransparentBackground: true,
+                isTransparentBackground: S200AlignedTransparentOutputCheckBox?.IsChecked == true,
                 pressure: pressure,
                 exportScale: scale,
                 dotCount: dotCount,
@@ -748,6 +1102,11 @@ namespace StrokeSampler
         private async void ExportCenterAlphaSummaryButton_Click(object sender, RoutedEventArgs e)
         {
             await ExportCenterAlphaSummary.ExportAsync(this);
+        }
+
+        private async void ExportDotStepSweepPseudoLineButton_Click(object sender, RoutedEventArgs e)
+        {
+            await TestMethods.ExportPseudoLineDotStepSweepAsync(this);
         }
 
         private async void ExportRadialFalloffBatchButton_Click(object sender, RoutedEventArgs e)
@@ -842,6 +1201,20 @@ namespace StrokeSampler
 
             dotCount = Math.Clamp(dotCount, 1, 200);
 
+            var runTag = (FindName("S200AlignedRunTagTextBox") as TextBox)?.Text;
+            if (string.IsNullOrWhiteSpace(runTag))
+            {
+                runTag = "run" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+            }
+
+            var trials = 1;
+            var trialsText = (FindName("S200AlignedTrialsTextBox") as TextBox)?.Text;
+            if (!int.TryParse(trialsText, NumberStyles.Integer, CultureInfo.InvariantCulture, out trials))
+            {
+                _ = int.TryParse(trialsText, NumberStyles.Integer, CultureInfo.CurrentCulture, out trials);
+            }
+            trials = Math.Clamp(trials, 1, 1000);
+
             await ExportS200Service.ExportAlignedDotIndexSeriesAsync(
                 mp: this,
                 isTransparentBackground: true,
@@ -855,7 +1228,8 @@ namespace StrokeSampler
                 outWidthDip: outW,
                 outHeightDip: outH,
                 roiLeftDip: 0,
-                roiTopDip: 0);
+                roiTopDip: 0,
+                runTag: runTag);
         }
 
         private async void ExportS200AlignedDotIndexBatchButton_Click(object sender, RoutedEventArgs e)
@@ -927,10 +1301,114 @@ namespace StrokeSampler
             // basePressure は未使用（UI互換のため保持）
             _ = basePressure;
 
+            var settingsSnapshot = ReadS200AlignedBatchSettingsFromUi();
+            if (settingsSnapshot is null) return;
+
             var folderPicker = new Windows.Storage.Pickers.FolderPicker { SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary };
             folderPicker.FileTypeFilter.Add(".png");
             var folder = await folderPicker.PickSingleFolderAsync();
             if (folder is null) return;
+
+            await RunS200AlignedBatchAsync(folder, settingsSnapshot);
+        }
+
+        private async Task RunS200AlignedBatchAsync(StorageFolder folder, S200AlignedBatchSettings settings)
+        {
+            var decimals = settings.DecimalsFromStep();
+            var stepI = (decimal)settings.BatchPStep;
+            var startI = (decimal)settings.BatchPStart;
+            var endI = (decimal)settings.BatchPEnd;
+
+            // ガード: 誤入力で無限/大量生成しない
+            var maxCount = 20000;
+            var count = (int)Math.Floor(((double)(endI - startI) / (double)stepI) + 1.0 + 1e-9);
+            if (count < 1) count = 1;
+            if (count > maxCount) count = maxCount;
+
+            for (var idx = 0; idx < count; idx++)
+            {
+                var pVal = startI + (stepI * idx);
+                if (pVal > endI + 0.0000000001m) break;
+
+                // ファイル名や描画系での表記揺れ・境界ずれを避けるため、stepの小数桁に揃えて丸める
+                var pRounded = Math.Round((double)pVal, decimals, MidpointRounding.AwayFromZero);
+                var pressure = (float)Math.Clamp(pRounded, 0.0, 1.0);
+
+                for (var t = 1; t <= settings.Trials; t++)
+                {
+                    var tag = settings.BuildEffectiveRunTag(settings.Trials <= 1 ? null : t);
+                    await ExportS200Service.ExportAlignedDotIndexSeriesAsync(
+                        mp: this,
+                        folder: folder,
+                        isTransparentBackground: settings.IsTransparentBackground,
+                        pressure: pressure,
+                        exportScale: settings.ExportScale,
+                        dotCount: settings.DotCount,
+                        periodStepDip: settings.PeriodStepDip,
+                        startXDip: settings.StartXDip,
+                        startYDip: settings.StartYDip,
+                        lDip: settings.LineLengthDip,
+                        outWidthDip: settings.OutWidthDip,
+                        outHeightDip: settings.OutHeightDip,
+                        roiLeftDip: 0,
+                        roiTopDip: 0,
+                        runTag: tag);
+                }
+            }
+        }
+
+        private S200AlignedBatchSettings? ReadS200AlignedBatchSettingsFromUi()
+        {
+            if (!int.TryParse(ExportWidthTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var outW))
+            {
+                if (!int.TryParse(ExportWidthTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out outW)) return null;
+            }
+            if (!int.TryParse(ExportHeightTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var outH))
+            {
+                if (!int.TryParse(ExportHeightTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out outH)) return null;
+            }
+
+            var periodStepDip = 1.75;
+            if (double.TryParse(S200AlignedPeriodDipTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var pd) && pd > 0)
+            {
+                periodStepDip = pd;
+            }
+            else if (double.TryParse(S200AlignedPeriodDipTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out pd) && pd > 0)
+            {
+                periodStepDip = pd;
+            }
+
+            var dotCount = 12;
+            if (int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dc) && dc > 0)
+            {
+                dotCount = dc;
+            }
+            else if (int.TryParse(S200AlignedDotCountTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out dc) && dc > 0)
+            {
+                dotCount = dc;
+            }
+            dotCount = Math.Clamp(dotCount, 1, 200);
+
+            var scale = 10;
+            if (int.TryParse(ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var sc) && sc > 0)
+            {
+                scale = sc;
+            }
+            else if (int.TryParse(ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out sc) && sc > 0)
+            {
+                scale = sc;
+            }
+            scale = Math.Clamp(scale, 1, 100);
+
+            var runTag = (FindName("S200AlignedRunTagTextBox") as TextBox)?.Text ?? "";
+
+            var trials = 1;
+            var trialsText = (FindName("S200AlignedTrialsTextBox") as TextBox)?.Text;
+            if (!int.TryParse(trialsText, NumberStyles.Integer, CultureInfo.InvariantCulture, out trials))
+            {
+                _ = int.TryParse(trialsText, NumberStyles.Integer, CultureInfo.CurrentCulture, out trials);
+            }
+            trials = Math.Clamp(trials, 1, 1000);
 
             var pStart = 0.01;
             var pEnd = 1.0;
@@ -949,7 +1427,7 @@ namespace StrokeSampler
                 _ = double.TryParse(S200AlignedBatchPStepTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out pStep);
             }
 
-            if (pStep <= 0) return;
+            if (pStep <= 0) return null;
             if (pStart < 0) pStart = 0;
             if (pEnd < pStart)
             {
@@ -958,34 +1436,48 @@ namespace StrokeSampler
                 pEnd = tmp;
             }
 
-            // ガード: 誤入力で無限/大量生成しない
-            var maxCount = 2000;
-            var count = (int)Math.Floor(((pEnd - pStart) / pStep) + 1.0 + 1e-9);
-            if (count < 1) count = 1;
-            if (count > maxCount) count = maxCount;
+            if (!TryParsePointText(StartPositionTextBox?.Text, out var sxF, out var syF)) return null;
+            if (!TryParsePointText(EndPositionTextBox?.Text, out var exF, out var eyF)) return null;
 
-            for (var idx = 0; idx < count; idx++)
+            var sx = (double)sxF;
+            var sy = (double)syF;
+            var ex = (double)exF;
+            var ey = (double)eyF;
+
+            var lDip = Math.Sqrt(((ex - sx) * (ex - sx)) + ((ey - sy) * (ey - sy)));
+            if (double.TryParse(LineTotalLengthTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var ld) && ld > 0)
             {
-                var pVal = pStart + (pStep * idx);
-                if (pVal > pEnd + 1e-12) break;
-                var pressure = (float)Math.Clamp(pVal, 0.0, 1.0);
-
-                await ExportS200Service.ExportAlignedDotIndexSeriesAsync(
-                    mp: this,
-                    folder: folder,
-                    isTransparentBackground: true,
-                    pressure: pressure,
-                    exportScale: scale,
-                    dotCount: dotCount,
-                    periodStepDip: periodStepDip,
-                    startXDip: sx,
-                    startYDip: sy,
-                    lDip: lDip,
-                    outWidthDip: outW,
-                    outHeightDip: outH,
-                    roiLeftDip: 0,
-                    roiTopDip: 0);
+                lDip = ld;
             }
+            else if (double.TryParse(LineTotalLengthTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out ld) && ld > 0)
+            {
+                lDip = ld;
+            }
+
+            return new S200AlignedBatchSettings(
+                outWidthDip: outW,
+                outHeightDip: outH,
+                exportScale: scale,
+                periodStepDip: periodStepDip,
+                dotCount: dotCount,
+                trials: trials,
+                runTag: runTag,
+                batchPStart: pStart,
+                batchPEnd: pEnd,
+                batchPStep: pStep,
+                startXDip: sx,
+                startYDip: sy,
+                lineLengthDip: lDip,
+                isTransparentBackground: true,
+                isEraser: EraserRadioButton.IsChecked ?? false,
+                isPencil: PencilRadioButton.IsChecked ?? false,
+                isBlack: BlackRadioButton.IsChecked ?? false,
+                isWhite: WhiteRadioButton.IsChecked ?? false,
+                isTransparent: TransparentRadioButton.IsChecked ?? false,
+                isRed: RedRadioButton.IsChecked ?? false,
+                isGreen: GreenRadioButton.IsChecked ?? false,
+                isBlue: BlueRadioButton.IsChecked ?? false
+                );
         }
 
         private async void ExportHighResPngButton_Click(object sender, RoutedEventArgs e)
@@ -1034,9 +1526,11 @@ namespace StrokeSampler
             var endText = (FindName("EndPositionTextBox") as TextBox)?.Text;
             var pointCountText = (FindName("LinePointCountTextBox") as TextBox)?.Text;
             var pointStepText = (FindName("LinePointStepTextBox") as TextBox)?.Text;
+            var stairDyText = (FindName("StairDyTextBox") as TextBox)?.Text;
+            var stairCountText = (FindName("StairCountTextBox") as TextBox)?.Text;
 
             var ignorePressure = IgnorePressureCheckBox?.IsChecked == true;
-            TestMethods.DrawLineStrokeFixed(this, startText, endText, pointCountText, pointStepText, ignorePressure);
+            TestMethods.DrawLineStrokeFixedMulti(this, startText, endText, pointCountText, pointStepText, UIHelpers.GetLineFixedStepY(stairDyText), UIHelpers.GetLineFixedRepeatCount(stairCountText), ignorePressure);
         }
 
         private void DrawHoldStrokeFixedButton_Click(object sender, RoutedEventArgs e)

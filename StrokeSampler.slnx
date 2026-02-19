@@ -6,6 +6,13 @@
     <Platform Name="x86" />
   </Configurations>
   <Project Path="DotLab/DotLab.csproj" Id="5cce61ff-a082-4cc9-b7cd-ec23461e388e" />
+  <Project Path="InkDrawGen/InkDrawGen.csproj" Id="6a1c292b-dd53-42de-bcbf-3b0e19036dc5">
+    <Platform Solution="*|ARM" Project="ARM" />
+    <Platform Solution="*|ARM64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|x86" Project="x86" />
+    <Deploy />
+  </Project>
   <Project Path="SkiaTester/SkiaTester.csproj" Id="8269c45d-0dac-463e-b042-2538734112fd" />
   <Project Path="StrokeSampler.csproj" Id="366147a3-5f31-4d03-b847-0f693bae938c">
     <Platform Solution="*|ARM" Project="ARM" />

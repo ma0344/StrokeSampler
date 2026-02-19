@@ -1,0 +1,2 @@
+pressure_start,pressure_end,pressure_step,s_start,s_end,s_step,n_start,n_end,n_step,scale,dpi,start,end,roi_x,roi_y,roi_w,roi_h,runTag,transparent
+0.95,1,0.025,"200","200",0,1,1,0,10,96,"100,101","200,101",0,0,18,202,floor-N1N2,false

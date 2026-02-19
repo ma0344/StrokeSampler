@@ -1,5 +1,7 @@
 # 「Drow to InkCanvas with Pencil Strokes from code.md」の質問への回答
 
+> 注: 実験・検証の具体的な実行手順は `docs/pencil-parity-playbook.md` に集約した（手順書）。本ファイルはQ&Aの整理として維持する。
+
 この文書は、`Drow to InkCanvas with Pencil Strokes from code.md` 内の「私「…」」の質問に対し、現時点で妥当な前提（本リポジトリの方針を含む）で回答を整理したものです。
 
 > 注: 会話ログには誤情報が含まれます（例: `InkToolbar.GetInkingAttributes()`、`PencilProperties.Hardness` を確実に操作できる前提、`StrokeContainer.SaveAsync` を画像保存として扱う等）。本回答はそれらに依存しません。

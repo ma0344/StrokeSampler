@@ -1,0 +1,15 @@
+# AlignedJobs CSV: export alignedN1..12 for a pressure sweep around the N1 floor
+#
+# Notes
+# - Run via StrokeSampler: `Run AlignedJobs CSV`
+# - This file contains only the fields that the CSV runner currently consumes.
+# - start/end/outW/outH/scale/period are taken from the current UI values at runtime (not from this CSV),
+#   unless you add the optional columns shown in the commented template below.
+#
+# Minimal columns
+pressure_start,pressure_end,pressure_step,aligned_n,trials,runTag
+0.07428,0.07430,0.00001,12,10,floor-N1to12
+
+# Optional override template (uncomment and add values if you want CSV-driven geometry/output too)
+# pressure_start,pressure_end,pressure_step,aligned_n,trials,runTag,start,end,out_w,out_h,scale,period_step_dip
+# 0.07428,0.07430,0.00001,12,10,floor-N1to12,"100,101","1260,101",180,2020,10,1.75

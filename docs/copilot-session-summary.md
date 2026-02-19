@@ -1,5 +1,9 @@
 # Copilot 作業サマリ（スレッド共有用）
 
+## 追加: 検証手順書の集約（2026-02）
+- 手順書: `docs/pencil-parity-playbook.md`
+- 以後の検証手順（InkDrawGenでの生成→DotLabでの差分/集計→目視確認）は上記へ集約する。
+
 ## 目的
 このスレッドで実施した変更内容・現状を、別スレッド（別担当/別Copilot）に引き継ぐためのメモです。
 
@@ -58,7 +62,139 @@
 - 目的は「移動（責務分離）」で、挙動変更や最適化は基本的に行わない。
 - ビルドが通ることを都度確認。
 
+## 追加実装: DotLab αトーンカーブ（GIMP .crv）LUTの可視化出力（2026-02）
+- 目的: GIMPのトーンカーブをαチャンネルに適用した変換を、Dot側に同じ変換として適用し、線側αとの比較を行う。
+- 方針: 3D LUT（`.cube`）は使わず、GIMP `.crv` の `(channel alpha)` にある `samples 256` を 1D LUT（0..1正規化の出力テーブル）として扱う。
+- 実装: `DotLab/Analysis/LineN1VsDotN1Matcher.cs` で `DotLab/LUT/Dot P1 LUT.crv` を読み、`Match line N1 vs dot N1` 実行時に `*-lut-*` の可視化PNGを追加出力。
+  - 出力例: `lineN1-vs-dotN1-heatmap-lut-th1(-fullw)-P{p}.png`, `lineN1-vs-dotN1-diffmag-lut-th1(-fullw)-P{p}.png`
+- 備考: ビルド時に `DotLab.exe` がロックされる場合があるため、実行中のDotLabを終了してからビルドする。
+
+## 追加実装: LUT未検出/読込失敗時の警告ダイアログ（2026-02）
+- 目的: 起動方法（作業ディレクトリ）差などで `.crv` が見つからずLUT無効になる場合に、原因調査ができるようにする。
+- 実装: `Match line N1 vs dot N1` 実行時に、LUTがロードできない場合は `requested/resolved/error` を含む警告ダイアログを1回表示。
+- 確認: LUTファイル名変更で「見つからない」警告が表示されることを確認。
+
+## 観測: LUTは高圧側で改善するが低圧側で悪化し得る（2026-02）
+- `th=1` のheatmap/CSVでは、P=0.9〜1.0で over(青)が大きく減る一方、低圧側では under(緑)が増えるケースがある。
+- 次アクション: LUT適用の閾値（th）または適用条件（圧力帯域/α帯域）の調査が必要。
+
 ## 実施済み（主な委譲/移植）
+
+## 追加実装: DotLab LineN1 vs DotN1 (Opacity sweep) バッチとサマリCSV（2026-02）
+- 目的: LineN1フォルダとDot(Opacity sweep)フォルダを別指定し、P一致の組み合わせでAlphaDiff統計を総当たり出力する。
+- UI: Analysisに `Line folder` / `Dot (Opacity sweep) folder` / `CSV output folder` と `Run batch and export CSV` を追加。
+- 出力: `lineN1-vs-dotN1-opacitysweep-match-YYYYMMDD-HHmmss.csv`（総当たり）と、同一出力フォルダへ
+  `lineN1-vs-dotn1-opacitysweep-summary-YYYYMMDD-HHmmss.csv`（line_fileごとに roi_diff_sum01 最小行を抽出）を追加出力。
+- CSV列: dot側の `dot_file` から `-Op(value)` をパースして `dot_opacity` 列を追加。
+
+## 修正: InkDrawGen Opのファイル名端数（2026-02）
+- 原因: Opを描画用にfloat化した値をそのままファイル名へ出していたため、`0.15f -> 0.150000005...` の表記が出る。
+- 対応: 描画用(float)とファイル名用(double, 丸め済み)を分離し、ファイル名には丸め済みのOpを出すように修正。
+
+## 追加実装: StrokeSampler 疑似線(Dot連続)の更新点(DotStep)スイープPNG出力（2026-02）
+- 目的: 更新点（点間隔）をレンジ指定でスイープし、他の値を固定したまま疑似線（Dotを並べたスタンプ列）を生成してHiRes PNGを一括出力する。
+- UI: `DotStep(px) start/end/step` と `Export PseudoLine (DotStep Sweep)` ボタンを追加。
+- 実装: `Helpers/TestMethods.ExportPseudoLineDotStepSweepAsync` を追加し、`MainPage.xaml.cs` から1行委譲。
+- 備考: 出力は指定のStart/End（X方向長）に対して `count=floor(len/step)+1` のdot数を自動算出して並べる。ファイル名に `dotstep{step}` を含める。
+
+## 追加実装: InkDrawGen 疑似線(Dot連続)のDotStep(少数)入力と出力（2026-02）
+- UI: `InkDrawGen/MainPage.xaml` に `dotStep start/end/step` を追加。
+- 状態: `InkDrawGenUiState` に `DotStepX` を追加し、`InkDrawGenUiReader` で読み取る。
+- 生成: `RunInkDrawJobsService` の `JobType=Line` で `dotStep>0` の場合、Lineストロークの代わりに Start→End のX方向に Dot を `dotStep` 刻みで並べて疑似線としてレンダ（少数指定可）。
+- 命名: `extraSuffix` に `dotstepline-step{dotStep}` を付与してファイル名に残す。
+- 追記: DotStepはレンジ指定でスイープし、dotStepごとに疑似線PNGを個別出力する（FirstOrDefaultで固定しない）。
+
+## 修正: InkDrawGen Opスイープ(0.001刻み)とファイル名Op表記の安定化（2026-02）
+- `OpacityRangeSpec` の正規化を0.001刻みに統一し、デバッグ残骸を削除。
+- `FileNameBuilder` の `-Op` 表記を `0.###` に変更し、過剰桁や揺れを抑止。
+- `RunInkDrawJobsService` の `opacityTag` 生成（小数第3位丸め）と意図コメントを整合。
+
+## 修正: InkDrawGen Opスイープ(0.0001刻み)対応（2026-02）
+- `OpacityRangeSpec.Normalize` の丸めを小数第4位に変更（0.0001刻み）。
+- `FileNameBuilder` の `-Op` 表記を `0.####` に変更。
+- `RunInkDrawJobsService` の `opacityTag` 生成（小数第4位丸め）へ変更し整合。
+
+## 追加実装: InkDrawGen 2点疑似線(dot2)モード（2026-02）
+- UI: `InkDrawGen/MainPage.xaml` に `2点疑似線（始点+更新点1つ）` チェックを追加。
+- 状態: `InkDrawGenUiState` に `DotStepTwoPoints` を追加し、`InkDrawGenUiReader` で読み取る。
+- 生成: `JobType=Line` かつ `dotStep>0` のとき、チェックONならDotを常に2点（`(x0,y0)` と `(x0+dotStep,y0)`）だけ描画してPNG出力。
+- 命名: `extraSuffix` を `dot2-step{dotStep}` とし、通常のDot連続疑似線(`dotstepline-step`)と区別できるようにした。
+
+## 追加実装: InkDrawGen 線(2点)生成ボタン（2026-02）
+- UI: `InkDrawGen/MainPage.xaml` に `線(2点)生成` ボタンを追加。
+- ハンドラ: `InkDrawGen/MainPage.xaml.cs` から `RunInkDrawJobsService.RunSingleLine2PointsAsync` に委譲。
+- 動作: UIの `startX/Y` を始点、`endX/Y` を終点として2点のLine InkStrokeを生成する（dotStep疑似線モードを無効化して通常Line描画を明示）。
+
+## 変更: InkDrawGenのファイル名へStartX/EndXを付与（2026-02）
+- `RunInkDrawJobsService` の `extraSuffix` に `StartX{...}-EndX{...}` を追加し、出力PNGの区別を容易にした。
+
+## 追加実装: InkDrawGen 線(2点) EndXスイープ出力（2026-02）
+- UI: `endX sweep start/end/step` と `線(2点) EndXスイープ` ボタンを追加。
+- 動作: `JobType=Line` の2点線を強制し、`endX` をレンジで差し替えて複数PNGを出力（dotStep疑似線は無効化）。
+
+## 確定: N1始点ROIはDot Op=0.1795で完全一致（2026-02）
+- DotLabのAlphaDiff（同一ROI切り出し）比較で、`S200 P1` の線(alignedN1)始点ROIに対して、単点Dotの `Op=0.1795`（同率で `Op=0.1796`）が `roi_diff_sum01=0` となり完全一致。
+- 以降の検証は濃度Opを `0.1795` に固定し、更新点（点列/間隔）由来の差分に集中できる。
+
+## 追加観測: 2点LineのEndXスイープでもN1はDot Opで完全一致できる（2026-02）
+- `S200/DPI96/P1` の2点Lineを `Op=1` 固定で描画し、`endX=118..280 step18` をスイープしたところ、各endXごとに単点Dotの `Op` を調整することで `roi_diff_sum01=0`（完全一致）を達成。
+- したがって、更新点数/線長に応じてN1の実効濃度スケール（単点Dotに対する必要Op）が変化する（2..12程度で顕著）。
+
+## 追記: 更新点13点目以降でN1の最適Opが0.1795へ定常化（2026-02）
+- EndXスイープを `EndX334` まで伸ばすと、`EndX316` / `EndX334` で `best_dot_opacity=0.17950`（完全一致）となり、更新点13点目以降で定常化することを確認。
+- `EndX298`（更新点12）では `best_dot_opacity=0.17860`（完全一致）で、ここが定常化直前の遷移域。
+
+## 追加実装: DotLabバッチ比較を全画像(w×h)のAlphaDiffに対応（2026-02）
+- `Run batch and export CSV`（`RunLineN1VsDotOpacityBatchButton`）に `Use full image (w×h) AlphaDiff` オプションを追加。
+  - ON: 画像全体のAlphaDiff統計で比較し、サマリbest選択は `diff_sum01` / `diff_nonzero_px`。
+  - OFF: 従来通り左帯ROI(18px)の比較（N1用途）。
+
+## 修正: InkDrawGen疑似線(dotstep)のスイープで小数stepが同名上書きになる問題（2026-02）
+- `dotStep` のファイル名表記が `0.###` 丸めだったため、`step=0.1` などのスイープでサフィックスが同一になり、出力が上書きされて「同じ画像しか出ない」ように見えるケースがあった。
+- `InkDrawGen/Helpers/RunInkDrawJobsService.cs` の `dot2-step{...}` / `dotstepline-step{...}` 表記を `0.#####` に拡張して区別できるようにした。
+
+## 追加調査/修正: dot2疑似線でdotStepを変えても出力PNGが同一に見える件（2026-02）
+- `dot2 dbg` ログにより、生成段階では `p1=(startX+dotStep, startY)` と `BoundingRect.X` が `17, 17.1, 17.2...` のように変化することを確認。
+- レンダ時の座標変換順の不整合の可能性を減らすため、`InkOffscreenRenderService` のROI平行移動を `Scale * Translation` の順に統一した。
+
+## 修正: DotLab ExportAlphaDiff が常にdiff=0になるケース（2026-02）
+- `Export Alpha Diff (PNG vs PNG)` のCSVに入力2ファイルの `path/size/SHA256` を出力するようにして、入力が本当に別物か確認できるようにした。
+- 入力PNGのSHA256が異なるのに `diff_max=0` となる場合があり、原因は `ImageAlphaDiff` が `SKBitmap.GetPixel().Alpha` に依存していたこと。
+  - デコード経路によりAlphaが常に255のように見えるケースがあり、差分が常に0になっていた。
+  - `SKBitmap.Pixels` 配列から `Alpha` を参照する方式へ変更して解消した。
+
+## 修正: DotLab バッチ比較(LineN1VsDotN1BatchMatcher)でも同様にdiff=0になるケース（2026-02）
+- `LineN1VsDotN1BatchMatcher` の `ExtractFullAlpha` / `ExtractLeftRoiAlpha` も `SKBitmap.GetPixel().Alpha` を使っていたため、同様に `SKBitmap.Pixels` 参照へ切り替えた。
+
+## Verified: S200 dot2疑似線のdotStepは18.00が最適（2026-02）
+- 条件: `2180x2020` / `dpi96` / `S200` / `P1` / `N1` / `scale10` / 透過PNG
+- DotLabのalpha差分（全画素 `|A1-A2|`）で `diff_sum01` 最小の `dot2-step` を採用。
+- スイープ結果より `dot2-step=18.00` が最適（`17.9`〜`18.9` 含む）。
+- `dot2-step17.99` vs `dot2-step18.01` の差分可視化では、2つ目ドットの輪郭のみ差が出て円内部のもじゃもじゃは出ないため、残差は主に微小な位置差（平行移動）と解釈できる。
+
+## 追加: InkDrawGenの線(2点) StartXスイープ（2026-02）
+- 目的: `EndX` を固定したまま `StartX` を範囲でスイープして複数長さのオリジナル線を生成する。
+- UI: `線(2点) StartXスイープ` ボタンを追加（入力欄は `endX sweep start/end/step` を流用）。
+- 注意: ROIが `x=0,y=0,w=18,h=202` のように原点周辺のままだと、`StartX` が負の線はROI外になり空画像になる。スイープする線分がROIに入るよう `RoiX/RoiW` を調整する。
+
+## 追加: InkDrawGenのdotN疑似線（StartX基準でN個固定）（2026-02）
+- 目的: 指定した `dotStep`（更新値）と `N` 個数でDotを並べた疑似線を生成し、同じ長さのオリジナル線と目視比較する。
+- 設定:
+  - `JobType = Line`
+  - `dotStep start/end/step` に `dotStep` を設定（スイープしたい場合は範囲指定も可）
+  - `N個疑似線（StartX基準でN個固定）` をON
+  - `dot count` に N を入力
+  - `Op` は固定値でよければ `OpStart=OpEnd` にする
+- 出力ファイル名: サフィックスに `dotN{N}-step{dotStep}` が付与される
+
+### CSVバッチでの指定
+- 列: `dot_step_fixed_count`（true/false）
+- 列: `dot_step_count`（N。1以上）
+- 別名: `dotStepFixedCount` / `dotStepCount` も使用可
+
+### 個数Nのスイープ
+- UI: `dot count start/end/step` を設定すると、Nを範囲でスイープして出力する（`N個疑似線` がONであること）。
+- CSV: `dot_step_count_start` / `dot_step_count_end` / `dot_step_count_step` を指定すると、Nを範囲でスイープして出力する。
 
 ### 1) Radial 系
 - `ExportRadialAlphaCsvButton_Click()`
@@ -218,3 +354,73 @@
 ## 次に起こり得る作業
 - `ExportHelpers` に残る他の export（`ExportPngAsync` など）も同様に個別ファイル化するか検討。
 - `ExportEstimatedPaperNoise` のアルゴリズム整合（「意図通りのF(r)・noise推定」）が必要なら仕様を詰めて調整。
+
+---
+
+## Aligned line N1 vs aligned-dot-index N1: 点→線先頭の近似（2026-02）
+
+### 目的
+- 線描画（`N1N2` の先頭領域）と、単点（`aligned-dot-index`）が「同じ領域」を切り出せる状態を作り、
+  - 形（2値マスク）
+  - 濃さ（α値）
+ について「最も近い組み合わせ（P対応）」を探索・可視化する。
+
+### 追加実装（StrokeSampler 側）
+- 単点（`aligned-dot-index`）を **単一Nのみ** 出力する経路を追加。
+  - `Helpers/ExportS200Service.cs`: `ExportAlignedDotIndexSingleAsync(...)`
+  - `Helpers/AlignedJobsCsv.cs`: CSV拡張（`aligned_mode`/`single_n`）
+  - `MainPage.xaml.cs`: `aligned_mode=dot-index-single` のジョブを解釈して P sweep を回す。
+- 運用: `runTag` に `aligned-dot-index` を含めると DotLab 側が単点候補として認識。
+
+### 追加実装（DotLab 側）
+- `DotLab/Analysis/LineN1VsDotN1Matcher.cs`: フォルダ内の
+  - 線候補（`-alignedN1` かつ `N1N2` を含む）
+  - 単点候補（`aligned-dot-index` / `aligned-dot-index-` / `aligned-dot-index-single` を含む）
+ から、線1枚ごとに最も近い単点を探索して CSV 化。
+
+#### 比較ROI（確定）
+- X: 左端 `18px`（`RoiWidthPx=18`）
+- Y: `435..1591`（`RoiY0=435`, `RoiY1Exclusive=1592`）
+- αのみ使用（RGBは無視）。
+
+#### 形状比較（2値化）
+- 2値化閾値 `th = 1,2,3,4` を同時に算出。
+- `IoU`/`mismatch`/`coverage`/`inter`/`union` を出力し、best/second を記録。
+- 「空っぽ一致（union=0でIoU=1）」が best にならないよう自動排除を導入。
+  - `MinUnionGate=200`
+  - `minCov=200/ROI画素数` を line/dot 双方に適用（ON画素が200px未満の候補は除外）
+
+#### 濃さ補正の推定
+- 形が近い候補に対して、線≒k×点 となるスケール係数 `alpha_k`（最小二乗）を推定。
+- `alpha_l1_scaled`（k適用後の平均|α差|）を出力。
+  - 形が近い（IoUが高い）候補ほど、単純なαスケールで見た目が寄る可能性がある。
+
+#### 可視化（ヒートマップ/差分強度）
+- best組み合わせについて、ROI内の2値マスク差分を画像化（thごと）。
+  - dotのみON: 青 / lineのみON: 緑 / 両方ON: 黒 / 両方OFF: 白
+  - 出力: `lineN1-vs-dotN1-heatmap-th{th}-P{lineP}.png`
+- さらに **全幅版（180px）**も追加出力（`-fullw-` 付き）。
+  - 出力: `lineN1-vs-dotN1-heatmap-th{th}-fullw-P{lineP}.png`
+- α差分の大きさ（|α_line-α_dot|）を赤強度で可視化（th=1, ROI版＋全幅版）。
+  - 出力: `lineN1-vs-dotN1-diffmag-th1-P{lineP}.png`
+  - 出力: `lineN1-vs-dotN1-diffmag-th1-fullw-P{lineP}.png`
+
+### 今後ひっくり返りにくい事実（観測）
+- ヒートマップにより、差異は主に輪郭（境界）に出る。
+- P<=0.8 では黒以外に青/緑が両方出るが、P=0.9/1.0 では黒以外が青のみ（=点側のON領域が外側に出る傾向）。
+  - 高圧帯域のIoU低下は「線が太い」より「点側が外に出る（薄縁/外周ONが残る）」寄りの可能性。
+
+（追記・定量化）
+- `th=1` の best について、差分領域を over/under として定量化した。
+  - `over_area`: dotのみON（ヒートマップ青）
+  - `under_area`: lineのみON（ヒートマップ緑）
+  - `over_alpha_median` / `under_alpha_median`: それぞれの領域でのα差中央値
+- 代表例: P=0.9/1.0 では `under_area=0` かつ `over_alpha_median=1..2` となり、IoU低下要因が「点側の極薄縁（α=1〜2）の過剰」で説明できる。
+
+（追記・低圧対応）
+- 低圧 `P=0.1` は、空っぽ/疎すぎる一致の除外ゲート（union/coverage）が厳しすぎて候補が全落ちしやすかった。
+- 対応として、`th=1` だけゲートを緩め（union>=20、ON>=20px相当）、`th=2/3` は従来の厳しいゲート（union>=200、ON>=200px相当）を維持した。
+
+### 次の作業候補
+- `th=2/3` で union/coverage が十分な条件での best がどう変わるかを再評価。
+- `alpha_k` を適用した後に 2値化/差分強度を再可視化（補正が効くかの確認）。

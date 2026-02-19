@@ -8,7 +8,7 @@
         xmlns:ui="http://schemas.modernwpf.com/2019"
         ui:WindowHelper.UseModernWindowStyle="True"
         Title="DotLab"
-        Height="1060"
+        Height="1610"
         Width="1400">
     <Grid Margin="12">
         <Grid.ColumnDefinitions>
@@ -169,13 +169,21 @@
                         Content="Export InkPointsDump Stats (dd/dt CSV)"
                         Click="ExportInkPointsDumpStatsButton_Click" />
                 <Button x:Name="ExportAlphaDiffButton"
-                        Content="Export Alpha Diff (Canvas vs Sim)"
+                        Content="Export Alpha Diff (PNG vs PNG)"
                         Margin="0,8,0,0"
                         Click="ExportAlphaDiffButton_Click" />
+                <Button x:Name="ExportAlignedN1N2RoiAlphaDiffBatchButton"
+                        Content="Export alignedN1-N2 ROI AlphaDiff CSV (folder)"
+                        Margin="0,8,0,0"
+                        Click="ExportAlignedN1N2RoiAlphaDiffBatchButton_Click" />
                 <Button x:Name="ExportAlphaBoundsButton"
                         Content="Export Alpha Bounds CSV (PNG)"
                         Margin="0,8,0,0"
                         Click="ExportAlphaBoundsButton_Click" />
+                <Button x:Name="ExportAlphaPresenceBatchButton"
+                        Content="Export Alpha Presence CSV (PNG, Batch)"
+                        Margin="0,8,0,0"
+                        Click="ExportAlphaPresenceBatchButton_Click" />
                 <Button x:Name="ExportAlphaHistogramButton"
                         Content="Export Alpha Histogram CSV (PNG)"
                         Margin="0,8,0,0"
@@ -194,6 +202,33 @@
                         Content="Analyze alignedN diff series (masked CSV)"
                         Margin="0,8,0,0"
                         Click="AnalyzeAlignedDiffSeriesMaskedButton_Click" />
+
+                <Button x:Name="MatchLineN1VsDotN1Button"
+                        Content="Match line N1 vs dot N1 (ROI 18px, folder)"
+                        Margin="0,8,0,0"
+                        Click="MatchLineN1VsDotN1Button_Click" />
+
+                <TextBlock Text="Batch: LineN1 vs DotN1 (separate folders)"
+                           FontWeight="SemiBold"
+                           Margin="0,12,0,6" />
+                <TextBlock Text="Line folder" />
+                <TextBox x:Name="LineN1FolderTextBox"
+                         Text="" />
+                <TextBlock Text="Dot (Opacity sweep) folder"
+                           Margin="0,8,0,0" />
+                <TextBox x:Name="DotOpacityFolderTextBox"
+                         Text="" />
+                <TextBlock Text="CSV output folder"
+                           Margin="0,8,0,0" />
+                <TextBox x:Name="AlphaDiffBatchOutputFolderTextBox"
+                         Text="" />
+                <CheckBox x:Name="LineN1VsDotBatchUseFullImageCheckBox"
+                          Content="Use full image (w×h) AlphaDiff (instead of ROI 18px)"
+                          Margin="0,8,0,0" />
+                <Button x:Name="RunLineN1VsDotOpacityBatchButton"
+                        Content="Run batch and export CSV"
+                        Margin="0,8,0,0"
+                        Click="RunLineN1VsDotOpacityBatchButton_Click" />
 
                 <Separator Margin="0,12,0,12" />
                 <TextBlock Text="Line 18px-period window profile (ROI)"

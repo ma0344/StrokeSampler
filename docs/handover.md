@@ -118,6 +118,29 @@
   - `S=30`: `period_dip≈0.25`（scale10では丸めにより 0.3 寄りになり得る）
   - `S=100`: `period_dip=1.0`（scale8/10/12で `period_px=8/10/12`）
   - `S=150`: `period_dip≈1.2〜1.25`（scale8/10/12で `period_px=10/12/15`）
+
+### N1始点ROI: DotのOp=0.1795でαが完全一致（P=1, S=200）
+- 線（alignedN1）の始点ROI（重ね塗り・累積の影響が無い領域）に対し、Dot（単点）の `Op=0.1795` でAlphaDiffが完全一致（ROI差分=0）になった。
+  - 同率で `Op=0.1796` もROI差分=0（BGRA8/8bit α量子化により同一出力に落ちる区間がある）。
+  - よって、この条件の検証では「濃度（Op）の最適化」は `Op=0.1795` に固定してよい。
+  - 根拠: DotLabの `LineN1 vs Dot (Opacity sweep)` の比較CSVで `roi_diff_sum01=0, roi_diff_nonzero_px=0, roi_diff_max=0` を確認。
+
+### 2点Line（Op=1）のEndXスイープ: N1はDotのOpスケールで完全一致まで合わせられる（S200/DPI96/P1）
+- 2点で構成した通常Line（`startX=100` 固定、`endX` をスイープ）を `Op=1` 固定で描画した場合でも、N1 ROIは単点Dotの `Op` を調整することで **完全一致（diff=0）** まで合わせられる。
+  - 対象: `S=200`, `DPI=96`, `P=1`、`endX=118..280 step18`（更新点数2..11相当の範囲）
+  - 結果: 各 `endX`（≒線長/更新点数）ごとに最適 `Op` が存在し、`roi_diff_sum01=0, roi_diff_nonzero_px=0, roi_diff_max=0` が達成できた。
+- よって、少なくともこの検証系列では、更新点数/線長によって **N1の実効濃度スケール（単点Dotに対する必要Op）が変化**する（2..12程度で顕著）。
+
+### EndXと更新点数の対応（S200/DPI96/P1, step=18）
+- 検証系列（`startX=100` 固定、`endX` を18刻みで変化）において、EndXと「更新点数（始点含む）」の対応は以下であることを確認した。
+  - `EndX118` が更新点2
+  - `EndX280` が更新点11
+  - `EndX298` が更新点12
+
+### 定常化: 更新点13点目以降でN1の最適Opが0.1795に収束（S200/DPI96/P1）
+- 上記スイープを `EndX316/334` まで伸ばしたところ、更新点13点目以降に相当する範囲で、N1の最適 `Dot Op` が `0.1795` に定常化することを確認した。
+  - 観測: `EndX316` と `EndX334` で `best_dot_opacity=0.17950`（`roi_diff_sum01=0` で完全一致）
+  - 遷移域の例: `EndX298`（更新点12）では `best_dot_opacity=0.17860`（完全一致）
   - `S=180`: `period_dip=1.5`（scale8/10/12で `period_px=12/15/18`）
   - `S=200`: `period_dip≈1.75`（scale8/12で `period_px=14/21`）
   - よって周期はSに依存し、さらに内部で丸め/量子化が入っている可能性がある（例: S150でscale10のみ 1.2）。
@@ -130,6 +153,15 @@
 - `ExportAlphaDiffAsync` の出力PNGが Gimp / Windows ビューアで「破損」扱いになるケースがあった。
 - 対応として、PNG書き込みを `IRandomAccessStream` への直接書き込みから **`FileStream` への書き込み**に変更。
 - 併せて差分画像は **Gray8（1ch）+ 不透明**で保存する（ビューア互換性を優先）。
+
+### Line先頭N1 vs 単点（aligned-dot-index）: 形状/濃さ近似（新規）
+- 目的: 直線ストローク（`N1N2`）の先頭領域と単点出力（`aligned-dot-index`）を同一ROIで比較し、
+  - 形（2値マスク）
+  - 濃さ（α値のスケール）
+ について「最も近い組み合わせ（P対応）」を探索する。
+- StrokeSampler側で単点出力ルート（`aligned_mode=dot-index-single`）を追加。
+- DotLab側でフォルダ内のPNGから自動で best/second をマッチングしてCSV出力し、ヒートマップ/差分強度PNGも出力する。
+- 詳細な手順・確定事項は `docs/copilot-session-summary.md` の "Aligned line N1 vs aligned-dot-index N1" 節を参照。
 
 ### InkPointsDump: 保存先
 - `InkPointsDump` の保存先は、まず `KnownFolders.PicturesLibrary/StrokeSampler/InkPointsDump` を試し、失敗時は `ApplicationData.Current.LocalFolder/InkPointsDump` にフォールバックする。

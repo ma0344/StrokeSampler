@@ -1,0 +1,159 @@
+<Page
+    x:Class="InkDrawGen.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:InkDrawGen"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="12">
+            <TextBlock Text="InkDrawGen" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="(サンプルPNG生成)" VerticalAlignment="Center" Opacity="0.7" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Spacing="8" Margin="12,0,12,0">
+            <TextBlock Text="出力" FontWeight="SemiBold" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox x:Name="OutputFolderTextBox" Width="520" PlaceholderText="出力フォルダ" />
+                <Button x:Name="PickOutputFolderButton" Content="選択..." Click="PickOutputFolderButton_Click" />
+            </StackPanel>
+        </StackPanel>
+
+        <Grid Grid.Row="2" Margin="12,8,12,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Spacing="6">
+                <TextBlock Text="パラメータ" FontWeight="SemiBold" />
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox x:Name="JobTypeComboBox" Width="160">
+                        <ComboBoxItem Content="Dot" IsSelected="True" />
+                        <ComboBoxItem Content="Line" />
+                    </ComboBox>
+                    <TextBox x:Name="RunTagTextBox" Width="360" PlaceholderText="runTag（任意）" />
+                </StackPanel>
+
+                <TextBlock Text="S (size)" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="SStartTextBox" Width="120" Header="start" Text="200" />
+                    <TextBox x:Name="SEndTextBox" Width="120" Header="end" Text="200" />
+                    <TextBox x:Name="SStepTextBox" Width="120" Header="step" Text="0" />
+                </StackPanel>
+
+                <TextBlock Text="P (pressure)" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="PStartTextBox" Width="120" Header="start" Text="1" />
+                    <TextBox x:Name="PEndTextBox" Width="120" Header="end" Text="1" />
+                    <TextBox x:Name="PStepTextBox" Width="120" Header="step" Text="0" />
+                </StackPanel>
+
+                <TextBlock Text="Op (opacity)" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="OpStartTextBox" Width="120" Header="start" Text="1" />
+                    <TextBox x:Name="OpEndTextBox" Width="120" Header="end" Text="1" />
+                    <TextBox x:Name="OpStepTextBox" Width="120" Header="step" Text="0" />
+                </StackPanel>
+
+                <TextBlock Text="N (repeat)" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="NStartTextBox" Width="120" Header="start" Text="1" />
+                    <TextBox x:Name="NEndTextBox" Width="120" Header="end" Text="1" />
+                    <TextBox x:Name="NStepTextBox" Width="120" Header="step" Text="0" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="ScaleTextBox" Width="120" Header="scale" Text="10" />
+                    <TextBox x:Name="DpiTextBox" Width="120" Header="dpi" Text="96" />
+                    <CheckBox x:Name="TransparentCheckBox" Content="transparent" IsChecked="True" VerticalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Spacing="6">
+                <TextBlock Text="配置/ROI" FontWeight="SemiBold" />
+
+                <TextBlock Text="座標" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="StartXTextBox" Width="120" Header="startX" Text="100" />
+                    <TextBox x:Name="StartYTextBox" Width="120" Header="startY" Text="101" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="EndXTextBox" Width="120" Header="endX" Text="500" />
+                    <TextBox x:Name="EndYTextBox" Width="120" Header="endY" Text="101" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="EndXSweepStartTextBox" Width="120" Header="endX sweep start" Text="118" />
+                    <TextBox x:Name="EndXSweepEndTextBox" Width="120" Header="endX sweep end" Text="316" />
+                    <TextBox x:Name="EndXSweepStepTextBox" Width="120" Header="endX sweep step" Text="18" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="StepXTextBox" Width="120" Header="stepX" Text="0" />
+                    <TextBox x:Name="StepYTextBox" Width="120" Header="stepY" Text="0" />
+                    <TextBox x:Name="RepeatCountTextBox" Width="120" Header="repeatCount" Text="0" />
+                </StackPanel>
+
+                <TextBlock Text="疑似線 (Dot連続)" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="DotStepStartTextBox" Width="120" Header="dotStep start" Text="4" />
+                    <TextBox x:Name="DotStepEndTextBox" Width="120" Header="dotStep end" Text="1" />
+                    <TextBox x:Name="DotStepStepTextBox" Width="120" Header="dotStep step" Text="-1" />
+                </StackPanel>
+                <CheckBox x:Name="DotStepTwoPointsCheckBox" Content="2点疑似線（始点+更新点1つ）" IsChecked="False" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <CheckBox x:Name="DotStepFixedCountCheckBox" Content="N個疑似線（StartX基準でN個固定）" IsChecked="False" />
+                    <TextBox x:Name="DotStepCountTextBox" Width="120" Header="dot count" Text="2" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="DotStepCountStartTextBox" Width="120" Header="dot count start" Text="2" />
+                    <TextBox x:Name="DotStepCountEndTextBox" Width="120" Header="dot count end" Text="2" />
+                    <TextBox x:Name="DotStepCountStepTextBox" Width="120" Header="dot count step" Text="0" />
+                </StackPanel>
+
+                <TextBlock Text="切り出し (ROI)" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="RoiXTextBox" Width="120" Header="x" Text="0" />
+                    <TextBox x:Name="RoiYTextBox" Width="120" Header="y" Text="0" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="RoiWTextBox" Width="120" Header="w" Text="18" />
+                    <TextBox x:Name="RoiHTextBox" Width="120" Header="h" Text="202" />
+                </StackPanel>
+
+                <TextBlock Text="出力サイズ (px) ※ROI*w/h*scaleで自動" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="OutWidthPxTextBox" Width="120" Header="out_w" Text="180" />
+                    <TextBox x:Name="OutHeightPxTextBox" Width="120" Header="out_h" Text="2020" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                    <Button x:Name="RunSingleButton" Content="単体生成" Click="RunSingleButton_Click" />
+                    <Button x:Name="RunSingleLine2PointsButton" Content="線(2点)生成" Click="RunSingleLine2PointsButton_Click" />
+                    <Button x:Name="RunLine2PointsEndXSweepButton" Content="線(2点) EndXスイープ" Click="RunLine2PointsEndXSweepButton_Click" />
+                    <Button x:Name="RunLine2PointsStartXSweepButton" Content="線(2点) StartXスイープ" Click="RunLine2PointsStartXSweepButton_Click" />
+                    <Button x:Name="RunBatchFromCsvButton" Content="CSVからバッチ" Click="RunBatchFromCsvButton_Click" />
+                </StackPanel>
+
+                <TextBlock Text="ログ" FontWeight="SemiBold" Margin="0,8,0,0" />
+                <TextBox x:Name="LogTextBox" Height="180" TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" />
+            </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="3" Margin="12" BorderThickness="1" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}">
+            <TextBlock Text="プレビュー（後で追加）" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.5" />
+        </Border>
+    </Grid>
+</Page>

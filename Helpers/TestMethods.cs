@@ -1,4 +1,4 @@
-﻿using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Effects;
 using System;
 using System.Collections.Generic;
@@ -378,6 +378,128 @@ namespace StrokeSampler
             await ExportHighResInk.ExportPreSaveAlphaStatsCsvAsync(mp, scale, (float)dpiD, transparentBackground, cropToBounds, targetStrokes, ctx);
         }
 
+        internal static async Task ExportPseudoLineDotStepSweepAsync(MainPage mp)
+        {
+            if (mp is null) throw new ArgumentNullException(nameof(mp));
+
+            int scale;
+            if (!int.TryParse(mp.ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out scale) &&
+                !int.TryParse(mp.ExportScaleTextBox?.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out scale))
+            {
+                return;
+            }
+
+            double dpiD;
+            if (!double.TryParse(mp.ExportDpiTextBox?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out dpiD) &&
+                !double.TryParse(mp.ExportDpiTextBox?.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out dpiD))
+            {
+                return;
+            }
+
+            if (scale <= 0) return;
+            if (dpiD <= 0) return;
+
+            var s = UIHelpers.GetDot512SizeOrNull(mp) ?? 200.0;
+            var p = UIHelpers.GetDot512Pressure(mp);
+            var opacity = UIHelpers.GetPencilOpacity(mp);
+            var n = UIHelpers.GetDot512Overwrite(mp);
+            var start = UIHelpers.GetStartPosition(mp);
+            var end = UIHelpers.GetEndPosition(mp);
+            var outW = UIHelpers.GetExportWidth(mp);
+            var outH = UIHelpers.GetExportHeight(mp);
+
+            var len = Math.Max(0.0, end.X - start.X);
+            if (len <= 0) return;
+
+            var stepRange = UIHelpers.GetDotStepSweepRange(mp);
+            var steps = stepRange.Expand().ToArray();
+            if (steps.Length == 0) return;
+
+            var folderPicker = new Windows.Storage.Pickers.FolderPicker { SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary };
+            folderPicker.FileTypeFilter.Add(".png");
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder is null) return;
+
+            var isTransparent = mp.S200AlignedTransparentOutputCheckBox?.IsChecked == true;
+            var usePen = mp.S200AlignedUsePenCheckBox?.IsChecked == true;
+            var attributes = usePen
+                ? StrokeHelpers.CreatePenAttributesForComparison(mp)
+                : StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(mp);
+            attributes.Size = new Size(s, s);
+
+            var device = CanvasDevice.GetSharedDevice();
+            var widthPx = checked((int)Math.Ceiling(outW * (double)scale));
+            var heightPx = checked((int)Math.Ceiling(outH * (double)scale));
+            if (widthPx <= 0 || heightPx <= 0) return;
+
+            foreach (var dotStepPx in steps)
+            {
+                var step = Math.Abs(dotStepPx);
+                if (step <= 0.0f) continue;
+
+                var count = (int)Math.Floor(len / step) + 1;
+                count = Math.Clamp(count, 1, 200_000);
+
+                var strokes = new List<InkStroke>(count);
+                for (var i = 0; i < count; i++)
+                {
+                    var x = start.X + (i * step);
+                    var pt = new Point(x, start.Y);
+                    var points = new List<InkPoint>(1) { new InkPoint(pt, p) };
+                    var stroke = StrokeHelpers.CreatePencilStrokeFromInkPoints(points, attributes);
+                    strokes.Add(stroke);
+                }
+
+                var stepTag = dotStepPx.ToString("0.###", CultureInfo.InvariantCulture);
+                var pTag = p.ToString("0.########", CultureInfo.InvariantCulture);
+                var opTag = opacity.ToString("0.#####", CultureInfo.InvariantCulture);
+                var fileName = $"pencil-highres-{widthPx}x{heightPx}-dpi{dpiD.ToString("0.##", CultureInfo.InvariantCulture)}-S{s}-P{pTag}-dotstep{stepTag}-Op{opTag}-N{n}-scale{scale}" + (isTransparent ? "-transparent" : "") + ".png";
+
+                StorageFile file;
+                try
+                {
+                    file = await folder.CreateFileAsync(fileName, CreationCollisionOption.FailIfExists);
+                }
+                catch
+                {
+                    var baseName = Path.GetFileNameWithoutExtension(fileName);
+                    var ext = Path.GetExtension(fileName);
+                    var k = 1;
+                    while (true)
+                    {
+                        var alt = $"{baseName}-dup{k}{ext}";
+                        try
+                        {
+                            file = await folder.CreateFileAsync(alt, CreationCollisionOption.FailIfExists);
+                            break;
+                        }
+                        catch
+                        {
+                            k++;
+                            if (k > 10000) throw;
+                        }
+                    }
+                }
+
+                using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                using (var target = new CanvasRenderTarget(device, widthPx, heightPx, (float)dpiD))
+                {
+                    using (var ds = target.CreateDrawingSession())
+                    {
+                        ds.Clear(isTransparent ? Color.FromArgb(0, 0, 0, 0) : Colors.White);
+                        ds.Transform = System.Numerics.Matrix3x2.CreateScale(scale);
+
+                        for (var rep = 0; rep < n; rep++)
+                        {
+                            ds.DrawInk(strokes);
+                        }
+                    }
+
+                    await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
+                }
+            }
+        }
+
         internal static void DrawLineStrokeFixed(MainPage mp, string? startText, string? endText, string? pointCountText, string? pointStepText, bool ignorePressure = false)
         {
             if (mp is null) throw new ArgumentNullException(nameof(mp));
@@ -400,26 +522,83 @@ namespace StrokeSampler
 
             var pointCount = UIHelpers.ParseLinePointCount(pointCountText);
             var step = UIHelpers.ParseLinePointStep(pointStepText);
+            InkInputProcessingMode processingMode = InkInputProcessingMode.Inking;
+            if (mp.EraserRadioButton.IsChecked ?? false) processingMode = InkInputProcessingMode.Erasing;
+            string penColorName = "Black";
+            if (mp.BlackRadioButton.IsChecked ?? true) penColorName = "Black";
+            if (mp.WhiteRadioButton.IsChecked ?? false) penColorName = "White";
+            if (mp.TransparentRadioButton.IsChecked ?? false) penColorName = "Transparent";
+            if (mp.RedRadioButton.IsChecked ?? false) penColorName = "Red";
+            if (mp.GreenRadioButton.IsChecked ?? false) penColorName = "Green";
+            if (mp.BlueRadioButton.IsChecked ?? false) penColorName = "Blue";
+            Color penColor = penColorName switch
+            {
+                "Black" => Colors.Black,
+                "White" => Colors.White,
+                "Transparent" => Colors.Transparent,
+                "Red" => Colors.Red,
+                "Green" => Colors.Green,
+                "Blue" => Colors.Blue,
+                _ => Colors.Black
+            };
+            var attributes = processingMode == InkInputProcessingMode.Erasing
+                ? StrokeHelpers.CreateEraseKeyInkAttributes(mp, Color.FromArgb(255, 255, 255, 255))
+                : StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(mp);
+            attributes.Color = processingMode == InkInputProcessingMode.Erasing
+                ? Color.FromArgb(255, 255, 255, 255)
+                : penColor;
 
-            var attributes = StrokeHelpers.CreatePencilAttributesFromToolbarBestEffort(mp);
             if (ignorePressure) attributes.IgnorePressure = true;
             var strokeWidth = UIHelpers.GetDot512SizeOrNull(mp) ?? 200.0;
             attributes.Size = new Size(strokeWidth, strokeWidth);
             var pressure = UIHelpers.GetDot512Pressure(mp);
 
             // 生成した点列を同時にダンプするため、pointsを生成してstroke化する。
+            // 消しゴム代替は「背景色で上書き描画」なので、削除ではなく通常ストロークとして追加する。
             var points = StrokeHelpers.CreateLineInkPointsFixed(startX, startY, endX, endY, pointCount, step, pressure);
-            var stroke = StrokeHelpers.CreatePencilStrokeFromInkPoints(points, attributes);
+            InkStroke stroke;
+            if (processingMode == InkInputProcessingMode.Erasing)
+            {
+                var builder = new InkStrokeBuilder();
+                stroke = builder.CreateStrokeFromInkPoints(points, System.Numerics.Matrix3x2.Identity, null, null);
+                stroke.DrawingAttributes = attributes;
+                
+            }
+            else
+            {
+                stroke = StrokeHelpers.CreatePencilStrokeFromInkPoints(points, attributes);
+            }
             mp.InkCanvasControl.InkPresenter.StrokeContainer.AddStroke(stroke);
 
             // ダンプはベストエフォート（失敗しても描画は維持）。
             _ = DumpInkPointsJsonBestEffortAsync(points, attributes);
         }
 
+        internal static void DrawLineStrokeFixedMulti(MainPage mp, string? startText, string? endText, string? pointCountText, string? pointStepText, double stepYDip, int repeatCount, bool ignorePressure = false)
+        {
+            if (mp is null) throw new ArgumentNullException(nameof(mp));
+            if (repeatCount < 0) repeatCount = 0;
+            var drawCount = Math.Max(1, repeatCount + 1);
+
+            for (var i = 0; i < drawCount; i++)
+            {
+                var dy = (float)(stepYDip * i);
+                var startShift = TryShiftPointTextY(startText, dy);
+                var endShift = TryShiftPointTextY(endText, dy);
+                DrawLineStrokeFixed(mp, startShift, endShift, pointCountText, pointStepText, ignorePressure);
+            }
+        }
+
+        private static string? TryShiftPointTextY(string? pointText, float dy)
+        {
+            if (!TryParsePointTextLocal(pointText, out var x, out var y)) return pointText;
+            return x.ToString("0.########", CultureInfo.InvariantCulture) + "," + (y + dy).ToString("0.########", CultureInfo.InvariantCulture);
+        }
+
         internal static void DrawHoldStrokeFixed(MainPage mp, string? startText, string? pointCountText, bool ignorePressure = false)
         {
             if (mp is null) throw new ArgumentNullException(nameof(mp));
-
+            
             var x = 260f;
             var y = 440f;
             if (TryParsePointTextLocal(startText, out var sx, out var sy))

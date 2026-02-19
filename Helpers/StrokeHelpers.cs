@@ -1,4 +1,4 @@
-﻿using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Text;
 using System;
 using System.Collections.Generic;
@@ -191,8 +191,9 @@ namespace StrokeSampler
         internal static InkDrawingAttributes CreatePencilAttributesFromToolbarBestEffort(MainPage mp)
         {
             var attributes = InkDrawingAttributes.CreateForPencil();
-            attributes.Color = Colors.DarkSlateGray;
+            attributes.Color = Colors.Black;
             attributes.Size = new Size(4, 4);
+            attributes.PencilProperties.Opacity = UIHelpers.GetPencilOpacity(mp);
 
 
             object toolButton = null;
@@ -236,12 +237,35 @@ namespace StrokeSampler
             return attributes;
         }
 
+        internal static InkDrawingAttributes CreateAttributesFromToolbarBestEffort(MainPage mp, bool useEraser)
+        {
+            // この環境のUWP Inkでは「消しゴム属性のストローク」を追加するAPIが無いため、
+            // ここでは鉛筆属性だけを返し、消しゴムは別途ストローク削除APIで実現する。
+            _ = useEraser;
+            return CreatePencilAttributesFromToolbarBestEffort(mp);
+        }
+
         internal static InkDrawingAttributes CreatePenAttributesForComparison(MainPage mp)
         {
             // UWP Ink は Pencil/Ink のファクトリは環境差があるため、比較用にPencil属性をベースにして
             // 圧力を無視する設定で「床（pressure floor）」の影響を切り分ける。
             var attributes = CreatePencilAttributesFromToolbarBestEffort(mp);
             attributes.IgnorePressure = true;
+            return attributes;
+        }
+
+        internal static InkDrawingAttributes CreateEraseKeyInkAttributes(MainPage mp, Color keyColor)
+        {
+            // 消しゴム代替（キー色で上書き）用の属性。
+            // この環境ではCreateForInkが無いのでCreateForPencilをベースにする。
+
+            var attributes = new InkDrawingAttributes();
+
+            var pencil = CreatePencilAttributesFromToolbarBestEffort(mp);
+            var strokeWidth = UIHelpers.GetDot512SizeOrNull(mp) ?? 200.0;
+            attributes.Size = new Size(strokeWidth, strokeWidth);
+            attributes.IgnorePressure = true;
+            attributes.Color = keyColor;
             return attributes;
         }
 

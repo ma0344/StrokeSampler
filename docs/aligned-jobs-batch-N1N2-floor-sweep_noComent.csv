@@ -1,0 +1,2 @@
+pressure_start,pressure_end,pressure_step,aligned_n,trials,runTag,start,end,out_w,out_h,scale,period_step_dip,transparent
+0.1,1.0,0.1,2,1,floor-N1N2,"100,101","500,101",,,,,true

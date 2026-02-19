@@ -1,0 +1,2 @@
+job_type,pressure_start,pressure_end,pressure_step,s_start,s_end,s_step,n_start,n_end,n_step,scale,dpi,startX,startY,endX,endY,step_x,step_y,repeat_count,roi_x,roi_y,roi_w,roi_h,runTag,transparent
+line,0.5,0.5,0,2,2,0,1,1,0,10,96,0,0,300,0,0,1,100,0,0,200,200,Betanuri,FALSE

@@ -6,7 +6,7 @@ using SkiaSharp.Views.Desktop;
 using SkiaSharp.Views.WPF;
 using SkiaSharp.Views;
 using DotLab.Analysis;
-
+using Windows.UI.Input.Inking;
 namespace DotLab {
 
     public partial class MainWindow
@@ -24,7 +24,7 @@ namespace DotLab {
         private double[]? _lastWall;
 
         private DotLabInputs? _lastInputs;
-
+        private InkPresenter? _presenter;
         public MainWindow()
         {
             InitializeComponent();
@@ -41,9 +41,19 @@ namespace DotLab {
             await ImageAlphaDiff.ExportAlphaDiffAsync(this);
         }
 
+        private async void ExportAlignedN1N2RoiAlphaDiffBatchButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await AlignedN12RoiAlphaDiffBatch.ExportAlignedN1N2RoiAlphaDiffBatchAsync(this);
+        }
+
         private async void ExportAlphaBoundsButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
             await ImageAlphaBounds.ExportAlphaBoundsCsvAsync(this);
+        }
+
+        private async void ExportAlphaPresenceBatchButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaPresenceBatch.ExportAlphaPresenceCsvBatchAsync(this);
         }
 
         private async void ExportAlphaHistogramButton_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -84,6 +94,114 @@ namespace DotLab {
         private async void AnalyzeAlignedDiffSeriesMaskedButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
             await DotLab.Analysis.AlignedDiffSeriesMaskedAnalyzer.AnalyzeAsync(this);
+        }
+
+        private async void MatchLineN1VsDotN1Button_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            var folderPicker = new Windows.Storage.Pickers.FolderPicker
+            {
+                SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary
+            };
+            folderPicker.FileTypeFilter.Add(".png");
+            folderPicker.FileTypeFilter.Add(".csv");
+
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
+
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder is null) return;
+
+            var csv = LineN1VsDotN1Matcher.BuildMatchCsv(folder.Path, out var lut);
+            if (string.IsNullOrWhiteSpace(csv))
+            {
+                System.Windows.MessageBox.Show(this, "No matchable PNGs found in the selected folder.", "DotLab", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!lut.Loaded)
+            {
+                var msg = $"Œ± LUT„ÅåË™≠„ÅøËæº„ÇÅ„Å™„ÅÑ„Åü„ÇÅ„ÄÅLUTÈÅ©Áî®„ÅØÁÑ°Âäπ„Å´„Å™„Çä„Åæ„Åô„ÄÇ\n\nrequested={lut.RequestedPath}\nresolved={lut.ResolvedPath}\nerror={lut.Error}";
+                System.Windows.MessageBox.Show(this, msg, "DotLab", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            }
+
+            var ts = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+            var file = await folder.CreateFileAsync($"lineN1-vs-dotN1-match-{ts}.csv", Windows.Storage.CreationCollisionOption.ReplaceExisting);
+            await Windows.Storage.FileIO.WriteTextAsync(file, csv);
+
+            System.Windows.MessageBox.Show(this, $"Done.\nfile={file.Path}", "DotLab", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+        }
+
+        private async void RunLineN1VsDotOpacityBatchButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            var lineFolderPath = LineN1FolderTextBox?.Text?.Trim() ?? "";
+            var dotFolderPath = DotOpacityFolderTextBox?.Text?.Trim() ?? "";
+            var outFolderPath = AlphaDiffBatchOutputFolderTextBox?.Text?.Trim() ?? "";
+
+            var picker = new Windows.Storage.Pickers.FolderPicker
+            {
+                SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary
+            };
+            picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".csv");
+
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+
+            if (string.IsNullOrWhiteSpace(lineFolderPath) || !Directory.Exists(lineFolderPath))
+            {
+                var folder = await picker.PickSingleFolderAsync();
+                if (folder is null) return;
+                lineFolderPath = folder.Path;
+                if (LineN1FolderTextBox != null) LineN1FolderTextBox.Text = lineFolderPath;
+            }
+
+            if (string.IsNullOrWhiteSpace(dotFolderPath) || !Directory.Exists(dotFolderPath))
+            {
+                var folder = await picker.PickSingleFolderAsync();
+                if (folder is null) return;
+                dotFolderPath = folder.Path;
+                if (DotOpacityFolderTextBox != null) DotOpacityFolderTextBox.Text = dotFolderPath;
+            }
+
+            if (string.IsNullOrWhiteSpace(outFolderPath) || !Directory.Exists(outFolderPath))
+            {
+                var folder = await picker.PickSingleFolderAsync();
+                if (folder is null) return;
+                outFolderPath = folder.Path;
+                if (AlphaDiffBatchOutputFolderTextBox != null) AlphaDiffBatchOutputFolderTextBox.Text = outFolderPath;
+            }
+
+            try
+            {
+                var useFullImage = LineN1VsDotBatchUseFullImageCheckBox?.IsChecked == true;
+                var csv = LineN1VsDotN1BatchMatcher.BuildMatchCsv(lineFolderPath, dotFolderPath, useFullImage);
+                if (string.IsNullOrWhiteSpace(csv))
+                {
+                    System.Windows.MessageBox.Show(this, "No matchable PNGs found in the selected folders.", "DotLab", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    return;
+                }
+
+                var summary = LineN1VsDotN1BatchMatcher.BuildSummaryCsv(lineFolderPath, dotFolderPath, useFullImage);
+
+                var ts = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+                var outFile = Path.Combine(outFolderPath, $"lineN1-vs-dotN1-opacitysweep-match-{ts}.csv");
+                await File.WriteAllTextAsync(outFile, csv);
+
+                if (!string.IsNullOrWhiteSpace(summary))
+                {
+                    var outSummary = Path.Combine(outFolderPath, $"lineN1-vs-dotN1-opacitysweep-summary-{ts}.csv");
+                    await File.WriteAllTextAsync(outSummary, summary);
+                }
+                System.Windows.MessageBox.Show(this, $"Done.\nfile={outFile}", "DotLab", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            }
+            catch (ArgumentException ex)
+            {
+                System.Windows.MessageBox.Show(this, ex.Message, "DotLab", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            }
+            catch (InvalidOperationException ex)
+            {
+                System.Windows.MessageBox.Show(this, ex.Message, "DotLab", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
         }
 
         private void MainWindow_Loaded(object sender, System.Windows.RoutedEventArgs e)
@@ -307,7 +425,7 @@ namespace DotLab {
         public static DotLabInputs ReadFrom(MainWindow window)
         {
             var noisePath = (window.NoisePathTextBox.Text ?? "").Trim();
-            if (string.IsNullOrWhiteSpace(noisePath)) throw new ArgumentException("NoisePath Ç™ãÛÇ≈Ç∑ÅB");
+            if (string.IsNullOrWhiteSpace(noisePath)) throw new ArgumentException("NoisePath „ÅåÁ©∫„Åß„Åô„ÄÇ");
 
             var canvasSizePx = ParseInt(window.CanvasSizeNumberBox.Text, "CanvasSize");
             if (canvasSizePx <= 0) throw new ArgumentOutOfRangeException(nameof(canvasSizePx));
@@ -354,7 +472,7 @@ namespace DotLab {
         {
             if (!int.TryParse((text ?? "").Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v))
             {
-                throw new ArgumentException($"{name} ÇÃêîílïœä∑Ç…é∏îsÇµÇ‹ÇµÇΩ: '{text}'");
+                throw new ArgumentException($"{name} „ÅÆÊï∞ÂÄ§Â§âÊèõ„Å´Â§±Êïó„Åó„Åæ„Åó„Åü: '{text}'");
             }
             return v;
         }
@@ -363,7 +481,7 @@ namespace DotLab {
         {
             if (!double.TryParse((text ?? "").Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
             {
-                throw new ArgumentException($"{name} ÇÃêîílïœä∑Ç…é∏îsÇµÇ‹ÇµÇΩ: '{text}'");
+                throw new ArgumentException($"{name} „ÅÆÊï∞ÂÄ§Â§âÊèõ„Å´Â§±Êïó„Åó„Åæ„Åó„Åü: '{text}'");
             }
             return v;
         }

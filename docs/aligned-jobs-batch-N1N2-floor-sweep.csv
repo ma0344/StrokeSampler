@@ -1,0 +1,15 @@
+# AlignedJobs CSV: export alignedN1..2 for a pressure sweep around the N1 floor
+#
+# Purpose:
+# - Generate per-pressure PNGs for alignedN1 and alignedN2 so DotLab can batch-analyze
+#   N1->N2 ROI alpha diff vs pressure.
+#
+# Notes:
+# - out_w/out_h are DIP (before export scale).
+# - start/end are "x,y" in DIP.
+# - runTag should be changed per run to avoid collisions.
+#
+# Columns used by StrokeSampler implementation:
+# pressure_start,pressure_end,pressure_step,aligned_n,trials,runTag,start,end,out_w,out_h,scale,period_step_dip,transparent
+pressure_start,pressure_end,pressure_step,aligned_n,trials,runTag,start,end,out_w,out_h,scale,period_step_dip,transparent
+0.95,0.95,0.95,2,1,floor-N1N2,"100,101","500,101",,,,,true

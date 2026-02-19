@@ -120,6 +120,7 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Helpers\AlignedJobsCsv.cs" />
     <Compile Include="Helpers\CenterAlphaSummaryCsvBuilder.cs" />
     <Compile Include="Helpers\CompareDot512WithSkia.cs" />
     <Compile Include="Helpers\ExportHighResInk.cs" />
@@ -139,6 +140,7 @@
     <Compile Include="Helpers\ParseFalloffFilenameService.cs" />
     <Compile Include="Helpers\ReadASamplesCSV.cs" />
     <Compile Include="Helpers\ReadCenterACSV.cs" />
+    <Compile Include="Helpers\S200AlignedBatchSettings.cs" />
     <Compile Include="Helpers\StrokeHelpers.cs" />
     <Compile Include="Helpers\TestMethods.cs" />
     <Compile Include="Helpers\TilePeriodEstimator.cs" />
@@ -1755,9 +1757,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include=".github\copilot-instructions.md" />
+    <None Include="docs\aligned-dot-index-sweep.csv" />
+    <None Include="docs\aligned-jobs-batch-N1N2-floor-sweep.csv" />
+    <None Include="docs\aligned-jobs-batch-N1to12-floor-full.csv" />
+    <None Include="docs\aligned-jobs-batch-N1to12-floor.csv" />
+    <None Include="docs\aligned-jobs-sample.csv" />
     <None Include="docs\copilot-session-summary.md" />
     <None Include="docs\dotlab-handover.md" />
     <None Include="docs\drow-inkcanvas-pencil-from-code-answers.md" />
+    <None Include="docs\handover-current-work.md" />
     <None Include="docs\handover.md" />
     <None Include="docs\inkcanvas-stack-analysis.md" />
     <None Include="docs\Issues\issue-01-project-structure.md" />
@@ -1771,6 +1779,7 @@
     <None Include="docs\Issues\issue-09-ui-wiring.md" />
     <None Include="docs\Issues\issue-10-build.md" />
     <None Include="docs\Issues\issue-11-validate-exported-png.md" />
+    <None Include="docs\pencil-parity-playbook.md" />
     <None Include="docs\pencil-stroke-sampler-roadmap.md" />
     <None Include="docs\representative-sample-subset.md" />
     <None Include="docs\sampling-loop-workflow.md" />

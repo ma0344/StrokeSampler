@@ -366,3 +366,11 @@ FodyWeavers.xsd
 /.gitignore
 /.gitignore
 /Sample
+/DotLab/analysis/*.png
+/DotLab/analysis/*/*.png
+/DotLab/analysis/*/*/*.png
+/DotLab/analysis/*/*/*/*.png
+/DotLab/analysis/*.CSV
+/DotLab/analysis/*/*.CSV
+/DotLab/analysis/*/*/*.CSV
+/DotLab/analysis/*/*/*/*.CSV

@@ -14,6 +14,8 @@ namespace StrokeSampler
 {
     internal static class ExportHighResInk
     {
+        private static readonly Color EraseKeyColor = Color.FromArgb(255, 255, 0, 255);
+        private const int EraseKeyTolerance = 0;
         internal readonly struct ExportContext
         {
             public ExportContext(double? s, double? p, int? n, int? exportScale, string tag = null)
@@ -77,7 +79,7 @@ namespace StrokeSampler
 
             var meta = BuildMetaSuffix(ctx, scale);
 
-            // –½–¼‚ÍŠù‘¶‚Ìpencil-highres‚ÉŠñ‚¹Apre-save‚ğ–¾¦‚·‚é
+            // å‘½åã¯æ—¢å­˜ã®pencil-highresã«å¯„ã›ã€pre-saveã‚’æ˜ç¤ºã™ã‚‹
             var picker = new FileSavePicker
             {
                 SuggestedStartLocation = PickerLocationId.PicturesLibrary,
@@ -106,7 +108,7 @@ namespace StrokeSampler
                     ds.DrawInk(strokes);
                 }
 
-                // •Û‘¶‘OiCanvasRenderTarget‚ÌBGRA8j‚ğŠÏ‘ª
+                // ä¿å­˜å‰ï¼ˆCanvasRenderTargetã®BGRA8ï¼‰ã‚’è¦³æ¸¬
                 var bytes = target.GetPixelBytes();
                 await TestMethods.WriteAlphaStatsCsvAsync(file, bytes, width, height);
             }
@@ -115,7 +117,7 @@ namespace StrokeSampler
             _ = status;
         }
 
-        // (À•`‰æƒsƒNƒZƒ‹‚ÉŠî‚Ã‚­ƒNƒƒbƒv‚ÌÀ‘•‚ÍAExportAsync“à‚ÅÀ‘•‚·‚é)
+        // (å®Ÿæç”»ãƒ”ã‚¯ã‚»ãƒ«ã«åŸºã¥ãã‚¯ãƒ­ãƒƒãƒ—ã®å®Ÿè£…ã¯ã€ExportAsyncå†…ã§å®Ÿè£…ã™ã‚‹)
 
         internal static async Task ExportAsync(MainPage mp, int scale, float dpi, bool transparentBackground, bool cropToBounds, IReadOnlyList<Windows.UI.Input.Inking.InkStroke> strokes, ExportContext ctx)
         {
@@ -151,7 +153,7 @@ namespace StrokeSampler
                     return;
                 }
 
-                // ƒAƒ“ƒ`ƒGƒCƒŠƒAƒX“™‚É‚æ‚é‹É”–ƒ¿‚Ì’[‚ªØ‚ê‚é‚Ì‚ğ”ğ‚¯‚é‚½‚ßA1pxƒ}[ƒWƒ“‚ğ•t‚¯‚é
+                // ã‚¢ãƒ³ãƒã‚¨ã‚¤ãƒªã‚¢ã‚¹ç­‰ã«ã‚ˆã‚‹æ¥µè–„Î±ã®ç«¯ãŒåˆ‡ã‚Œã‚‹ã®ã‚’é¿ã‘ã‚‹ãŸã‚ã€1pxãƒãƒ¼ã‚¸ãƒ³ã‚’ä»˜ã‘ã‚‹
                 var x0 = Math.Max(0, pxBounds.X - 1);
                 var y0 = Math.Max(0, pxBounds.Y - 1);
                 var x1 = Math.Min((baseWidth * scale) - 1, pxBounds.X + pxBounds.Width);
@@ -198,15 +200,69 @@ namespace StrokeSampler
                         ds.DrawInk(strokes);
                     }
 
-                    await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
+                    if (transparentBackground)
+                    {
+                        var bgra = target.GetPixelBytes();
+                        ReplaceKeyColorWithTransparentInPlace(bgra, EraseKeyColor, EraseKeyTolerance);
+                        await WritePngFromBgraAsync(stream, bgra, width, height, dpi);
+                    }
+                    else
+                    {
+                        await target.SaveAsync(stream, CanvasBitmapFileFormat.Png);
+                    }
                 }
 
                 FileUpdateStatus status = await CachedFileManager.CompleteUpdatesAsync(file);
                 if (status != FileUpdateStatus.Complete)
                 {
-                    // UI‘¤‚Å‚Ì’Ê’m‚ÍŒÄ‚Ño‚µ‘¤‚É”C‚¹‚é
+                    // UIå´ã§ã®é€šçŸ¥ã¯å‘¼ã³å‡ºã—å´ã«ä»»ã›ã‚‹
                 }
             }
+        }
+
+        private static void ReplaceKeyColorWithTransparentInPlace(byte[] bgra, Color key, int tolerance)
+        {
+            if (bgra is null) throw new ArgumentNullException(nameof(bgra));
+            tolerance = Math.Clamp(tolerance, 0, 255);
+
+            // CanvasRenderTargetã¯BGRA8
+            var keyB = key.B;
+            var keyG = key.G;
+            var keyR = key.R;
+
+            for (var i = 0; i + 3 < bgra.Length; i += 4)
+            {
+                var b = bgra[i + 0];
+                var g = bgra[i + 1];
+                var r = bgra[i + 2];
+
+                if (Math.Abs(b - keyB) <= tolerance && Math.Abs(g - keyG) <= tolerance && Math.Abs(r - keyR) <= tolerance)
+                {
+                    bgra[i + 3] = 0;
+                }
+            }
+        }
+
+        private static async Task WritePngFromBgraAsync(IRandomAccessStream stream, byte[] bgra, int width, int height, float dpi)
+        {
+            if (stream is null) throw new ArgumentNullException(nameof(stream));
+            if (bgra is null) throw new ArgumentNullException(nameof(bgra));
+            if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
+            if (height <= 0) throw new ArgumentOutOfRangeException(nameof(height));
+
+            stream.Seek(0);
+            stream.Size = 0;
+
+            var encoder = await Windows.Graphics.Imaging.BitmapEncoder.CreateAsync(Windows.Graphics.Imaging.BitmapEncoder.PngEncoderId, stream);
+            encoder.SetPixelData(
+                Windows.Graphics.Imaging.BitmapPixelFormat.Bgra8,
+                Windows.Graphics.Imaging.BitmapAlphaMode.Premultiplied,
+                (uint)width,
+                (uint)height,
+                dpi,
+                dpi,
+                bgra);
+            await encoder.FlushAsync();
         }
 
         private static bool TryGetRenderedPixelBounds(byte[] bgra, int w, int h, bool transparentBackground, out Rect bounds)

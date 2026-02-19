@@ -1,0 +1,24 @@
+# AlignedJobs CSV sample for StrokeSampler
+# - Use "Run AlignedJobs CSV" button in StrokeSampler.
+# - Unspecified fields fall back to current UI values.
+# - Columns supported (aliases):
+#   runTag/run_tag, trials,
+#   pressure_start/pressure_end/pressure_step (or batchPStart/batchPEnd/batchPStep),
+#   aligned_n/alignedN/dotCount,
+#   scale/exportScale,
+#   period_step_dip/periodStepDip/alignedPeriodDip,
+#   start ("x,y"), end ("x,y"), l_dip/lineLengthDip,
+#   out_w/out_h
+#
+# Minimal header example:
+# pressure_start,pressure_end,pressure_step,aligned_n,trials,runTag
+
+pressure_start,pressure_end,pressure_step,aligned_n,trials,runTag
+# N1 floor sweep (P0.07428..0.07430 step 0.00001) x10
+0.07428,0.07430,0.00001,1,10,floor-N1
+# N2 floor sweep (same range) x10
+0.07428,0.07430,0.00001,2,10,floor-N2
+
+# If you want to override start/end and output size per job, add these columns and values, e.g.:
+# pressure_start,pressure_end,pressure_step,aligned_n,trials,runTag,start,end,out_w,out_h,scale,period_step_dip
+# 0.07428,0.07430,0.00001,1,10,floor-N1,"100,101","1260,101",180,2020,10,1.75

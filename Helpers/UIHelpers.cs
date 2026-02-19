@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Windows.Foundation;
 using Windows.UI;
 
 namespace StrokeSampler
@@ -167,6 +168,37 @@ namespace StrokeSampler
             return 4096;
         }
 
+        internal static Point GetStartPosition(MainPage mp)
+        {
+            return ParsePointTextOrFallback(mp.StartPositionTextBox?.Text, new Point(100, 101));
+        }
+
+        internal static Point GetEndPosition(MainPage mp)
+        {
+            return ParsePointTextOrFallback(mp.EndPositionTextBox?.Text, new Point(1260, 101));
+        }
+
+        private static Point ParsePointTextOrFallback(string? text, Point fallback)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return fallback;
+            var parts = text.Split(',');
+            if (parts.Length != 2) return fallback;
+
+            if (!double.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var x) &&
+                !double.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.CurrentCulture, out x))
+            {
+                return fallback;
+            }
+
+            if (!double.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var y) &&
+                !double.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.CurrentCulture, out y))
+            {
+                return fallback;
+            }
+
+            return new Point(x, y);
+        }
+
         internal static int GetExportHeight(MainPage mp)
         {
             if (int.TryParse(mp.ExportHeightTextBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var height))
@@ -217,6 +249,28 @@ namespace StrokeSampler
             return 1;
         }
 
+        internal static double GetLineFixedStepY(string? stairDyText)
+        {
+            if (double.TryParse(stairDyText, NumberStyles.Float, CultureInfo.InvariantCulture, out var dy) ||
+                double.TryParse(stairDyText, NumberStyles.Float, CultureInfo.CurrentCulture, out dy))
+            {
+                return Math.Clamp(dy, -2000.0, 2000.0);
+            }
+
+            return 0;
+        }
+
+        internal static int GetLineFixedRepeatCount(string? stairCountText)
+        {
+            if (int.TryParse(stairCountText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var c) ||
+                int.TryParse(stairCountText, NumberStyles.Integer, CultureInfo.CurrentCulture, out c))
+            {
+                return Math.Clamp(c, 0, 10000);
+            }
+
+            return 0;
+        }
+
         internal static int ParseLinePointCount(string? text)
         {
             if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
@@ -243,6 +297,73 @@ namespace StrokeSampler
             return 4f;
         }
 
+        internal readonly struct FloatRange
+        {
+            internal FloatRange(float start, float end, float step)
+            {
+                Start = start;
+                End = end;
+                Step = step;
+            }
+
+            internal float Start { get; }
+            internal float End { get; }
+            internal float Step { get; }
+
+            internal IEnumerable<float> Expand()
+            {
+                if (Step == 0 || Start == End)
+                {
+                    yield return Start;
+                    yield break;
+                }
+
+                const int maxIter = 1_000_000;
+                if (Start < End)
+                {
+                    if (Step < 0) yield break;
+                    for (var i = 0; i < maxIter; i++)
+                    {
+                        var v = Start + (Step * i);
+                        if (v > End + 1e-6f) yield break;
+                        yield return v;
+                    }
+                }
+                else
+                {
+                    if (Step > 0) yield break;
+                    for (var i = 0; i < maxIter; i++)
+                    {
+                        var v = Start + (Step * i);
+                        if (v < End - 1e-6f) yield break;
+                        yield return v;
+                    }
+                }
+            }
+        }
+
+        internal static FloatRange GetDotStepSweepRange(MainPage mp)
+        {
+            float Read(string? t, float fallback)
+            {
+                if (float.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ||
+                    float.TryParse(t, NumberStyles.Float, CultureInfo.CurrentCulture, out v))
+                {
+                    return v;
+                }
+                return fallback;
+            }
+
+            var start = Read(mp.DotStepStartTextBox?.Text, 4f);
+            var end = Read(mp.DotStepEndTextBox?.Text, 1f);
+            var step = Read(mp.DotStepStepTextBox?.Text, -1f);
+
+            start = Math.Clamp(start, -2000f, 2000f);
+            end = Math.Clamp(end, -2000f, 2000f);
+            step = Math.Clamp(step, -2000f, 2000f);
+            return new FloatRange(start, end, step);
+        }
+
         internal static double? GetDot512SizeOrNull(MainPage mp)
         {
             var raw = mp.Dot512SizeTextBox.Text;
@@ -254,7 +375,7 @@ namespace StrokeSampler
             if (double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var size))
             {
                 // 端切れを避けたいので、dotの"直径"相当はキャンバスより少し小さめを上限にする。
-                return Math.Clamp(size, 1, MainPage.Dot512Size - 2);
+                return Math.Clamp(size, 0.001, MainPage.Dot512Size - 2);
             }
 
             return null;
@@ -270,6 +391,14 @@ namespace StrokeSampler
             return 1.0f;
         }
 
+        internal static double GetPencilOpacity(MainPage mp)
+        {
+            if (double.TryParse(mp.PencilOpacityTextBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var opacity))
+            {
+                return Math.Clamp(opacity, 0.01, 5.0);
+            }
+            return 1.0;
+        }
         internal static int GetDot512Overwrite(MainPage mp)
         {
             if (int.TryParse(mp.Dot512OverwriteTextBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))

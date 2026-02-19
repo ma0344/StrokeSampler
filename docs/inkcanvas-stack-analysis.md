@@ -1,140 +1,149 @@
-# InkCanvas d‚Ë“h‚è‹““®‚ÌØ‚è•ª‚¯ƒƒ‚iŠm’è–€j
+# InkCanvas é‡ã­å¡—ã‚ŠæŒ™å‹•ã®åˆ‡ã‚Šåˆ†ã‘ãƒ¡ãƒ¢ï¼ˆç¢ºå®šäº‹é …ï¼‰
 
-## –Ú“I
-`StrokeSampler` ‚Ì `DrawDotButton` ‚É‚æ‚é“¯ˆêÀ•W‚Ö‚Ìd‚Ë“h‚èiInkCanvas—İÏj‚ÅA’áˆ³/‚ˆ³‚Å‹““®‚ª•Ï‚í‚éŒ´ˆö‚ğØ‚è•ª‚¯‚½Œ‹‰Ê‚ÌuŠm’è–€v‚ğ‹L˜^‚·‚éB
+## ç›®çš„
+`StrokeSampler` ã® `DrawDotButton` ã«ã‚ˆã‚‹åŒä¸€åº§æ¨™ã¸ã®é‡ã­å¡—ã‚Šï¼ˆInkCanvasç´¯ç©ï¼‰ã§ã€ä½åœ§/é«˜åœ§ã§æŒ™å‹•ãŒå¤‰ã‚ã‚‹åŸå› ã‚’åˆ‡ã‚Šåˆ†ã‘ãŸçµæœã®ã€Œç¢ºå®šäº‹é …ã€ã‚’è¨˜éŒ²ã™ã‚‹ã€‚
 
-## ‘O’ñi‘ª’èè‡j
-- `Dot512PressureNumberBox` ‚Å•Mˆ³‚ğİ’è
-- `Dot512SizeTextBox` ‚ÅƒTƒCƒYi—á: S=200j‚ğİ’è
-- `DrawDotButton` ‚ğd‚Ë“h‚è‰ñ”•ª‰Ÿ‚·i“¯ˆê InkCanvas ‚É—İÏj
-- `ExportHighResPngCroppedTransparentButton` ‚Å cropped + transparent PNG ‚ğo—Í
-- o—ÍPNGi8bit alphaj‚ğ Gimp / ImageMagick ‚ÅƒXƒ|ƒCƒgAƒqƒXƒgƒOƒ‰ƒ€A·•ª“™‚Å•]‰¿
+## å‰æï¼ˆæ¸¬å®šæ‰‹é †ï¼‰
+- `Dot512PressureNumberBox` ã§ç­†åœ§ã‚’è¨­å®š
+- `Dot512SizeTextBox` ã§ã‚µã‚¤ã‚ºï¼ˆä¾‹: S=200ï¼‰ã‚’è¨­å®š
+- `DrawDotButton` ã‚’é‡ã­å¡—ã‚Šå›æ•°åˆ†æŠ¼ã™ï¼ˆåŒä¸€ InkCanvas ã«ç´¯ç©ï¼‰
+- `ExportHighResPngCroppedTransparentButton` ã§ cropped + transparent PNG ã‚’å‡ºåŠ›
+- å‡ºåŠ›PNGï¼ˆ8bit alphaï¼‰ã‚’ Gimp / ImageMagick ã§ã‚¹ãƒã‚¤ãƒˆã€ãƒ’ã‚¹ãƒˆã‚°ãƒ©ãƒ ã€å·®åˆ†ç­‰ã§è©•ä¾¡
 
-### d—v: ·•ª‚ÌˆÓ–¡
-ImageMagick ‚Ì `-compose difference` ‚Íˆø‚«Z‚Å‚Í‚È‚­ **â‘Î·** `|A-B|`B
+### é‡è¦: å·®åˆ†ã®æ„å‘³
+ImageMagick ã® `-compose difference` ã¯å¼•ãç®—ã§ã¯ãªã **çµ¶å¯¾å·®** `|A-B|`ã€‚
 
-## Šm’è–€
+## ç¢ºå®šäº‹é …
 
-### 1) 1‰ñ•ª‚ÌƒXƒgƒ[ƒNiƒXƒ^ƒ“ƒvj‚Í“¯ˆê‚É‚È‚é
-“¯ˆêÀ•WE“¯ˆê•Mˆ³E†–Úƒ[ƒ‹ƒhŒÅ’è‚ÌğŒ‚Å‚ÍAŠe‰ñ‚Ìu1ƒXƒgƒ[ƒN•ªilaststrokejv‚ÌPNG‚Í **Š®‘Sˆê’v**‚µ‚½B
+### 1) 1å›åˆ†ã®ã‚¹ãƒˆãƒ­ãƒ¼ã‚¯ï¼ˆã‚¹ã‚¿ãƒ³ãƒ—ï¼‰ã¯åŒä¸€ã«ãªã‚‹
+åŒä¸€åº§æ¨™ãƒ»åŒä¸€ç­†åœ§ãƒ»ç´™ç›®ãƒ¯ãƒ¼ãƒ«ãƒ‰å›ºå®šã®æ¡ä»¶ã§ã¯ã€å„å›ã®ã€Œ1ã‚¹ãƒˆãƒ­ãƒ¼ã‚¯åˆ†ï¼ˆlaststrokeï¼‰ã€ã®PNGã¯ **å®Œå…¨ä¸€è‡´**ã—ãŸã€‚
 
-ª‹’iImageMagick‚Å‚Ìƒ¿·•ª“Œvj:
+æ ¹æ‹ ï¼ˆImageMagickã§ã®Î±å·®åˆ†çµ±è¨ˆï¼‰:
 - `alpha_diff_laststroke_P0.1_N1_N2.png  mean=0  stddev=0`
 - `alpha_diff_laststroke_P0.1_N2_N3.png  mean=0  stddev=0`
 - `alpha_diff_laststroke_P1_N1_N2.png    mean=0  stddev=0`
 - `alpha_diff_laststroke_P1_N2_N3.png    mean=0  stddev=0`
 
-Œ‹˜_:
-- uPˆË‘¶‚ÅŒù”z—¦‚ª•Ï‚í‚é‚æ‚¤‚ÉŒ©‚¦‚év“™‚ÌŒ»Û‚ÍA**ƒXƒ^ƒ“ƒv¶¬i`CreatePencilDot`j‚Ì’†g‚ª‰ñ”‚É‰‚¶‚Ä•Ï‰»‚µ‚Ä‚¢‚é**‚±‚Æ‚ªŒ´ˆö‚Å‚Í‚È‚¢B
+çµè«–:
+- ã€ŒPä¾å­˜ã§å‹¾é…ç‡ãŒå¤‰ã‚ã‚‹ã‚ˆã†ã«è¦‹ãˆã‚‹ã€ç­‰ã®ç¾è±¡ã¯ã€**ã‚¹ã‚¿ãƒ³ãƒ—ç”Ÿæˆï¼ˆ`CreatePencilDot`ï¼‰ã®ä¸­èº«ãŒå›æ•°ã«å¿œã˜ã¦å¤‰åŒ–ã—ã¦ã„ã‚‹**ã“ã¨ãŒåŸå› ã§ã¯ãªã„ã€‚
 
-### 2) PˆË‘¶‚Ì‹““®·‚ÍAInkCanvas‘¤‚Ì—İÏ‚Å¶‚¶‚é
-—İÏŒ‹‰Êicanvasj‚Ì·•ª“Œv‚ÍAP=0.1 ‚Æ P=1 ‚Å–¾Šm‚ÉˆÙ‚È‚éB
+### 2) Pä¾å­˜ã®æŒ™å‹•å·®ã¯ã€InkCanvaså´ã®ç´¯ç©ã§ç”Ÿã˜ã‚‹
+ç´¯ç©çµæœï¼ˆcanvasï¼‰ã®å·®åˆ†çµ±è¨ˆã¯ã€P=0.1 ã¨ P=1 ã§æ˜ç¢ºã«ç•°ãªã‚‹ã€‚
 
 #### P=0.1
 - `alpha_diff_canvas_P0.1_N1_N2.png  mean=0.00922285  stddev=0.00560776`
 - `alpha_diff_canvas_P0.1_N2_N3.png  mean=0.00922285  stddev=0.00560776`
 - `alpha_diff_canvas_P0.1_delta_delta.png  mean=0  stddev=0`
 
-‰ğß:
-- ‘•ª‚ª **Š®‘S‚Éˆê’è**iƒ¢12=ƒ¢23A‚©‚Â ƒ¢ƒ¢=0jB
+è§£é‡ˆ:
+- å¢—åˆ†ãŒ **å®Œå…¨ã«ä¸€å®š**ï¼ˆÎ”12=Î”23ã€ã‹ã¤ Î”Î”=0ï¼‰ã€‚
 
 #### P=1
 - `alpha_diff_canvas_P1_N1_N2.png  mean=0.143656  stddev=0.10309`
 - `alpha_diff_canvas_P1_N2_N3.png  mean=0.0875596  stddev=0.0583849`
 - `alpha_diff_canvas_P1_delta_delta.png  mean=0.0560963  stddev=0.0530849`
 
-‰ğß:
-- 2‰ñ–Ú‚Ì‘•ª‚ª1‰ñ–Ú‚æ‚è¬‚³‚¢iƒ¢23 < ƒ¢12jB
-- ‚±‚ê‚Íu–O˜a‚Ö‹ß‚Ã‚­‚Ù‚Ç‘•ª‚ªŒ¸‚év‹““®‚Æ®‡‚µA**—İÏ‡¬ + 8bit—Êq‰»**‘¤‚Ì‰e‹¿‚ªx”z“I‚Å‚ ‚éB
+è§£é‡ˆ:
+- 2å›ç›®ã®å¢—åˆ†ãŒ1å›ç›®ã‚ˆã‚Šå°ã•ã„ï¼ˆÎ”23 < Î”12ï¼‰ã€‚
+- ã“ã‚Œã¯ã€Œé£½å’Œã¸è¿‘ã¥ãã»ã©å¢—åˆ†ãŒæ¸›ã‚‹ã€æŒ™å‹•ã¨æ•´åˆã—ã€**ç´¯ç©åˆæˆ + 8bité‡å­åŒ–**å´ã®å½±éŸ¿ãŒæ”¯é…çš„ã§ã‚ã‚‹ã€‚
 
-Œ‹˜_:
-- ’áˆ³/‚ˆ³‚Å‚ÌŒ©‚½–Úi“™‚ü‰»A255/254/c‘ÑA’J‚ªc‚é“™j‚Ì·‚ÍAå‚É **InkCanvas‚Ì—İÏi‡¬E–O˜aE—Êq‰»j**‚Å¶‚¶‚éB
+çµè«–:
+- ä½åœ§/é«˜åœ§ã§ã®è¦‹ãŸç›®ï¼ˆç­‰é«˜ç·šåŒ–ã€255/254/â€¦å¸¯ã€è°·ãŒæ®‹ã‚‹ç­‰ï¼‰ã®å·®ã¯ã€ä¸»ã« **InkCanvasã®ç´¯ç©ï¼ˆåˆæˆãƒ»é£½å’Œãƒ»é‡å­åŒ–ï¼‰**ã§ç”Ÿã˜ã‚‹ã€‚
 
-## ÀŒ±—p‚Ì•â•o—ÍiÀ‘•j
-Ø‚è•ª‚¯‚Ì‚½‚ßAÅŒã‚É’Ç‰Á‚³‚ê‚½Stroke‚Ì‚İ‚ğHiRes‚Åo—Í‚·‚éƒ{ƒ^ƒ“‚ğ’Ç‰Á‚µ‚½B
+## å®Ÿé¨“ç”¨ã®è£œåŠ©å‡ºåŠ›ï¼ˆå®Ÿè£…ï¼‰
+åˆ‡ã‚Šåˆ†ã‘ã®ãŸã‚ã€æœ€å¾Œã«è¿½åŠ ã•ã‚ŒãŸStrokeã®ã¿ã‚’HiResã§å‡ºåŠ›ã™ã‚‹ãƒœã‚¿ãƒ³ã‚’è¿½åŠ ã—ãŸã€‚
 
 - UI: `Export HiRes LastStroke (Cropped+Transparent)`
-- o—Íƒtƒ@ƒCƒ‹–¼: `...-laststroke-...png`
+- å‡ºåŠ›ãƒ•ã‚¡ã‚¤ãƒ«å: `...-laststroke-...png`
 
-## Ÿ‚Ì’²¸Œó•âi–¢Šm’èj
-- InkCanvasi‚ ‚é‚¢‚Í•`‰æŒo˜Hj‚Ì‡¬®‚ª source-over ‘Š“–‚Å‚ ‚é‚©A‚Ü‚½‚Í•Ê‚Ì‡¬®‚Å‚ ‚é‚©
-- 8bit—Êq‰»‚ªuÅŒã‚¾‚¯v‚©uŠe‰ñi“r’†ƒoƒbƒtƒ@jv‚Å‚à”­¶‚µ‚Ä‚¢‚é‚©
+## æ¬¡ã®èª¿æŸ»å€™è£œï¼ˆæœªç¢ºå®šï¼‰
+- InkCanvasï¼ˆã‚ã‚‹ã„ã¯æç”»çµŒè·¯ï¼‰ã®åˆæˆå¼ãŒ source-over ç›¸å½“ã§ã‚ã‚‹ã‹ã€ã¾ãŸã¯åˆ¥ã®åˆæˆå¼ã§ã‚ã‚‹ã‹
+- 8bité‡å­åŒ–ãŒã€Œæœ€å¾Œã ã‘ã€ã‹ã€Œå„å›ï¼ˆé€”ä¸­ãƒãƒƒãƒ•ã‚¡ï¼‰ã€ã§ã‚‚ç™ºç”Ÿã—ã¦ã„ã‚‹ã‹
 
-## Ÿ‚Ì•ûjiŒˆ’èƒƒOj
-- –Ú“I‚ªuInkCanvas—İÏ‚ÌŒ©‚½–Ú‚ğ‚È‚é‚×‚­ÄŒ»v‚Å‚ ‚é‚½‚ßA‡¬®Œó•â‚ğ `source-over` / `add` / `max` ‚Ì3‚Â‚ÅÀ‘•‚µAHiResƒGƒNƒXƒ|[ƒgiWin2DƒŒƒ“ƒ_j‚Ì `canvas` o—Í‚Æˆê’v“x”äŠr‚Å‡¬®‚ğ„’è‚·‚éB
+## æ¬¡ã®æ–¹é‡ï¼ˆæ±ºå®šãƒ­ã‚°ï¼‰
+- ç›®çš„ãŒã€ŒInkCanvasç´¯ç©ã®è¦‹ãŸç›®ã‚’ãªã‚‹ã¹ãå†ç¾ã€ã§ã‚ã‚‹ãŸã‚ã€åˆæˆå¼å€™è£œã‚’ `source-over` / `add` / `max` ã®3ã¤ã§å®Ÿè£…ã—ã€HiResã‚¨ã‚¯ã‚¹ãƒãƒ¼ãƒˆï¼ˆWin2Dãƒ¬ãƒ³ãƒ€ï¼‰ã® `canvas` å‡ºåŠ›ã¨ä¸€è‡´åº¦æ¯”è¼ƒã§åˆæˆå¼ã‚’æ¨å®šã™ã‚‹ã€‚
 
-## ‡¬®„’è‚ÌÀŒ±è‡iÀ‘•Ï‚İj
-### –Ú“I
-`laststroke`i1‰ñ•ª‚ÌƒXƒ^ƒ“ƒvj‚ğ“ü—Í‚Æ‚µ‚ÄA‡¬®‚ğ `source-over` / `add` / `max` ‚ÅN‰ñ“K—p‚µ‚½Œ‹‰Ê‚ğ¶¬‚µAHiResƒGƒNƒXƒ|[ƒg‚Ì `canvas` ‚Æ”äŠr‚·‚éB
+## åˆæˆå¼æ¨å®šã®å®Ÿé¨“æ‰‹é †ï¼ˆå®Ÿè£…æ¸ˆã¿ï¼‰
+### ç›®çš„
+`laststroke`ï¼ˆ1å›åˆ†ã®ã‚¹ã‚¿ãƒ³ãƒ—ï¼‰ã‚’å…¥åŠ›ã¨ã—ã¦ã€åˆæˆå¼ã‚’ `source-over` / `add` / `max` ã§Nå›é©ç”¨ã—ãŸçµæœã‚’ç”Ÿæˆã—ã€HiResã‚¨ã‚¯ã‚¹ãƒãƒ¼ãƒˆã® `canvas` ã¨æ¯”è¼ƒã™ã‚‹ã€‚
 
 ### UI
 - `Export HiRes Simulated Composite (SO/Add/Max)`
-  - `UIHelpers.GetDot512Overwrite` ‚ğ N ‚Æ‚µ‚Ä—˜—p
-  - Še‡¬ƒ‚[ƒh‚²‚Æ‚É PNG ‚Æ ƒ¿“ŒvCSV ‚ğo—Í‚·‚é
+  - `UIHelpers.GetDot512Overwrite` ã‚’ N ã¨ã—ã¦åˆ©ç”¨
+  - å„åˆæˆãƒ¢ãƒ¼ãƒ‰ã”ã¨ã« PNG ã¨ Î±çµ±è¨ˆCSV ã‚’å‡ºåŠ›ã™ã‚‹
 
-### o—Í
+### å‡ºåŠ›
 - PNG: `pencil-highres-sim-...-{tag}.png`
 - CSV: `pencil-highres-sim-pre-save-alpha-...-{tag}.csv`
 
-## ‡¬®„’è‚ÌŒ‹‰ÊiŠm’èj
+## åˆæˆå¼æ¨å®šã®çµæœï¼ˆç¢ºå®šï¼‰
 ### P=1, N=3
-À‘ªiHiRes pre-save canvasj‚Æ simulated ‚Ì“Œv‚ª **Š®‘Sˆê’v**‚µ‚½B
+å®Ÿæ¸¬ï¼ˆHiRes pre-save canvasï¼‰ã¨ simulated ã®çµ±è¨ˆãŒ **å®Œå…¨ä¸€è‡´**ã—ãŸã€‚
 
-- À‘ª canvas: `alpha_max=245, mean=0.47962554, stddev=0.35800732, unique=148`
+- å®Ÿæ¸¬ canvas: `alpha_max=245, mean=0.47962554, stddev=0.35800732, unique=148`
 - simulated source-over: `alpha_max=245, mean=0.47962554, stddev=0.35800732, unique=148`
 
-ˆê•û‚ÅA‘¼‚ÌŒó•â‚Íˆê’v‚µ‚È‚¢B
+ä¸€æ–¹ã§ã€ä»–ã®å€™è£œã¯ä¸€è‡´ã—ãªã„ã€‚
 
 - simulated add: `alpha_max=255, mean=0.57888421, stddev=0.42994251, unique=86`
 - simulated max: `alpha_max=167, mean=0.24841, stddev=0.20768991, unique=168`
 
-Œ‹˜_:
-- P=1 ‚Å‚ÌInkCanvas—İÏiHiResƒŒƒ“ƒ_Œo˜Hj‚Í **source-over ‘Š“–**‚Å‚ ‚éB
+çµè«–:
+- P=1 ã§ã®InkCanvasç´¯ç©ï¼ˆHiResãƒ¬ãƒ³ãƒ€çµŒè·¯ï¼‰ã¯ **source-over ç›¸å½“**ã§ã‚ã‚‹ã€‚
 
 ### P=0.1, N=3
-À‘ªiHiRes pre-save canvasj‚Æ simulated ‚Ì“Œv‚ªˆê’v‚µ‚½B
+å®Ÿæ¸¬ï¼ˆHiRes pre-save canvasï¼‰ã¨ simulated ã®çµ±è¨ˆãŒä¸€è‡´ã—ãŸã€‚
 
-- À‘ª canvas: `alpha_max=18, mean=0.02766854, stddev=0.01682329, unique=7`
+- å®Ÿæ¸¬ canvas: `alpha_max=18, mean=0.02766854, stddev=0.01682329, unique=7`
 - simulated source-over: `alpha_max=18, mean=0.02766854, stddev=0.01682329, unique=7`
 - simulated add: `alpha_max=18, mean=0.02766854, stddev=0.01682329, unique=7`
 
-Œ‹˜_:
-- P=0.1 ‚Å‚Í `add` ‚Æ `source-over` ‚Ì·‚ª“Œvão‚È‚¢”ÍˆÍi–O˜a‚ª\•ª¬‚³‚¢”ÍˆÍj‚É‚ ‚éB
-- ­‚È‚­‚Æ‚à `max` ‚Í•sˆê’v‚Å‚ ‚éi`alpha_max=6` ‚Ì‚Ü‚ÜjB
+çµè«–:
+- P=0.1 ã§ã¯ `add` ã¨ `source-over` ã®å·®ãŒçµ±è¨ˆä¸Šå‡ºãªã„ç¯„å›²ï¼ˆé£½å’ŒãŒååˆ†å°ã•ã„ç¯„å›²ï¼‰ã«ã‚ã‚‹ã€‚
+- å°‘ãªãã¨ã‚‚ `max` ã¯ä¸ä¸€è‡´ã§ã‚ã‚‹ï¼ˆ`alpha_max=6` ã®ã¾ã¾ï¼‰ã€‚
 
-### N=50‚Å‚Ì’Ç”FiŠm’èj
-P=0.1/P=1 ‚Æ‚à‚É N=50 ‚ÅÀ‘ªiHiRes pre-save canvasj‚Æ simulated source-over ‚ªˆê’v‚µ‚½B
+### N=50ã§ã®è¿½èªï¼ˆç¢ºå®šï¼‰
+P=0.1/P=1 ã¨ã‚‚ã« N=50 ã§å®Ÿæ¸¬ï¼ˆHiRes pre-save canvasï¼‰ã¨ simulated source-over ãŒä¸€è‡´ã—ãŸã€‚
 
 - P=0.1, N=50
-  - À‘ª canvas: `alpha_max=176, mean=0.34423477, stddev=0.19734977, unique=7`
+  - å®Ÿæ¸¬ canvas: `alpha_max=176, mean=0.34423477, stddev=0.19734977, unique=7`
   - simulated source-over: `alpha_max=176, mean=0.34423477, stddev=0.19734977, unique=7`
-  - simulated add: `alpha_max=255, mean=0.46114058, stddev=0.28038433, unique=7`i•sˆê’vj
+  - simulated add: `alpha_max=255, mean=0.46114058, stddev=0.28038433, unique=7`ï¼ˆä¸ä¸€è‡´ï¼‰
 
 - P=1, N=50
-  - À‘ª canvas: `alpha_max=255, mean=0.72779309, stddev=0.43154587, unique=25`
+  - å®Ÿæ¸¬ canvas: `alpha_max=255, mean=0.72779309, stddev=0.43154587, unique=25`
   - simulated source-over: `alpha_max=255, mean=0.72779309, stddev=0.43154587, unique=25`
 
-Œ‹˜_:
-- HiResƒŒƒ“ƒ_Œo˜HiWin2D `CanvasRenderTarget` + `DrawInk`j‚Ì—İÏ‚Í **BGRA8i8bitj** ‚Ìã‚Å **source-over** ‚Ås‚í‚ê‚é‚ÆŒ©‚È‚µ‚Ä‚æ‚¢B
+çµè«–:
+- HiResãƒ¬ãƒ³ãƒ€çµŒè·¯ï¼ˆWin2D `CanvasRenderTarget` + `DrawInk`ï¼‰ã®ç´¯ç©ã¯ **BGRA8ï¼ˆ8bitï¼‰** ã®ä¸Šã§ **source-over** ã§è¡Œã‚ã‚Œã‚‹ã¨è¦‹ãªã—ã¦ã‚ˆã„ã€‚
 
-## ’²¸‚Ìi‚ß•ûi’¼üƒXƒgƒ[ƒNF“_—ñ¨•`‰æ‚Ì•ÏŠ·‚ğŠÏ‘ªj
-ì‹Æè‡‚Ìƒ‹[ƒvƒtƒ[‚Í `docs/sampling-loop-workflow.md` ‚ğQÆB
+## èª¿æŸ»ã®é€²ã‚æ–¹ï¼ˆç›´ç·šã‚¹ãƒˆãƒ­ãƒ¼ã‚¯ï¼šç‚¹åˆ—â†’æç”»ã®å¤‰æ›ã‚’è¦³æ¸¬ï¼‰
+ä½œæ¥­æ‰‹é †ã®ãƒ«ãƒ¼ãƒ—ãƒ•ãƒ­ãƒ¼ã¯ `docs/sampling-loop-workflow.md` ã‚’å‚ç…§ã€‚
 
-### –Ú“I
-ÀƒfƒoƒCƒX—R—ˆ‚Ì“_—ñiInkPointsDumpj‚ÆA§Œä‚µ‚½“_—ñi’¼üŒÅ’èj‚ğ”äŠr‚µAu“_ŠÔŠuiddjvuŠÔ·idtjvu“_—ñ‚Ì•`‰æ•ÏŠ·i•âŠÔ/–„‚ßjv‚Ì‰e‹¿‚ğ•ª—£‚µ‚ÄŠÏ‘ª‚·‚éB
+### ç›®çš„
+å®Ÿãƒ‡ãƒã‚¤ã‚¹ç”±æ¥ã®ç‚¹åˆ—ï¼ˆInkPointsDumpï¼‰ã¨ã€åˆ¶å¾¡ã—ãŸç‚¹åˆ—ï¼ˆç›´ç·šå›ºå®šï¼‰ã‚’æ¯”è¼ƒã—ã€ã€Œç‚¹é–“éš”ï¼ˆddï¼‰ã€ã€Œæ™‚é–“å·®ï¼ˆdtï¼‰ã€ã€Œç‚¹åˆ—ã®æç”»å¤‰æ›ï¼ˆè£œé–“/åŸ‹ã‚ï¼‰ã€ã®å½±éŸ¿ã‚’åˆ†é›¢ã—ã¦è¦³æ¸¬ã™ã‚‹ã€‚
 
-### è‡i„§j
-1. StrokeSampler‚ÅƒLƒƒƒ“ƒoƒX‚ğƒNƒŠƒA‚·‚é
-2. `Dot512 Pressure` ‚Æ `Dot512 Size` ‚ğİ’è‚·‚éi—á: P=0.1/1.0AS=200j
-3. Start/End‚ğ…•½’¼ü‚Éİ’è‚·‚éi—á: Start=260,440 End=1260,440j
-4. `LinePts` ‚Æ `LineStep(px)` ‚ğ•Ï‚¦‚Ä `Draw Line (Fixed)` ‚ğÀs‚·‚é
-   - Às‚·‚é‚ÆAƒXƒgƒ[ƒN‚ğ•`‰æ‚µ‚Â‚Â `LocalFolder/InkPointsDump` ‚É points JSON ‚ğ©“®•Û‘¶‚·‚é
-5. ’¼Œã‚ÉHiReso—Í‚ğs‚¤i`Export HiRes PNG (Cropped+Transparent)` ‚È‚Çj
-6. DotLab‚ÅˆÈ‰º‚ğÀs‚·‚é
-   - `Export InkPointsDump Stats (dd/dt CSV)` ‚ÅAdumpƒtƒHƒ‹ƒ_‚©‚çdd/dt“ŒvCSV‚ğ¶¬‚·‚é
-   - `Export Alpha Diff (Canvas vs Sim)` ‚ÅAÀ‘ªcanvas PNG ‚Æ sim-sourceover PNG ‚Ìƒ¿·•ª‚ğ¶¬‚·‚é
+### æ‰‹é †ï¼ˆæ¨å¥¨ï¼‰
+1. StrokeSamplerã§ã‚­ãƒ£ãƒ³ãƒã‚¹ã‚’ã‚¯ãƒªã‚¢ã™ã‚‹
+2. `Dot512 Pressure` ã¨ `Dot512 Size` ã‚’è¨­å®šã™ã‚‹ï¼ˆä¾‹: P=0.1/1.0ã€S=200ï¼‰
+3. Start/Endã‚’æ°´å¹³ç›´ç·šã«è¨­å®šã™ã‚‹ï¼ˆä¾‹: Start=260,440 End=1260,440ï¼‰
+4. `LinePts` ã¨ `LineStep(px)` ã‚’å¤‰ãˆã¦ `Draw Line (Fixed)` ã‚’å®Ÿè¡Œã™ã‚‹
+   - å®Ÿè¡Œã™ã‚‹ã¨ã€ã‚¹ãƒˆãƒ­ãƒ¼ã‚¯ã‚’æç”»ã—ã¤ã¤ `LocalFolder/InkPointsDump` ã« points JSON ã‚’è‡ªå‹•ä¿å­˜ã™ã‚‹
+5. ç›´å¾Œã«HiReså‡ºåŠ›ã‚’è¡Œã†ï¼ˆ`Export HiRes PNG (Cropped+Transparent)` ãªã©ï¼‰
+6. DotLabã§ä»¥ä¸‹ã‚’å®Ÿè¡Œã™ã‚‹
+   - `Export InkPointsDump Stats (dd/dt CSV)` ã§ã€dumpãƒ•ã‚©ãƒ«ãƒ€ã‹ã‚‰dd/dtçµ±è¨ˆCSVã‚’ç”Ÿæˆã™ã‚‹
+   - `Export Alpha Diff (Canvas vs Sim)` ã§ã€å®Ÿæ¸¬canvas PNG ã¨ sim-sourceover PNG ã®Î±å·®åˆ†ã‚’ç”Ÿæˆã™ã‚‹
 
-### ŠÏ‘ª‚ÌŒ©•ûi–ÚˆÀj
-- `LineStep(px)` ‚ğ‘å‚«‚­‚µ‚Ä‚àü‚ª–„‚Ü‚é ¨ Ink‚Ì•âŠÔi“_‘‚µ/˜A‘±Œ`ó‰»j‚Ì‰Â”\«
-- `LineStep(px)` ‚ª‘å‚«‚¢‚Æ“rØ‚ê‚ªo‚é ¨ “_—ñ‚Ì—£U«iƒXƒ^ƒ“ƒvŠÔŠuj‚ÉˆË‘¶
-- dd/dt“Œv‚Å `dd=0` ‚ª‘½‚¢‚Ì‚É”Z’W‚ª•Ï‚í‚é ¨ “¯ˆê“_‚Åpressure•Ï‰»‚É‚æ‚é—İÏ‚Ì‰e‹¿
+### è¦³æ¸¬ã®è¦‹æ–¹ï¼ˆç›®å®‰ï¼‰
+- `LineStep(px)` ã‚’å¤§ããã—ã¦ã‚‚ç·šãŒåŸ‹ã¾ã‚‹ â†’ Inkã®è£œé–“ï¼ˆç‚¹å¢—ã—/é€£ç¶šå½¢çŠ¶åŒ–ï¼‰ã®å¯èƒ½æ€§
+- `LineStep(px)` ãŒå¤§ãã„ã¨é€”åˆ‡ã‚ŒãŒå‡ºã‚‹ â†’ ç‚¹åˆ—ã®é›¢æ•£æ€§ï¼ˆã‚¹ã‚¿ãƒ³ãƒ—é–“éš”ï¼‰ã«ä¾å­˜
+- dd/dtçµ±è¨ˆã§ `dd=0` ãŒå¤šã„ã®ã«æ¿ƒæ·¡ãŒå¤‰ã‚ã‚‹ â†’ åŒä¸€ç‚¹ã§pressureå¤‰åŒ–ã«ã‚ˆã‚‹ç´¯ç©ã®å½±éŸ¿
+
+---
+
+## é–¢é€£ãƒˆãƒ”ãƒƒã‚¯ï¼ˆåˆ¥æ–‡è„ˆï¼‰: ç·šå…ˆé ­N1 vs å˜ç‚¹ï¼ˆaligned-dot-indexï¼‰ã®è¿‘ä¼¼
+æœ¬ãƒ‰ã‚­ãƒ¥ãƒ¡ãƒ³ãƒˆã¯ InkCanvas ã®é‡ã­å¡—ã‚Šï¼ˆç´¯ç©åˆæˆï¼‰æŒ™å‹•ã®åˆ‡ã‚Šåˆ†ã‘ãŒä¸»é¡Œã€‚
+ä¸€æ–¹ã§ã€ç·šæç”»ã®å…ˆé ­é ˜åŸŸã¨å˜ç‚¹PNGã®å¯¾å¿œï¼ˆå½¢çŠ¶/æ¿ƒã•ã®è¿‘ä¼¼ï¼‰ã‚’DotLabå´ã§åˆ†æã™ã‚‹æ©Ÿèƒ½ã‚‚è¿½åŠ ã—ã¦ã„ã‚‹ã€‚
+
+- DotLabå´: `DotLab/Analysis/LineN1VsDotN1Matcher.cs`
+- å¼•ç¶™ã: `docs/copilot-session-summary.md` ã® "Aligned line N1 vs aligned-dot-index N1" ç¯€
