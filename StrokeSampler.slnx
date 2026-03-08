@@ -6,6 +6,7 @@
     <Platform Name="x86" />
   </Configurations>
   <Project Path="DotLab/DotLab.csproj" Id="5cce61ff-a082-4cc9-b7cd-ec23461e388e" />
+  <Project Path="DotTester/DotTester.csproj" Id="8ecac4b9-1570-47fd-b186-c2640a894d2a" />
   <Project Path="InkDrawGen/InkDrawGen.csproj" Id="6a1c292b-dd53-42de-bcbf-3b0e19036dc5">
     <Platform Solution="*|ARM" Project="ARM" />
     <Platform Solution="*|ARM64" Project="ARM64" />

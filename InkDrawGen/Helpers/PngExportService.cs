@@ -105,7 +105,7 @@ namespace InkDrawGen.Helpers
             {
                 storageFolder = await StorageFolder.GetFolderFromPathAsync(folderPath);
             }
-            catch (DirectoryNotFoundException)
+            catch
             {
                 // フォルダが存在しない場合は階層を作成する
                 var parts = folderPath.Split(Path.DirectorySeparatorChar);
@@ -119,10 +119,6 @@ namespace InkDrawGen.Helpers
                     if (string.IsNullOrWhiteSpace(parts[i])) continue;
                     storageFolder = await storageFolder.CreateFolderAsync(parts[i], CreationCollisionOption.OpenIfExists);
                 }
-            }
-            catch
-            {
-                storageFolder = null;
             }
 
             var file = await storageFolder.CreateFileAsync(fileName, CreationCollisionOption.ReplaceExisting);

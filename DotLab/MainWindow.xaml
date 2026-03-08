@@ -24,142 +24,146 @@
                            FontWeight="SemiBold"
                            Margin="0,0,0,12" />
 
-                <TextBlock Text="Noise (alpha as height)"
-                           FontWeight="SemiBold"
-                           Margin="0,0,0,6" />
-                <TextBlock Text="NoisePath" />
-                <TextBox x:Name="NoisePathTextBox"
-                         Text="Sample/NoiseSheet-WhiteBack2-Transparent.png" />
+                <Expander IsExpanded="False"
+                          Header="Noise (alpha as height)">
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock Text="NoisePath" />
+                        <TextBox x:Name="NoisePathTextBox"
+                                 Text="Sample/NoiseSheet-WhiteBack2-Transparent.png" />
 
-                <StackPanel Orientation="Horizontal"
-                            Margin="0,8,0,0">
-                    <StackPanel Width="120">
-                        <TextBlock Text="NoiseScale" />
-                        <ui:NumberBox x:Name="NoiseScaleNumberBox"
-                                      Text="0.125"
-                                      Value="0.125"
-                                      SmallChange="0.125"
-                                      LargeChange="0.5"
-                                      SpinButtonPlacementMode="Inline"
-                                      ValueChanged="Property_Changed" />
+                        <StackPanel Orientation="Horizontal"
+                                    Margin="0,8,0,0">
+                            <StackPanel Width="120">
+                                <TextBlock Text="NoiseScale" />
+                                <ui:NumberBox x:Name="NoiseScaleNumberBox"
+                                              Text="0.125"
+                                              Value="0.125"
+                                              SmallChange="0.125"
+                                              LargeChange="0.5"
+                                              SpinButtonPlacementMode="Inline"
+                                              ValueChanged="Property_Changed" />
+                            </StackPanel>
+                            <StackPanel Width="120"
+                                        Margin="8,0,0,0">
+                                <TextBlock Text="OffsetX" />
+                                <ui:NumberBox x:Name="NoiseOffsetXNumberBox"
+                                              Text="0"
+                                              Value="0"
+                                              SmallChange="1"
+                                              LargeChange="5"
+                                              SpinButtonPlacementMode="Inline"
+                                              ValueChanged="Property_Changed" />
+                            </StackPanel>
+                            <StackPanel Width="120"
+                                        Margin="8,0,0,0">
+                                <TextBlock Text="OffsetY" />
+                                <ui:NumberBox x:Name="NoiseOffsetYNumberBox"
+                                              Value="0"
+                                              SpinButtonPlacementMode="Inline" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
-                    <StackPanel Width="120"
-                                Margin="8,0,0,0">
-                        <TextBlock Text="OffsetX" />
-                        <ui:NumberBox x:Name="NoiseOffsetXNumberBox"
-                                      Text="0"
-                                      Value="0"
-                                      SmallChange="1"
-                                      LargeChange="5"
-                                      SpinButtonPlacementMode="Inline"
-                                      ValueChanged="Property_Changed" />
-                    </StackPanel>
-                    <StackPanel Width="120"
-                                Margin="8,0,0,0">
-                        <TextBlock Text="OffsetY" />
-                        <ui:NumberBox x:Name="NoiseOffsetYNumberBox"
-                                      Value="0"
-                                      SpinButtonPlacementMode="Inline" />
-                    </StackPanel>
-                </StackPanel>
+                </Expander>
 
                 <Separator Margin="0,12,0,12" />
 
-                <TextBlock Text="Dot"
-                           FontWeight="SemiBold"
-                           Margin="0,0,0,6" />
+                <Expander IsExpanded="False" Header="Dot">
 
-                <StackPanel Orientation="Horizontal">
-                    <StackPanel Width="120">
-                        <TextBlock Text="S (diameter px)" />
-                        <ui:NumberBox x:Name="DiameterNumberBox"
-                                      Text="200"
-                                      Value="200"
-                                      SmallChange="1"
-                                      LargeChange="5"
-                                      SpinButtonPlacementMode="Inline"
-                                      ValueChanged="Property_Changed" />
+                    <StackPanel Orientation="Vertical">
+
+                        <StackPanel Orientation="Horizontal">
+                            <StackPanel Width="120">
+                                <TextBlock Text="S (diameter px)" />
+                                <ui:NumberBox x:Name="DiameterNumberBox"
+                                              Text="200"
+                                              Value="200"
+                                              SmallChange="1"
+                                              LargeChange="5"
+                                              SpinButtonPlacementMode="Inline"
+                                              ValueChanged="Property_Changed" />
+                            </StackPanel>
+                            <StackPanel Width="120"
+                                        Margin="8,0,0,0">
+                                <TextBlock Text="P" />
+                                <ui:NumberBox x:Name="PressureNumberBox"
+                                              Text="1"
+                                              Value="1"
+                                              Maximum="1.0"
+                                              SmallChange="0.01"
+                                              LargeChange="0.1"
+                                              SpinButtonPlacementMode="Inline"
+                                              ValueChanged="Property_Changed" />
+                            </StackPanel>
+                            <StackPanel Width="120"
+                                        Margin="8,0,0,0">
+                                <TextBlock Text="N" />
+                                <ui:NumberBox x:Name="StampCountNumberBox"
+                                              Text="1"
+                                              Value="1"
+                                              SmallChange="1"
+                                              LargeChange="5"
+                                              SpinButtonPlacementMode="Inline"
+                                              ValueChanged="Property_Changed" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal"
+                                    Margin="0,8,0,0">
+                            <StackPanel Width="120">
+                                <TextBlock Text="k (softness)" />
+                                <ui:NumberBox x:Name="SoftnessKNumberBox"
+                                              Text="0.15"
+                                              Value="0.15"
+                                              Minimum="0.001"
+                                              SmallChange="0.01"
+                                              LargeChange="0.1"
+                                              SpinButtonPlacementMode="Inline"
+                                              ValueChanged="Property_Changed" />
+                            </StackPanel>
+                            <StackPanel Width="120"
+                                        Margin="8,0,0,0">
+                                <TextBlock Text="CanvasSize" />
+                                <ui:NumberBox x:Name="CanvasSizeNumberBox"
+                                              Text="512"
+                                              Value="512"
+                                              SmallChange="8"
+                                              LargeChange="64"
+                                              SpinButtonPlacementMode="Inline"
+                                              ValueChanged="Property_Changed" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <TextBlock Text="f(r)"
+                                   FontWeight="SemiBold"
+                                   Margin="0,12,0,6" />
+                        <ComboBox x:Name="FalloffModeComboBox"
+                                  SelectedIndex="0">
+                            <ComboBoxItem Content="IdealCircle (use LUT if available)" />
+                            <ComboBoxItem Content="Flat (f=1)" />
+                            <ComboBoxItem Content="CSV(LUT)" />
+                        </ComboBox>
+
+                        <TextBlock Text="Preview"
+                                   FontWeight="SemiBold"
+                                   Margin="0,12,0,6" />
+                        <ComboBox x:Name="PreviewModeComboBox"
+                                  SelectedIndex="0">
+                            <ComboBoxItem Content="outA" />
+                            <ComboBoxItem Content="V" />
+                            <ComboBoxItem Content="B=P*f(r)" />
+                            <ComboBoxItem Content="D=B-wall" />
+                            <ComboBoxItem Content="R=(B-wall)/k (raw)" />
+                            <ComboBoxItem Content="H=noiseHeight" />
+                            <ComboBoxItem Content="wall=1-H" />
+                        </ComboBox>
+
+                        <Button x:Name="RenderButton"
+                                Content="Render"
+                                Margin="0,12,0,0"
+                                Click="RenderButton_Click" />
+
                     </StackPanel>
-                    <StackPanel Width="120"
-                                Margin="8,0,0,0">
-                        <TextBlock Text="P" />
-                        <ui:NumberBox x:Name="PressureNumberBox"
-                                      Text="1"
-                                      Value="1"
-                                      Maximum="1.0"
-                                      SmallChange="0.01"
-                                      LargeChange="0.1"
-                                      SpinButtonPlacementMode="Inline"
-                                      ValueChanged="Property_Changed" />
-                    </StackPanel>
-                    <StackPanel Width="120"
-                                Margin="8,0,0,0">
-                        <TextBlock Text="N" />
-                        <ui:NumberBox x:Name="StampCountNumberBox"
-                                      Text="1"
-                                      Value="1"
-                                      SmallChange="1"
-                                      LargeChange="5"
-                                      SpinButtonPlacementMode="Inline"
-                                      ValueChanged="Property_Changed" />
-                    </StackPanel>
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal"
-                            Margin="0,8,0,0">
-                    <StackPanel Width="120">
-                        <TextBlock Text="k (softness)" />
-                        <ui:NumberBox x:Name="SoftnessKNumberBox"
-                                      Text="0.15"
-                                      Value="0.15"
-                                      Minimum="0.001"
-                                      SmallChange="0.01"
-                                      LargeChange="0.1"
-                                      SpinButtonPlacementMode="Inline"
-                                      ValueChanged="Property_Changed" />
-                    </StackPanel>
-                    <StackPanel Width="120"
-                                Margin="8,0,0,0">
-                        <TextBlock Text="CanvasSize" />
-                        <ui:NumberBox x:Name="CanvasSizeNumberBox"
-                                      Text="512"
-                                      Value="512"
-                                      SmallChange="8"
-                                      LargeChange="64"
-                                      SpinButtonPlacementMode="Inline"
-                                      ValueChanged="Property_Changed" />
-                    </StackPanel>
-                </StackPanel>
-
-                <TextBlock Text="f(r)"
-                           FontWeight="SemiBold"
-                           Margin="0,12,0,6" />
-                <ComboBox x:Name="FalloffModeComboBox"
-                          SelectedIndex="0">
-                    <ComboBoxItem Content="IdealCircle (use LUT if available)" />
-                    <ComboBoxItem Content="Flat (f=1)" />
-                    <ComboBoxItem Content="CSV(LUT)" />
-                </ComboBox>
-
-                <TextBlock Text="Preview"
-                           FontWeight="SemiBold"
-                           Margin="0,12,0,6" />
-                <ComboBox x:Name="PreviewModeComboBox"
-                          SelectedIndex="0">
-                    <ComboBoxItem Content="outA" />
-                    <ComboBoxItem Content="V" />
-                    <ComboBoxItem Content="B=P*f(r)" />
-                    <ComboBoxItem Content="D=B-wall" />
-                    <ComboBoxItem Content="R=(B-wall)/k (raw)" />
-                    <ComboBoxItem Content="H=noiseHeight" />
-                    <ComboBoxItem Content="wall=1-H" />
-                </ComboBox>
-
-                <Button x:Name="RenderButton"
-                        Content="Render"
-                        Margin="0,12,0,0"
-                        Click="RenderButton_Click" />
-
+                </Expander>
                 <Separator Margin="0,12,0,12" />
 
                 <TextBlock Text="Analysis"
@@ -192,6 +196,155 @@
                         Content="Export Alpha Histogram CSV (PNG, Batch)"
                         Margin="0,8,0,0"
                         Click="ExportAlphaHistogramBatchButton_Click" />
+
+                <TextBlock Text="Radial alpha profile"
+                           FontWeight="SemiBold"
+                           Margin="0,12,0,6" />
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel Width="120">
+                        <TextBlock Text="BinSize(px)" />
+                        <ui:NumberBox x:Name="RadialBinSizeNumberBox"
+                                      Text="1"
+                                      Value="1"
+                                      Minimum="1"
+                                      SmallChange="1"
+                                      LargeChange="5"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                </StackPanel>
+                <Button x:Name="ExportAlphaRadialProfileButton"
+                        Content="Export Alpha Radial Profile CSV (PNG)"
+                        Margin="0,8,0,0"
+                        Click="ExportAlphaRadialProfileButton_Click" />
+                <Button x:Name="ExportAlphaRadialProfileBatchButton"
+                        Content="Export Alpha Radial Profile CSV (PNG, Batch)"
+                        Margin="0,8,0,0"
+                        Click="ExportAlphaRadialProfileBatchButton_Click" />
+
+                <TextBlock Text="Period search (shift self-match)"
+                           FontWeight="SemiBold"
+                           Margin="0,12,0,6" />
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel Width="120">
+                        <TextBlock Text="ShiftMin(px)" />
+                        <ui:NumberBox x:Name="ShiftPeriodMinNumberBox"
+                                      Text="300"
+                                      Value="300"
+                                      Minimum="0"
+                                      SmallChange="1"
+                                      LargeChange="10"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                    <StackPanel Width="120"
+                                Margin="8,0,0,0">
+                        <TextBlock Text="ShiftMax(px)" />
+                        <ui:NumberBox x:Name="ShiftPeriodMaxNumberBox"
+                                      Text="600"
+                                      Value="600"
+                                      Minimum="0"
+                                      SmallChange="1"
+                                      LargeChange="10"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                    <StackPanel Width="120"
+                                Margin="8,0,0,0">
+                        <TextBlock Text="Step" />
+                        <ui:NumberBox x:Name="ShiftPeriodStepNumberBox"
+                                      Text="1"
+                                      Value="1"
+                                      Minimum="1"
+                                      SmallChange="1"
+                                      LargeChange="5"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal"
+                            Margin="0,8,0,0">
+                    <StackPanel Width="120">
+                        <TextBlock Text="SampleStep(px)" />
+                        <ui:NumberBox x:Name="ShiftPeriodSampleStepNumberBox"
+                                      Text="4"
+                                      Value="4"
+                                      Minimum="1"
+                                      SmallChange="1"
+                                      LargeChange="4"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                    <StackPanel Width="120"
+                                Margin="8,0,0,0">
+                        <TextBlock Text="Margin(px)" />
+                        <ui:NumberBox x:Name="ShiftPeriodMarginNumberBox"
+                                      Text="0"
+                                      Value="0"
+                                      Minimum="0"
+                                      SmallChange="1"
+                                      LargeChange="10"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                    <StackPanel Width="120"
+                                Margin="8,0,0,0">
+                        <TextBlock Text="AlphaMin" />
+                        <ui:NumberBox x:Name="ShiftPeriodAlphaMinNumberBox"
+                                      Text="1"
+                                      Value="1"
+                                      Minimum="0"
+                                      Maximum="255"
+                                      SmallChange="1"
+                                      LargeChange="10"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                </StackPanel>
+                <CheckBox x:Name="ShiftPeriodWrapCheckBox"
+                          Content="Wrap (mod) compare"
+                          IsChecked="False"
+                          Margin="0,8,0,0" />
+                <Button x:Name="ExportAlphaShiftPeriodButton"
+                        Content="Export Alpha Shift Period CSV (PNG)"
+                        Margin="0,8,0,0"
+                        Click="ExportAlphaShiftPeriodButton_Click" />
+
+                <TextBlock Text="Shift PNG (translate)"
+                           FontWeight="SemiBold"
+                           Margin="0,12,0,6" />
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel Width="120">
+                        <TextBlock Text="ShiftX(px)" />
+                        <ui:NumberBox x:Name="ShiftPngXNumberBox"
+                                      Text="0"
+                                      Value="0"
+                                      SmallChange="1"
+                                      LargeChange="10"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                    <StackPanel Width="120"
+                                Margin="8,0,0,0">
+                        <TextBlock Text="ShiftY(px)" />
+                        <ui:NumberBox x:Name="ShiftPngYNumberBox"
+                                      Text="0"
+                                      Value="0"
+                                      SmallChange="1"
+                                      LargeChange="10"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                </StackPanel>
+                <CheckBox x:Name="ShiftPngWrapCheckBox"
+                          Content="Wrap (tile) shift"
+                          IsChecked="True"
+                          Margin="0,8,0,0" />
+                <Button x:Name="ExportAlphaShiftedPngButton"
+                        Content="Export Shifted PNG (PNG)"
+                        Margin="0,8,0,0"
+                        />
+
+                <Button x:Name="ExportAlphaRadialKernelNoiseButton"
+                        Content="Export Radial Kernel+Noise PNG/CSV (PNG)"
+                        Margin="0,8,0,0"
+                        Click="ExportAlphaRadialKernelNoiseButton_Click" />
+
+                <Button x:Name="VerifyAlignedNSeriesModelButton"
+                        Content="Verify alignedN series model (N1/cap/N2/4/8)"
+                        Margin="0,8,0,0"
+                        Click="VerifyAlignedNSeriesModelButton_Click" />
 
                 <Button x:Name="AnalyzeAlignedDiffSeriesButton"
                         Content="Analyze alignedN diff series (CSV)"
@@ -267,90 +420,124 @@
                                           SpinButtonPlacementMode="Inline" />
                         </StackPanel>
                     </StackPanel>
-                    <CheckBox x:Name="AlphaWindowExclude1DipMarginCheckBox" Content="Exclude 1DIP margin (auto ROI)" IsChecked="True" Margin="0,6,0,0" />
+                    <CheckBox x:Name="AlphaWindowExclude1DipMarginCheckBox"
+                              Content="Exclude 1DIP margin (auto ROI)"
+                              IsChecked="True"
+                              Margin="0,6,0,0" />
                 </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <StackPanel Width="120"
-                                        Margin="0,0,0,0">
-                                <TextBlock Text="PeriodDip(guess)" />
-                                <ui:NumberBox x:Name="AlphaWindowPeriodDipGuessNumberBox"
-                                              Text="0"
-                                              Value="0"
-                                              Minimum="0"
-                                              SmallChange="0.05"
-                                              LargeChange="0.25"
-                                              SpinButtonPlacementMode="Inline" />
-                            </StackPanel>
-                        </StackPanel>
-                            <TextBlock Text="ROI x,y,w,h (pixels in PNG)"
-                                       Margin="0,8,0,0" />
-                            <TextBox x:Name="AlphaWindowRoiTextBox"
-                                     Text="0,0,0,0" />
-                            <Button x:Name="ExportAlphaWindowProfileButton"
-                                    Content="Export Alpha Window Profile CSV (PNG)"
-                                    Margin="0,8,0,0"
-                                    Click="ExportAlphaWindowProfileButton_Click" />
-                            <Button x:Name="ExportAlphaWindowProfileBatchButton"
-                                    Content="Export Alpha Window Profile CSV (PNG, Batch)"
-                                    Margin="0,8,0,0"
-                                    Click="ExportAlphaWindowProfileBatchButton_Click" />
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel Width="120"
+                                Margin="0,0,0,0">
+                        <TextBlock Text="PeriodDip(guess)" />
+                        <ui:NumberBox x:Name="AlphaWindowPeriodDipGuessNumberBox"
+                                      Text="0"
+                                      Value="0"
+                                      Minimum="0"
+                                      SmallChange="0.05"
+                                      LargeChange="0.25"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Text="ROI x,y,w,h (pixels in PNG)"
+                           Margin="0,8,0,0" />
+                <TextBox x:Name="AlphaWindowRoiTextBox"
+                         Text="0,0,0,0" />
+                <Button x:Name="ExportAlphaWindowProfileButton"
+                        Content="Export Alpha Window Profile CSV (PNG)"
+                        Margin="0,8,0,0"
+                        Click="ExportAlphaWindowProfileButton_Click" />
+                <Button x:Name="ExportAlphaWindowProfileBatchButton"
+                        Content="Export Alpha Window Profile CSV (PNG, Batch)"
+                        Margin="0,8,0,0"
+                        Click="ExportAlphaWindowProfileBatchButton_Click" />
 
-                            <TextBlock Text="Window profile summary analysis"
-                                       FontWeight="SemiBold"
-                                       Margin="0,12,0,6" />
-                            <StackPanel Orientation="Horizontal">
-                                <StackPanel Width="120">
-                                    <TextBlock Text="HeadWindows(K)" />
-                                    <ui:NumberBox x:Name="AlphaWindowSummaryHeadKNumberBox"
-                                                  Text="32"
-                                                  Value="32"
-                                                  Minimum="1"
-                                                  SmallChange="1"
-                                                  LargeChange="10"
-                                                  SpinButtonPlacementMode="Inline" />
-                                </StackPanel>
-                                <StackPanel Width="120" Margin="8,0,0,0">
-                                    <TextBlock Text="TailWindows" />
-                                    <ui:NumberBox x:Name="AlphaWindowSummaryTailNumberBox"
-                                                  Text="10"
-                                                  Value="10"
-                                                  Minimum="1"
-                                                  SmallChange="1"
-                                                  LargeChange="5"
-                                                  SpinButtonPlacementMode="Inline" />
-                                </StackPanel>
-                            </StackPanel>
-                            <Button x:Name="AnalyzeAlphaWindowProfileSummaryButton"
-                                    Content="Analyze Alpha Window Profile Summary CSV"
-                                    Margin="0,8,0,0"
-                                    Click="AnalyzeAlphaWindowProfileSummaryButton_Click" />
+                <TextBlock Text="Window profile summary analysis"
+                           FontWeight="SemiBold"
+                           Margin="0,12,0,6" />
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel Width="120">
+                        <TextBlock Text="HeadWindows(K)" />
+                        <ui:NumberBox x:Name="AlphaWindowSummaryHeadKNumberBox"
+                                      Text="32"
+                                      Value="32"
+                                      Minimum="1"
+                                      SmallChange="1"
+                                      LargeChange="10"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                    <StackPanel Width="120"
+                                Margin="8,0,0,0">
+                        <TextBlock Text="TailWindows" />
+                        <ui:NumberBox x:Name="AlphaWindowSummaryTailNumberBox"
+                                      Text="10"
+                                      Value="10"
+                                      Minimum="1"
+                                      SmallChange="1"
+                                      LargeChange="5"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                </StackPanel>
+                <Button x:Name="AnalyzeAlphaWindowProfileSummaryButton"
+                        Content="Analyze Alpha Window Profile Summary CSV"
+                        Margin="0,8,0,0"
+                        Click="AnalyzeAlphaWindowProfileSummaryButton_Click" />
 
-                            <TextBlock Text="Mask generation (S200 overlap region)"
-                                       FontWeight="SemiBold"
-                                       Margin="0,12,0,6" />
-                            <StackPanel Orientation="Horizontal">
-                                <StackPanel Width="120">
-                                    <TextBlock Text="S" />
-                                    <ui:NumberBox x:Name="MaskSNumberBox" Text="200" Value="200" Minimum="1" SmallChange="10" LargeChange="50" SpinButtonPlacementMode="Inline" />
-                                </StackPanel>
-                                <StackPanel Width="120" Margin="8,0,0,0">
-                                    <TextBlock Text="PeriodDip" />
-                                    <ui:NumberBox x:Name="MaskPeriodDipNumberBox" Text="1.75" Value="1.75" Minimum="0.001" SmallChange="0.05" LargeChange="0.25" SpinButtonPlacementMode="Inline" />
-                                </StackPanel>
-                                <StackPanel Width="120" Margin="8,0,0,0">
-                                    <TextBlock Text="Scale" />
-                                    <ui:NumberBox x:Name="MaskScaleNumberBox" Text="10" Value="10" Minimum="1" SmallChange="1" LargeChange="5" SpinButtonPlacementMode="Inline" />
-                                </StackPanel>
-                                <StackPanel Width="120" Margin="8,0,0,0">
-                                    <TextBlock Text="YMargin(px)" />
-                                    <ui:NumberBox x:Name="MaskYMarginPxNumberBox" Text="10" Value="10" Minimum="0" SmallChange="1" LargeChange="5" SpinButtonPlacementMode="Inline" />
-                                </StackPanel>
-                            </StackPanel>
-                            <CheckBox x:Name="MaskInclude1DipMarginCheckBox" Content="Include 1DIP left margin" IsChecked="True" Margin="0,6,0,0" />
-                            <Button x:Name="ExportS200MaskButton"
-                                    Content="Export S200 Mask PNG (Region 11 Left)"
-                                    Margin="0,8,0,0"
-                                    Click="ExportS200MaskButton_Click" />
+                <TextBlock Text="Mask generation (S200 overlap region)"
+                           FontWeight="SemiBold"
+                           Margin="0,12,0,6" />
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel Width="120">
+                        <TextBlock Text="S" />
+                        <ui:NumberBox x:Name="MaskSNumberBox"
+                                      Text="200"
+                                      Value="200"
+                                      Minimum="1"
+                                      SmallChange="10"
+                                      LargeChange="50"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                    <StackPanel Width="120"
+                                Margin="8,0,0,0">
+                        <TextBlock Text="PeriodDip" />
+                        <ui:NumberBox x:Name="MaskPeriodDipNumberBox"
+                                      Text="1.75"
+                                      Value="1.75"
+                                      Minimum="0.001"
+                                      SmallChange="0.05"
+                                      LargeChange="0.25"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                    <StackPanel Width="120"
+                                Margin="8,0,0,0">
+                        <TextBlock Text="Scale" />
+                        <ui:NumberBox x:Name="MaskScaleNumberBox"
+                                      Text="10"
+                                      Value="10"
+                                      Minimum="1"
+                                      SmallChange="1"
+                                      LargeChange="5"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                    <StackPanel Width="120"
+                                Margin="8,0,0,0">
+                        <TextBlock Text="YMargin(px)" />
+                        <ui:NumberBox x:Name="MaskYMarginPxNumberBox"
+                                      Text="10"
+                                      Value="10"
+                                      Minimum="0"
+                                      SmallChange="1"
+                                      LargeChange="5"
+                                      SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+                </StackPanel>
+                <CheckBox x:Name="MaskInclude1DipMarginCheckBox"
+                          Content="Include 1DIP left margin"
+                          IsChecked="True"
+                          Margin="0,6,0,0" />
+                <Button x:Name="ExportS200MaskButton"
+                        Content="Export S200 Mask PNG (Region 11 Left)"
+                        Margin="0,8,0,0"
+                        Click="ExportS200MaskButton_Click" />
             </StackPanel>
         </ScrollViewer>
 

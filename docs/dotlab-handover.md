@@ -102,6 +102,24 @@ GIMPの手動分解で得た仮説を、実装優先で以下の式として扱�
 
 ## 追加機能: バッチ比較（別フォルダ）を全画像(w×h)のAlphaDiffに対応
 
+---
+
+## 追加機能: 紙目テクスチャの周期（タイル幅/高さ）探索（shift self-match）
+
+### 目的
+- 紙目PNGが「タイル（繰り返し）」で見えている場合に、自己一致（平行移動の一致度）から周期候補（px）を推定する。
+
+### 使い方（DotLab UI）
+1. `Period search (shift self-match)` で探索範囲を指定する（例: `ShiftMin=300, ShiftMax=600, Step=1`）。
+2. 速度が厳しい場合は `SampleStep` を上げる（例: 4〜8）。外周の不安定さを避けたい場合は `Margin` を入れる。
+3. `AlphaMin` は「背景（α=0）」を除外するための閾値（既定=1）。
+4. `Wrap (mod) compare` は、画像端を循環させて比較したい場合のみON（タイル前提の比較）。
+5. `Export Alpha Shift Period CSV (PNG)` を実行し、出力CSV（X/Y両方向のスコア）と最小スコアのshiftを確認する。
+
+### 出力
+- CSV: `shift-period-<input>.csv`
+  - 列: `axis,wrap,shift,tested_px,valid_px,valid_rate,mae,rmse,mae_byte,rmse_byte`
+
 ## Verified Findings（確定事項）
 ### S200 dot2疑似線のdotStep最適値
 - 条件: 画像サイズ `2180x2020` / `dpi96` / `S200` / `P1` / `N1` / `scale10` / `transparent`（透過PNG）

@@ -127,7 +127,12 @@
     <Compile Include="Helpers\InkOffscreenRenderService.cs" />
     <Compile Include="Helpers\InkStrokeBuildService.cs" />
     <Compile Include="Helpers\JobsCsvService.cs" />
+    <Compile Include="Helpers\KernelCanceledDotExportService.cs" />
+    <Compile Include="Helpers\KernelSweepExportService.cs" />
+    <Compile Include="Helpers\KernelSweepToNormalizedFalloffExportService.cs" />
+    <Compile Include="Helpers\PaperNoisePeriodicityAnalysisService.cs" />
     <Compile Include="Helpers\PngExportService.cs" />
+    <Compile Include="Helpers\RadialAlphaProfileExportService.cs" />
     <Compile Include="Helpers\RoiCropService.cs" />
     <Compile Include="Helpers\RunInkDrawJobsService.cs" />
     <Compile Include="MainPage.xaml.cs">

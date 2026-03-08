@@ -6,7 +6,9 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+      d:Height="1500"
+      d:Width="1800"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Grid>
 
@@ -129,14 +131,16 @@
                     <TextBox x:Name="RoiYTextBox" Width="120" Header="y" Text="0" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="RoiWTextBox" Width="120" Header="w" Text="18" />
-                    <TextBox x:Name="RoiHTextBox" Width="120" Header="h" Text="202" />
+                    <TextBox x:Name="RoiWTextBox" Width="120" Header="w" Text="18" LostFocus="RoiWTextBox_LostFocus" />
+                    <TextBox x:Name="RoiHTextBox" Width="120" Header="h" Text="202" LostFocus="RoiHTextBox_LostFocus"/>
                 </StackPanel>
 
                 <TextBlock Text="出力サイズ (px) ※ROI*w/h*scaleで自動" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="OutWidthPxTextBox" Width="120" Header="out_w" Text="180" />
-                    <TextBox x:Name="OutHeightPxTextBox" Width="120" Header="out_h" Text="2020" />
+                    <TextBox x:Name="OutWidthPxTextBox" Width="120" Header="out_w" Text="180"
+                             IsEnabled="False" />
+                    <TextBox x:Name="OutHeightPxTextBox" Width="120" Header="out_h" Text="2020"
+                             IsEnabled="False" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
@@ -145,6 +149,45 @@
                     <Button x:Name="RunLine2PointsEndXSweepButton" Content="線(2点) EndXスイープ" Click="RunLine2PointsEndXSweepButton_Click" />
                     <Button x:Name="RunLine2PointsStartXSweepButton" Content="線(2点) StartXスイープ" Click="RunLine2PointsStartXSweepButton_Click" />
                     <Button x:Name="RunBatchFromCsvButton" Content="CSVからバッチ" Click="RunBatchFromCsvButton_Click" />
+                </StackPanel>
+
+                <TextBlock Text="カーネル断面（観測点固定 / 中心Xスイープ）" FontWeight="SemiBold" Margin="0,10,0,0" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="KernelObsPxXTextBox" Width="140" Header="obs x(px)" Text="0" />
+                    <TextBox x:Name="KernelObsPxYTextBox" Width="140" Header="obs y(px)" Text="100" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal"
+                            Spacing="8"
+                            Margin="0,8,0,0">
+                    <TextBox x:Name="KernelDxFromPxTextBox" Width="140" Header="dx from(px)" Text="0" />
+                    <TextBox x:Name="KernelDxToPxTextBox" Width="140" Header="dx to(px)" Text="1000" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal"
+                            Spacing="8"
+                            Margin="0,8,0,0">
+                    <TextBox x:Name="KernelDxStepPxTextBox" Width="140" Header="dx step(px)" Text="1" />
+                    <TextBox x:Name="KernelSampleCanvasPxTextBox" Width="160" Header="sample canvas(px)" Text="9" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal"
+                            Spacing="8"
+                            Margin="0,8,0,0">
+                    <Button x:Name="ExportKernelSweepCsvButton" Content="カーネル断面CSV" Click="ExportKernelSweepCsvButton_Click" />
+                    <Button x:Name="ExportKernelCanceledDotPngButton" Content="紙目ベース単点PNG" Click="ExportKernelCanceledDotPngButton_Click" />
+                    <Button x:Name="ExportNormalizedFalloffFromKernelSweepButton" Content="normalized-falloff CSV" Click="ExportNormalizedFalloffFromKernelSweepButton_Click" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                    <TextBox x:Name="RadialBinSizeTextBox" Width="140" Header="radial bin(px)" Text="1" />
+                    <CheckBox x:Name="UseAlphaCentroidCheckBox" Content="α重心を中心にする" IsChecked="False" VerticalAlignment="Bottom" />
+                    <Button x:Name="ExportRadialAlphaCsvFromPngButton" Content="半径αCSV(PNG→CSV)" Click="ExportRadialAlphaCsvFromPngButton_Click" />
+                    <Button x:Name="ExportRadialAlphaKneeSummaryButton" Content="半径α kneeサマリCSV" Click="ExportRadialAlphaKneeSummaryButton_Click" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                    <Button x:Name="ExportPaperNoisePeriodicityCsvButton" Content="紙目周期解析CSV(PNG)" Click="ExportPaperNoisePeriodicityCsvButton_Click" />
+                    <TextBlock Text="※自己相関でX/Y方向の周期候補を推定" VerticalAlignment="Center" Opacity="0.7" />
                 </StackPanel>
 
                 <TextBlock Text="ログ" FontWeight="SemiBold" Margin="0,8,0,0" />

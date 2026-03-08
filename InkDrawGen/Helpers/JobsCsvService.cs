@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace InkDrawGen.Helpers
 {
@@ -37,6 +38,18 @@ namespace InkDrawGen.Helpers
             internal bool DotStepFixedCount;
             internal int DotStepCount;
 
+            internal double DotStepStart;
+            internal double DotStepEnd;
+            internal double DotStepStep;
+
+            internal bool DotStepTwoPoints;
+
+            // 線長を「更新点間隔 I と更新点数 Np」で指定する補助入力
+            // - interval: I
+            // - npoints: Np
+            internal double Interval;
+            internal int Npoints;
+
             internal int DotStepCountStart;
             internal int DotStepCountEnd;
             internal int DotStepCountStep;
@@ -46,12 +59,18 @@ namespace InkDrawGen.Helpers
             internal double RoiW;
             internal double RoiH;
 
+            internal double OpStart;
+            internal double OpEnd;
+            internal double OpStep;
+            internal string OpValues;
+
             internal string RunTag;
 
             internal JobRow()
             {
                 RunTag = "";
                 JobType = "";
+                OpValues = "";
             }
         }
 
@@ -101,6 +120,19 @@ namespace InkDrawGen.Helpers
                         DotStepFixedCount = ReadBool(cells, map, "dot_step_fixed_count", ReadBool(cells, map, "dotStepFixedCount", false)),
                         DotStepCount = ReadInt(cells, map, "dot_step_count", ReadInt(cells, map, "dotStepCount", 2)),
 
+                        DotStepStart = ReadDouble(cells, map, "dot_step_start", ReadDouble(cells, map, "dotStepStart", double.NaN)),
+                        DotStepEnd = ReadDouble(cells, map, "dot_step_end", ReadDouble(cells, map, "dotStepEnd", double.NaN)),
+                        DotStepStep = ReadDouble(cells, map, "dot_step_step", ReadDouble(cells, map, "dotStepStep", double.NaN)),
+                        DotStepTwoPoints = ReadBool(cells, map, "dot_step_two_points", ReadBool(cells, map, "dotStepTwoPoints", false)),
+
+                        // 互換: セルが "I=9" / "Np=14" のような表記でも数値部分を拾う
+                        Interval = ReadDoubleLoose(cells, map, "interval", ReadDoubleLoose(cells, map, "i", double.NaN)),
+                        // 互換: "Npoits" はユーザーCSVで発生しやすいtypoなので別名として受ける
+                        Npoints = ReadIntLoose(cells, map, "npoints",
+                            ReadIntLoose(cells, map, "np",
+                                ReadIntLoose(cells, map, "n_points",
+                                    ReadIntLoose(cells, map, "npoits", 0)))),
+
                         DotStepCountStart = ReadInt(cells, map, "dot_step_count_start", ReadInt(cells, map, "dotStepCountStart", 0)),
                         DotStepCountEnd = ReadInt(cells, map, "dot_step_count_end", ReadInt(cells, map, "dotStepCountEnd", 0)),
                         DotStepCountStep = ReadInt(cells, map, "dot_step_count_step", ReadInt(cells, map, "dotStepCountStep", 0)),
@@ -109,6 +141,12 @@ namespace InkDrawGen.Helpers
                         RoiY = ReadDouble(cells, map, "roi_y", 0),
                         RoiW = ReadDouble(cells, map, "roi_w", 18),
                         RoiH = ReadDouble(cells, map, "roi_h", 202),
+
+                        // Opacity: range or list
+                        OpStart = ReadDouble(cells, map, "op_start", ReadDouble(cells, map, "opacity_start", double.NaN)),
+                        OpEnd = ReadDouble(cells, map, "op_end", ReadDouble(cells, map, "opacity_end", double.NaN)),
+                        OpStep = ReadDouble(cells, map, "op_step", ReadDouble(cells, map, "opacity_step", double.NaN)),
+                        OpValues = ReadString(cells, map, "op_values", ReadString(cells, map, "opacity_values", "")),
 
                         RunTag = ReadString(cells, map, "runTag", ReadString(cells, map, "run_tag", ReadString(cells, map, "runTag", ""))),
                     };
@@ -145,6 +183,10 @@ namespace InkDrawGen.Helpers
 
                     if (row.DotStepCountStart < 0) row.DotStepCountStart = 0;
                     if (row.DotStepCountEnd < 0) row.DotStepCountEnd = 0;
+
+                    if (double.IsNaN(row.OpStart) || double.IsInfinity(row.OpStart)) row.OpStart = double.NaN;
+                    if (double.IsNaN(row.OpEnd) || double.IsInfinity(row.OpEnd)) row.OpEnd = double.NaN;
+                    if (double.IsNaN(row.OpStep) || double.IsInfinity(row.OpStep)) row.OpStep = double.NaN;
 
                     // StrokeSampler互換: out_w/out_h も許容（現在はROI*w/h*scaleで出力を決めるが、ヘッダの存在は許容する）
                     // trials -> n_end として扱う（単発用）
@@ -220,6 +262,47 @@ namespace InkDrawGen.Helpers
             int v;
             if (int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out v)) return v;
             if (int.TryParse(s, NumberStyles.Integer, CultureInfo.CurrentCulture, out v)) return v;
+            return fallback;
+        }
+
+        private static readonly Regex FirstIntRegex = new Regex(@"[-+]?\d+", RegexOptions.Compiled);
+        // 少なくとも1桁以上の数字を含むdoubleトークン（例: 9, 9.0, .5, 1e-3）
+        private static readonly Regex FirstDoubleRegex = new Regex(@"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?", RegexOptions.Compiled);
+
+        private static int ReadIntLoose(IReadOnlyList<string> cells, Dictionary<string, int> map, string key, int fallback)
+        {
+            var s = ReadString(cells, map, key, "");
+            if (string.IsNullOrWhiteSpace(s)) return fallback;
+            s = s.Trim().Trim('"');
+
+            var strict = ReadInt(cells, map, key, int.MinValue);
+            if (strict != int.MinValue) return strict;
+
+            var m = FirstIntRegex.Match(s);
+            if (!m.Success) return fallback;
+            int v;
+            if (int.TryParse(m.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out v)) return v;
+            return fallback;
+        }
+
+        private static double ReadDoubleLoose(IReadOnlyList<string> cells, Dictionary<string, int> map, string key, double fallback)
+        {
+            var s = ReadString(cells, map, key, "");
+            if (string.IsNullOrWhiteSpace(s)) return fallback;
+            s = s.Trim().Trim('"');
+
+            var strict = ReadDouble(cells, map, key, double.NaN);
+            if (!double.IsNaN(strict)) return strict;
+
+            var m = FirstDoubleRegex.Match(s);
+            if (!m.Success) return fallback;
+
+            var token = m.Value;
+            if (string.IsNullOrWhiteSpace(token) || token == "+" || token == "-") return fallback;
+
+            double v;
+            if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out v)) return v;
+            if (double.TryParse(token, NumberStyles.Float, CultureInfo.CurrentCulture, out v)) return v;
             return fallback;
         }
 

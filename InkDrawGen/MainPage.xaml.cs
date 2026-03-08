@@ -56,5 +56,76 @@ namespace InkDrawGen
         {
             await Helpers.RunInkDrawJobsService.RunBatchFromCsvAsync(this);
         }
+
+        private async void ExportRadialAlphaCsvFromPngButton_Click(object sender, RoutedEventArgs e)
+        {
+            await Helpers.RadialAlphaProfileExportService.ExportRadialAlphaCsvFromPngAsync(this);
+        }
+
+        private async void ExportRadialAlphaKneeSummaryButton_Click(object sender, RoutedEventArgs e)
+        {
+            await Helpers.RadialAlphaProfileExportService.ExportRadialAlphaKneeSummaryAsync(this);
+        }
+
+        private async void ExportKernelSweepCsvButton_Click(object sender, RoutedEventArgs e)
+        {
+            await Helpers.KernelSweepExportService.ExportKernelSweepCsvAsync(this);
+        }
+
+        private async void ExportKernelCanceledDotPngButton_Click(object sender, RoutedEventArgs e)
+        {
+            await Helpers.KernelCanceledDotExportService.ExportKernelCanceledDotPngAsync(this);
+        }
+
+        private async void ExportPaperNoisePeriodicityCsvButton_Click(object sender, RoutedEventArgs e)
+        {
+            await Helpers.PaperNoisePeriodicityAnalysisService.ExportPeriodicityCsvAsync(this);
+        }
+
+        private async void ExportNormalizedFalloffFromKernelSweepButton_Click(object sender, RoutedEventArgs e)
+        {
+            await Helpers.KernelSweepToNormalizedFalloffExportService.ExportNormalizedFalloffCsvFromKernelSweepAsync(this);
+        }
+
+        private void RoiHTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if(RoiHTextBox != null)
+            {
+                if (!string.IsNullOrWhiteSpace(RoiHTextBox.Text))
+                {
+                    if (ScaleTextBox != null)
+                    {
+                        if (int.TryParse(ScaleTextBox.Text, out var scale) && scale > 0)
+                        {
+                            if (double.TryParse(RoiHTextBox.Text, out var roiH) && roiH > 0)
+                            {
+                                OutHeightPxTextBox.Text = ((int)(roiH * scale)).ToString();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void RoiWTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (RoiWTextBox != null)
+            {
+                if (!string.IsNullOrWhiteSpace(RoiWTextBox.Text))
+                {
+                    if (ScaleTextBox != null)
+                    {
+                        if (int.TryParse(ScaleTextBox.Text, out var scale) && scale > 0)
+                        {
+                            if (double.TryParse(RoiWTextBox.Text, out var roiW) && roiW > 0)
+                            {
+                                OutWidthPxTextBox.Text = ((int)(roiW * scale)).ToString();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     }
 }

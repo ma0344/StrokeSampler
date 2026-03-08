@@ -29,6 +29,12 @@ namespace DotLab {
         {
             InitializeComponent();
             Loaded += MainWindow_Loaded;
+
+            // XAMLフィールド生成やホットリロードの揺れに引っ張られないよう、必要なイベントは名前で拾って登録する。
+            if (FindName("ExportAlphaShiftedPngButton") is System.Windows.Controls.Button b)
+            {
+                b.Click += ExportAlphaShiftedPngButton_Click;
+            }
         }
 
         private async void ExportInkPointsDumpStatsButton_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -64,6 +70,102 @@ namespace DotLab {
         private async void ExportAlphaHistogramBatchButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
             await ImageAlphaHistogram.ExportAlphaHistogramCsvBatchAsync(this);
+        }
+
+        private int GetRadialBinSizePx()
+        {
+            // 半径方向の集計ビン幅。最小移植のため、UIで指定できるようにしておく。
+            var v = RadialBinSizeNumberBox?.Value ?? 1.0;
+            var n = (int)Math.Round(v, MidpointRounding.AwayFromZero);
+            return Math.Max(1, n);
+        }
+
+        private ImageAlphaShiftPeriodExporter.Options GetShiftPeriodOptions()
+        {
+            System.Windows.Controls.Control? FindControl(string name)
+                => FindName(name) as System.Windows.Controls.Control;
+
+            static int GetInt(System.Windows.Controls.Control? c, double fallback, int min, int max)
+            {
+                var v = fallback;
+                if (c is ModernWpf.Controls.NumberBox nb)
+                {
+                    v = nb.Value;
+                }
+                var n = (int)Math.Round(v, MidpointRounding.AwayFromZero);
+                return Math.Clamp(n, min, max);
+            }
+
+            var shiftMin = GetInt(FindControl("ShiftPeriodMinNumberBox"), fallback: 300.0, min: 0, max: 100000);
+            var shiftMax = GetInt(FindControl("ShiftPeriodMaxNumberBox"), fallback: 600.0, min: 0, max: 100000);
+            var shiftStep = GetInt(FindControl("ShiftPeriodStepNumberBox"), fallback: 1.0, min: 1, max: 100000);
+            var sampleStep = GetInt(FindControl("ShiftPeriodSampleStepNumberBox"), fallback: 4.0, min: 1, max: 1024);
+            var marginPx = GetInt(FindControl("ShiftPeriodMarginNumberBox"), fallback: 0.0, min: 0, max: 100000);
+            var alphaMin = GetInt(FindControl("ShiftPeriodAlphaMinNumberBox"), fallback: 1.0, min: 0, max: 255);
+
+            var wrap = (FindName("ShiftPeriodWrapCheckBox") as System.Windows.Controls.CheckBox)?.IsChecked == true;
+
+            return new ImageAlphaShiftPeriodExporter.Options(
+                ShiftMin: shiftMin,
+                ShiftMax: shiftMax,
+                ShiftStep: shiftStep,
+                SampleStep: sampleStep,
+                MarginPx: marginPx,
+                AlphaMin: (byte)alphaMin,
+                Wrap: wrap);
+        }
+
+        private async void ExportAlphaRadialProfileButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaRadialProfileExporter.ExportAlphaRadialProfileCsvAsync(this, GetRadialBinSizePx());
+        }
+
+        private async void ExportAlphaRadialProfileBatchButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaRadialProfileExporter.ExportAlphaRadialProfileCsvBatchAsync(this, GetRadialBinSizePx());
+        }
+
+        private async void ExportAlphaRadialKernelNoiseButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaRadialKernelNoiseExporter.ExportRadialKernelAndNoiseAsync(this, GetRadialBinSizePx());
+        }
+
+        private async void ExportAlphaShiftPeriodButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaShiftPeriodExporter.ExportAlphaShiftPeriodCsvAsync(this, GetShiftPeriodOptions());
+        }
+
+        private ImageAlphaShiftPngExporter.Options GetShiftPngOptions()
+        {
+            System.Windows.Controls.Control? FindControl(string name)
+                => FindName(name) as System.Windows.Controls.Control;
+
+            static int GetInt(System.Windows.Controls.Control? c, double fallback, int min, int max)
+            {
+                var v = fallback;
+                if (c is ModernWpf.Controls.NumberBox nb)
+                {
+                    v = nb.Value;
+                }
+                var n = (int)Math.Round(v, MidpointRounding.AwayFromZero);
+                return Math.Clamp(n, min, max);
+            }
+
+            var shiftX = GetInt(FindControl("ShiftPngXNumberBox"), fallback: 0.0, min: -100000, max: 100000);
+            var shiftY = GetInt(FindControl("ShiftPngYNumberBox"), fallback: 0.0, min: -100000, max: 100000);
+            var wrap = (FindName("ShiftPngWrapCheckBox") as System.Windows.Controls.CheckBox)?.IsChecked == true;
+
+            return new ImageAlphaShiftPngExporter.Options(ShiftX: shiftX, ShiftY: shiftY, Wrap: wrap);
+        }
+
+        private async void ExportAlphaShiftedPngButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await ImageAlphaShiftPngExporter.ExportShiftedPngAsync(this, GetShiftPngOptions());
+        }
+
+        private async void VerifyAlignedNSeriesModelButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            await AlignedNSeriesModelVerifier.AnalyzeAsync(this);
         }
 
         private async void ExportAlphaWindowProfileButton_Click(object sender, System.Windows.RoutedEventArgs e)

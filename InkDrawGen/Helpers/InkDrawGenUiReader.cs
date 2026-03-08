@@ -88,8 +88,8 @@ namespace InkDrawGen.Helpers
                 ReadDouble(Find<TextBox>(page, "RoiWTextBox").Text, 18),
                 ReadDouble(Find<TextBox>(page, "RoiHTextBox").Text, 202));
 
-            state.OutWidthPx = ReadInt(Find<TextBox>(page, "OutWidthPxTextBox").Text, 180);
-            state.OutHeightPx = ReadInt(Find<TextBox>(page, "OutHeightPxTextBox").Text, 2020);
+            state.OutWidthPx = (int)(state.Roi.Width*state.Scale);
+            state.OutHeightPx = (int)(state.Roi.Height*state.Scale);
 
             return state;
         }

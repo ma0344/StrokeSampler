@@ -50,6 +50,44 @@
 - α差分出力: 実測canvas PNG と sim PNG を選択し、αの絶対差画像（PNG）と統計CSVを出力するボタンを追加。
   - UI: `Export Alpha Diff (Canvas vs Sim)`
 
+## 追加実装: DotLab alignedN系列のモデル検算（2026-02）
+- 目的: P0.5で観測された「No依存の増え方（指数型）+ 画素ごとのcap」モデルを、alignedN系列（N1/飽和N/N2/4/8）で機械的に検算できるようにする（PowerQuery不要）。
+- UI: `Verify alignedN series model (N1/cap/N2/4/8)`
+- 入力: `alignedN{n}` を含むPNGをまとめて選択（最低 `alignedN1` と `alignedN1024` 等の飽和Nが必要）。
+- 出力:
+  - `alignedN-model-verify-*-summary-*.csv`（Nごとに `floor/round` の誤差統計を出力）
+  - best量子化の `pred` / `diffabs` PNG（および `diffabs` の `vis16`）
+  - 参照用に `a(N1)` / `cap(Nsat)` のPNGも出力
+  - 追記: 8bit量子化がレンダリング時点で入る前提に合わせ、closed-form（最後に量子化）に加えて stepwise（各ステップで量子化）モデルも同一CSVに出力するようにした。
+  - 追記: 差分が小さい（max_abs_diffが1〜3など）ケースでも分布を見分けやすいよう、`diffmask`（diff>0の二値）と `vis64` / `visAuto` を追加出力する。
+  - 追記: BGRA8のsource-over（255分母）を各ステップで整数演算するモデル（`so255`）と、飽和capでクランプする派生（`so255cap`）も同一CSVに併記し、どのモデルがN2/4/8に最も一致するかを比較できるようにした。
+  - 検証メモ: `so255` の `round` が N2/N4/N8 で `rmse=0, max_abs_diff=0, mismatch_px=0` になれば、No累積は「N1αをsrcAとしてBGRA8 source-overを逐次適用（+127丸め）」と見なしてよい。
+
+## 追加実装: 手順書更新と補助ツール（2026-02）
+- `docs/pencil-parity-playbook.md` に、No累積の確定モデル（BGRA8 source-over, 255分母, +127丸めの逐次適用）を追記。
+- `docs/pencil-parity-playbook.md` に、小さい差分（max_abs_diffが1〜3程度）で `visAuto` が `diffmask` と同じに見える条件と読み方を追記。
+- DotLabに `ImageAlphaRadialKernelNoiseExporter` を追加。
+  - 入力PNGのαから、半径方向平均（radial mean）kernel画像と、`alpha/kernel` 比の可視化（ratio=1→128, 0..2→0..255）をPNG/CSVで出力。
+
+## 追加実装: DotLab 紙目テクスチャ周期探索（shift self-match）（2026-02）
+- 目的: 紙目PNGがタイルとして繰り返されて見える場合に、平行移動の自己一致から周期（タイル幅/高さ）候補を推定する。
+- UI: `Period search (shift self-match)` / `Export Alpha Shift Period CSV (PNG)`
+- 出力: `shift-period-<input>.csv`（X/Y両方向、MAE/RMSE、valid_rate）
+- SkiaTesterに、alignedN1 PNGから `so255/round` で alignedN2/4/8 相当を生成してPNG出力するボタンを追加。
+
+## 修正: NoiseRatioの比較がAlphaDiffで常にdiff=0になる問題（2026-02）
+- `noiseRatio-vis2x.png` は可視化用にGray8(不透明)で出力していたため、DotLabの `Export Alpha Diff`（Alpha比較）では常にdiff=0になってしまう。
+- 値をAlphaに格納した `*-alpha.png`（`noiseRatio-vis2x-alpha.png` / `kernel-alpha.png`）も追加出力し、AlphaDiffで紙目推定の差分比較ができるようにした。
+
+## 追記: paper noise（noiseRatio推定）のP依存は実用上ほぼ不変（2026-02）
+- `P0.25` と `P0.5` の `*-noiseRatio-vis2x-alpha.png` を半径プロファイル化して比較。
+- 外周の不安定さを避けるため、`kernel-profile` の `mean_alpha_byte > 32` を満たす範囲（例: `r_bin < 502`）だけを採用して差分統計を算出。
+- 結果例（`S200, scale10, r_bin < 502`）:
+  - `diff_abs` 平均 `≈ 0.0107`（≈ `2.73/255`）
+  - `diff_abs` p95 `≈ 0.0211`（≈ `5.39/255`）
+  - `diff_abs` 最大 `≈ 0.0294`（≈ `7.49/255`）
+- 解釈: `noiseRatio-vis2x` はクランプ＋8bit丸め済みの可視化量のため差がゼロにはならないが、パターン（山谷の位置）は概ね一致し、風合い再現の観点では「Pに対してほぼ不変」として扱ってよい。
+
 ## 追加実装: StrokeSampler 直線ストローク（指定条件）描画（2026-02）
 - UI: `Draw Line (Fixed)` を追加（点数/点間隔を指定して直線ストロークを生成）
 - 入力: Start/End座標（既存TextBox）、LinePts（点数）、LineStep(px)（点間隔）、P（Dot512 Pressure）、S（Dot512 Size）
@@ -79,6 +117,123 @@
 - 次アクション: LUT適用の閾値（th）または適用条件（圧力帯域/α帯域）の調査が必要。
 
 ## 実施済み（主な委譲/移植）
+
+## 追加実装: DotTester（N=1ドットの目視比較用WPF）とテスト環境整備（2026-02）
+- 新規: `DotTester` プロジェクト（WPF/.NET 8）。観測PNG（expected）と再現（rendered）を左右に並べて表示し、`Render (N=1)` 押下で再現側のみ更新する。
+- テスト環境: `scale`（InkDrawGenのscale相当）を追加し、`diameterPx = S * scale`、`canvas = diameterPx + pad`（Auto時）で `S200/scale10` → `canvas=2020` を再現側でも作れるようにした。
+- 紙目: タイルPNG（alpha）を入力し、`noiseScale = scale / tileScale`（Auto時）で、タイルがどのscale基準で切り出されたか（例: tileScale=10）に追従できるようにした。
+
+## 高速化: PaperNoiseサンプリングとPencilDotRendererのピクセル書き込み（2026-02）
+- `PaperNoise.Sample01Bilinear` 等で `SKBitmap.GetPixel` を多用していたため、内部に `_pixels` をキャッシュして配列参照で読むように変更。
+- `PencilDotRenderer.Render` の出力を `SetPixel` 多発から `bitmap.Pixels` への配列書き込み＋最後に一括反映へ変更。
+- `DotTester` のステータスに `time=...ms` を表示し、2020固定での待ち時間・改善効果を確認しやすくした。
+
+## 追加実装: DotTesterでkernel-profile.csvを減衰LUTとして利用（2026-02）
+- `DotTester` の `Falloff CSV` で `normalized-falloff` に加え、`ImageAlphaRadialKernelNoiseExporter` が出力する `*-kernel-profile.csv` を指定できるようにした。
+- `kernel-profile` は `mean_alpha(px)` を有効半径で正規化し、`r_norm=0..100` のLUTへ線形補間して `PencilDotRenderer` の `falloffLut` に渡す。
+- 形状一致を優先して `PaperNoise` の既定をOFFにした。
+
+## 追加実装: 紙目(B=紙目をαへ乗算)の検証パラメータ（2026-02）
+- `PencilDotRenderer.Render` に `paperNoiseKClampMin/Max` を追加し、紙目係数kのクランプ範囲（既定0.5..1.5）を調整可能にした。
+- `DotTester` に `Gain` / `kClamp(min..max)` / `Disable kMean norm` を追加し、外周の「まばら化」を紙目パラメータで詰められるようにした。
+
+## 追加実装: 外周floor上昇（cutoff/紙目マスク）仮説の検証UI（2026-02）
+- `DotTester` に `Cutoff alpha(byte)` と `noise-dependent cutoff (×k)` を追加し、微小α帯域の0落ちを制御できるようにした。
+- `DotTester` に `PaperMask`（Multiply/Soft/Threshold）と `edge falloff`（StrongerAtEdge/ThresholdAtEdge）を追加し、外周ほど厳しく落とす挙動を検証できるようにした。
+
+## 追加実装: カーネル（falloff）全体の明るさ/濃さ調整（2026-02）
+- `PencilDotRenderer.Render` に `falloffScale` を追加し、半径減衰 `f` に乗算してクランプすることでカーネル全体を明るく/暗く調整できるようにした。
+- `DotTester` に `FalloffScale` を追加し、UIから `falloffScale` を指定してレンダ結果を比較できるようにした。
+
+## 追加実装: InkDrawGenでカーネル断面（中心Xスイープ）CSV出力（2026-03）
+- `InkDrawGen` に観測点(px)固定で中心Xを `dx_px` だけ移動させ、同一画素のαを取得するCSV出力（`KernelSweepExportService`）を追加した。
+- 2000×2000のPNGを大量生成せず、9×9等の小さなオフスクリーンに描画して中心1pxのαをサンプリングするため、出力は軽量に実行できる。
+
+## 追加実装: InkDrawGenでkernel-sweep CSVを使ったfalloff相殺（紙目ベース単点PNG）出力（2026-03）
+- `InkDrawGen` に `KernelCanceledDotExportService` を追加し、kernel-sweep CSVから `f(rNorm)` を構築して単点レンダのαを `alpha/f` で相殺したPNGを出力できるようにした。
+- `InkDrawGen/MainPage.xaml` に `紙目ベース単点PNG` ボタンを追加し、CSV選択→PNG出力をUIから実行できるようにした。
+
+## 追加実装: DotTesterで再現（Rendered）PNG出力（2026-03）
+- `DotTester` に `Save Rendered PNG...` ボタンを追加し、レンダ結果（再現画像）をPNGで保存できるようにした。
+
+## 修正: Alphaチャンネル紙目タイルの統計に背景(A==0)が混ざって谷が浅くなる問題の対策（2026-03）
+- `SkiaTester/Helpers/PaperNoise.cs` の無効背景判定をサンプルチャンネル依存にし、Alpha利用時は `A==0` を無効扱いにすることで、背景が統計に混ざってz正規化が歪むのを防いだ。
+- `DotTester` のPaperNoise読み込みを `InvalidPixelMode.Legacy` + `SampleChannel.Alpha` に変更し、dot由来タイル（背景が透明）でも紙目の谷が浅く潰れにくいようにした。
+
+## 修正: PaperNoiseの双線形サンプルが0.5pxずれて極値が平均化される問題の対策（2026-03）
+- `SkiaTester/Helpers/PaperNoise.cs` の `Sample01Bilinear` を「ピクセル中心座標(0.5,1.5,...)」基準で扱うようにし、呼び出し側の `(x+0.5)` とtexel中心が一致するよう `-0.5` シフトを入れた。
+- これにより、PaperNoiseタイルの「最深画素」が常に近傍平均との差で潰れて見える（谷が浅い）症状を軽減する。
+
+## 追加実装: DotTesterで再現手法をSkiaTesterから切り離して再構築（2026-03）
+- SkiaTester式（z正規化）を踏襲する不安があるため、DotTester側に再現の最小要素を1から実装した。
+- `normalized-falloff` は `DotTester/Helpers/NormalizedFalloffLut.cs` で読み込み、`kernel-sweep→normalized-falloff` のLUTをそのまま `f(rNorm)` として使用する。
+- PaperNoiseは `DotTester/Helpers/PaperNoiseTile.cs` でPNG(α)を読み込み、タイルサンプリングをUIで `Nearest/Bilinear` 切替できるようにした。
+- k定義は `DotTester/Helpers/DotReproRenderer.cs` で実装し、UIから A/B/C（`k=n01/mean`, `blend`, `k=n01`）を選択できるようにした。
+- 量子化は最後に1回だけ行う（内部はdoubleで `outA` を保持してから8bit化）。
+- 旧UIのPaperMaskは互換のため残しつつ、再構築レンダラでは現時点で未適用（コア再現の検証を優先）。
+
+## 修正: DotTesterのk定義(A/B)が同一になっていた問題とEdgePad未適用（2026-03）
+- `DotTester/Helpers/DotReproRenderer.cs` で A/B/C のk定義を仕様どおりに分離し、AとBが同じ見た目になる不具合を修正した。
+- `DotTester` の `EdgePad(px)` を再構築レンダラへ渡し、外縁の落ち方をUIから調整できるようにした。
+
+## 修正: NoiseDependentCutoffを谷で厳しくする（2026-03）
+- `DotTester/Helpers/DotReproRenderer.cs` の `NoiseDependentCutoff` を `cutoff *= k` から `cutoff /= k` に変更し、谷(k<1)で抜けが出やすい挙動にした。
+
+## 追加実装: 外縁で紙目が消える問題の切り分け用に加算モデルとfalloffガンマを追加（2026-03）
+- `DotTester/Helpers/DotReproRenderer.cs` に紙目の適用モードを追加（`MultiplyAlpha`/`AddAlpha`）。
+  - `AddAlpha` は中心のベースαを基準(aRef)にして `a01 += aRef*(k-1)` を適用し、外縁でベースαが小さくても紙目の差分が量子化で消えにくいようにする。
+- `DotTester` のUIに `Apply(Multiply/Add)` と `Falloff Gamma` を追加し、検証時に切り替え可能にした。
+
+## 追加実装: falloffの落ち始め位置を調整するRNormScaleを追加（2026-03）
+- `DotTester/Helpers/DotReproRenderer.cs` に `FalloffRNormScale` を追加し、`rNorm` をスケールしてLUT参照位置を調整できるようにした。
+  - `RNormScale>1` で同じ距離でも外側の`rNorm`を参照するため、落ち始めが内側へ寄る（より早く落ちる）。
+- `DotTester` のUIに `RNormScale` を追加し、見た目合わせで微調整できるようにした。
+
+## 修正: falloff距離計算をピクセル中心基準に変更（2026-03）
+- `DotTester/Helpers/DotReproRenderer.cs` の距離計算を `(x+0.5, y+0.5)` のピクセル中心基準へ変更し、falloff CSVの観測系列（dx_pxが整数で増える）と整合しやすくした。
+
+## 追加実装: DotTesterでkernel-sweep CSVをFalloffとして直接読み込み（2026-03）
+- `DotTester/MainWindow.xaml.cs` のFalloff CSVローダを拡張し、`kernel-sweep`（ヘッダが`dx_px,...`）を指定した場合でも読み込めるようにした。
+  - `dxTarget = r_norm * Scale`（ScaleはDotTesterの`RenderScale`）で `r_norm=0..100` の `mean_alpha` を抽出し、内部の`NormalizedFalloffLut`として使用する。
+  - kernel-sweep生成時のscaleとDotTesterのScaleが同一であることが前提。
+  - FalloffキャッシュはパスだけでなくScaleも一致した場合のみ再利用する。
+
+## 追加実装: DotTesterの紙目(k)生成をUWP/Skia寄せ（z正規化 + kMean正規化）（2026-03）
+- `DotTester/Helpers/PaperNoiseTile.cs`
+  - `Stddev01` を追加し、紙目タイルの標準偏差を取得できるようにした（z正規化のため）。
+  - サンプル座標を「ピクセル中心基準（x=0.5がtexel0中心）」として扱い、nearest/bilinearとも `-0.5` シフトでSkia側と整合させた。
+- `DotTester/Helpers/DotReproRenderer.cs`
+  - `KDefinition.ZNormalized` を追加（`z=(n01-mean)/std` を ±3 でクランプし、`k=1+(strength*gain)*z`）。
+  - `DisableKMeanNormalization` を追加し、半径内平均で `kMean` を計測して `k/=kMean` する補正をON/OFFできるようにした。
+  - `NoiseDependentCutoff` はSkiaTester互換の `cutoff *= k` に揃えた（谷の0落ちを起こしにくくする意図）。
+- `DotTester/MainWindow.xaml`
+  - `k mode` に `U: ZNorm (k=1+(s*g)*z)` を追加。
+  - `noise-dependent cutoff` の表記を `(×k)` に更新（実装に合わせる）。
+
+## 追加実装: DotTesterで紙目タイル統計(mean/stddev/min/max)をステータス表示（2026-03）
+- `DotTester/MainWindow.xaml.cs` のステータス文字列に `noise(mean/std/min/max)` を追記し、`Stddev01` の確認がUI上でできるようにした。
+
+## 追加実装: DotTesterのZNormでzクランプ幅を調整可能にする（2026-03）
+- 背景: ZNormの`z`を固定で±3にクランプすると、タイルの実分布（例: minが-9σ相当）で谷側が張り付き、谷の階調が消えるケースがあった。
+- `DotTester/Helpers/DotReproRenderer.cs`
+  - `DotReproRenderer.Options` に `PaperNoiseZClampAbs`（既定3.0）を追加。
+  - `KMode=ZNormalized` のときの `z` クランプを `±PaperNoiseZClampAbs` で行い、`kMean` の事前計測側も同じクランプ幅で揃えた。
+- `DotTester/MainWindow.xaml` / `DotTester/MainWindow.xaml.cs`
+  - `zClamp` 入力UIを追加し、値を `PaperNoiseZClampAbs` に配線した。
+
+## 更新: DotTesterのZNorm zClampを上下別 + ON/OFF（既定: -7/+7）（2026-03）
+- 背景: タイルの分布で負側（谷）が深く、対称クランプだと谷側の階調が張り付きやすかったため、`zClamp-` を大きくして階調を残しつつ、`zClamp+` は別に抑えられる必要があった。
+- `DotTester/Helpers/DotReproRenderer.cs`
+  - `DotReproRenderer.Options` に `EnablePaperNoiseZClamp` と `PaperNoiseZClampNegAbs` / `PaperNoiseZClampPosAbs` を追加。
+  - `EnablePaperNoiseZClamp=false` の場合は `z` クランプを行わず、`kClamp` のみで抑制する。
+  - 互換のため `PaperNoiseZClampNegAbs/PosAbs` が未指定(<=0)なら `PaperNoiseZClampAbs` を採用。
+  - 既定値は `PaperNoiseZClampAbs=7`。
+- `DotTester/MainWindow.xaml` / `DotTester/MainWindow.xaml.cs`
+  - `zClamp` のON/OFFと `zClamp-` / `zClamp+` を追加（既定 7/7）。OFF時は数値入力を無効化。
+
+## 追加実装: InkDrawGenでkernel-sweep CSVからDotTester用 normalized-falloff CSVを生成（2026-03）
+- `InkDrawGen` に `KernelSweepToNormalizedFalloffExportService` を追加し、kernel-sweep CSVの `alpha01` を `r_norm` 整数（= `dx_px/scale`）へ落として `normalized-falloff` 形式CSVを出力できるようにした。
+- `InkDrawGen/MainPage.xaml` に `normalized-falloff CSV` ボタンを追加し、DotTesterで読み込むLUTを手作業なしで生成できるようにした。
 
 ## 追加実装: DotLab LineN1 vs DotN1 (Opacity sweep) バッチとサマリCSV（2026-02）
 - 目的: LineN1フォルダとDot(Opacity sweep)フォルダを別指定し、P一致の組み合わせでAlphaDiff統計を総当たり出力する。
@@ -153,6 +308,42 @@
 - `dotStep` のファイル名表記が `0.###` 丸めだったため、`step=0.1` などのスイープでサフィックスが同一になり、出力が上書きされて「同じ画像しか出ない」ように見えるケースがあった。
 - `InkDrawGen/Helpers/RunInkDrawJobsService.cs` の `dot2-step{...}` / `dotstepline-step{...}` 表記を `0.#####` に拡張して区別できるようにした。
 
+## 修正: InkDrawGen CSVバッチで小数座標が同名上書きになる問題（2026-02）
+- CSVバッチは `start_x/end_x` を `double` として受け付けるが、ファイル名の `StartX/EndX` タグをint丸めしていたため、`EndX=108.0` と `108.5` のようなケースで出力が上書きされ「小数が効かない」ように見えることがあった。
+- `InkDrawGen/Helpers/RunInkDrawJobsService.cs` の `StartX/EndX` タグを小数も出力する方式に変更し、ファイル名衝突を回避した。
+
+## 確定: 更新点間隔（dotStep相当）は S の 0.09 倍（2026-02）
+- 目的: `S200 -> 18px` を根拠に、各Sで更新点間隔が線形（比例）かを確認。
+- 方法: `S=20..180 step20` で最短線の長さ（`EndX-StartX`）を `0.00001` 単位でスイープし、「単点→線（点が増える）」に変化する境界長 `L_threshold` を同定。
+- 結果: `L_threshold = 0.09 * S` が明確に成立。
+  - 例: `S100 -> 9.0`, `S180 -> 16.2`, `S200 -> 18.0`
+  - よって更新点間隔（dotStep相当）は `dotStep(S) = 0.09 * S` とみなせる。
+
+## 追記: 線描画の用語定義（S/P/Op/No/L/I/Np）（2026-02）
+- 目的: L（DIP長）と更新点数（Np）が混線して混乱しやすいため、共通言語として定義を固定。
+- 追記先: `docs/pencil-parity-playbook.md` と `docs/handover.md`
+- 重要式: `I = 0.09 * S`, `Np = floor(L / I) + 1`
+
+## 確定: N1 ROIの `Op(Np)` テーブルはSでほぼ不変（S100..200, 2026-02）
+- 目的: `S200` で得た `Op(Np)` を、他の `S` にも共通テーブルとして適用できるか確認。
+- 方法: `S=100/140/180/200` で `Np=2,4,5,6,8,10,12,14` の2点Line（`Op=1`）を生成し、Dot側をOp sweepで照合。量子化影響を減らすため `scale` を調整（例: `S100:20`, `S140:15`, `S180:11`, `S200:10`）。
+- 結果: best `Op` はS間で同一系列に乗り、差が出ても概ね `1e-3` 程度で、最小となる帯域はほぼ一致。
+- 結論: 少なくともこの条件範囲では、N1 ROIの `Op(Np)` は **Sに対してほぼ不変**として扱ってよい。
+
+## 確定: dotN疑似線は2点Lineを線全体で目視再現できる（S10..200, 2026-02）
+- `S=10/20/40/80/100/140/180/200` で、各Sの `I=0.09*S` と `Np` を揃えたペア（2点Line vs dotN）を生成して線全体を目視比較。
+- 最終出力サイズを揃えるため `scale=2000/S`（例: `S200:10`, `S140:14`, `S100:20`, `S20:100`, `S10:200`）を採用。
+- 結果: 上記範囲では、dotN疑似線と2点Lineは線全体としてほぼ同じ見た目となり、形状近似として採用できる。
+
+## 次の課題: ストローク内P変動の再現（2026-02）
+- これまでの検証はストローク内の `P` を一定に固定していた。
+- 今後はストローク内で `P(t)` を変動させたときの挙動（更新点の寄与/濃度/欠け）を再現し、ISF由来の鉛筆ストロークをSkia等で再現できる状態に持っていく。
+
+## 追加観測: 単点Dotにおける P と Op は同じ効き方ではない（2026-02）
+- `Op` を下げると、点の縁が透明化していき見た目の直径が退縮する。
+- `P` を下げた場合は透明化は起きるが直径は退縮せず、外周ほど「α>0の画素密度」が下がる（密度が0にはならない）。
+- したがって `P -> Op(P)` の単純な置換モデルは成立しない可能性が高く、Skia等での再現では `P` はフォールオフ/密度側のパラメータとして扱う必要がある。
+
 ## 追加調査/修正: dot2疑似線でdotStepを変えても出力PNGが同一に見える件（2026-02）
 - `dot2 dbg` ログにより、生成段階では `p1=(startX+dotStep, startY)` と `BoundingRect.X` が `17, 17.1, 17.2...` のように変化することを確認。
 - レンダ時の座標変換順の不整合の可能性を減らすため、`InkOffscreenRenderService` のROI平行移動を `Scale * Translation` の順に統一した。
@@ -208,6 +399,28 @@
 - `ExportRadialFalloffBatchPsSizesNsButton_Click()`
   - `RadialFalloffExportService.ExportRadialFalloffBatchPsSizesNsAsync(MainPage)` を追加。
   - `MainPage.xaml.cs` 側は1行委譲。
+
+- `ExportRadialAlphaBatchPsSizesNsButton_Click()`
+  - `RadialFalloffExportService.ExportRadialAlphaBatchPsSizesNsAsync(MainPage)` を追加。
+  - P×S×Nごとに `dot512-material-...png` と `radial-alpha-...csv`（p_ge_*付き）を一括出力する。
+  - CSVファイル名に `-bin{binSize}` を付与して、bin設定の取り違えを避ける。
+  - `MainPage.xaml.cs` 側は1行委譲。
+
+- `ExportRadialAlphaKneeSummaryButton_Click()`
+  - `RadialFalloffExportService.ExportRadialAlphaKneeSummaryAsync(MainPage)` を追加。
+  - 指定フォルダ内の `radial-alpha-*.csv` を走査して、`p_ge_50` / `p_ge_100` が 0.99 / 0.95 / 0.90 を下回る最初の半径（線形補間）を自動抽出し、`radial-alpha-knee-summary.csv` を出力する。
+  - 低圧で `p_ge_*` が中心でも 0.99 を満たさず `r=0.5` に張り付くケースがあるため、最大値正規化の交点半径も出力する。
+    - `p50_max` / `p100_max`
+    - `p50_rMax099` / `p50_rMax095` / `p50_rMax090`
+    - `p100_rMax099` / `p100_rMax095` / `p100_rMax090`
+
+- InkDrawGen
+  - `RadialAlphaProfileExportService` を追加。
+    - `半径αCSV(PNG→CSV)`：選択したPNG（複数可）を半径方向bin集計して `radial-alpha-{png名}-bin{bin}.csv` を出力する（`mean_alpha01` と `p_ge_*` を含む）。
+    - `半径α kneeサマリCSV`：フォルダ内の `radial-alpha-*.csv` を走査して交点半径（絶対0.99/0.95/0.90 + 最大値正規化rMax*）を抽出し `radial-alpha-knee-summary.csv` を出力する。maxが絶対閾値に届かない場合は空欄にする。
+    - 半径解析の中心は既定で画像中心（(w-1)/2,(h-1)/2）とし、必要な場合のみ `α重心を中心にする` をONにしてα重心へ切替できる。
+    - 低圧でMaxαが50未満になるケース（例: P0.4でMaxα=43、P0.1でMaxα=5）に対応するため、閾値に`5`を追加して`p_ge_5`列を生成し、kneeサマリ側も`p_ge_5`/`p_ge_40`を抽出対象に追加した。
+    - PNG→CSVには`max_alpha`列も追加し、`p_ge_*`がゼロになる理由（Maxαが閾値未満）をCSVから判別できるようにした。
 
 ### 2) Center alpha summary
 - `Helpers/ExportCenterAlphaSummary.cs`
@@ -306,6 +519,104 @@
 - SkiaTester が検証UI/分岐で肥大化してきたため、Dot再現の最小実験環境として `DotLab` を新設した。
 - SkiaSharp（`SkiaSharp.Views.WPF`）を継続採用し、紙目の高さはPNGのAlpha（0..1）を使用する。
 - ノイズはタイルとして繰り返しサンプリングし、オフセット方向は既存検証の合意（X増加でノイズ右、Y増加でノイズ上）に合わせる。
+
+## 追加実装: DotTesterの再現レンダラでPaperMaskを適用（2026-03）
+- 背景: 外縁部の「起伏/落ち方」が再現側で平坦に見えるケースがあり、SkiaTester側にある `PaperMask`（outAマスク + 外縁フォールオフ）をDotTester側でも適用して調整できるようにする。
+- `DotTester/Helpers/DotReproRenderer.cs`
+  - `PaperMaskMode` / `PaperMaskFalloffMode` を追加し、`DotReproRenderer.Options` に `PaperMaskMode/PaperMaskThreshold01/PaperMaskGain/PaperMaskFalloffMode` を追加。
+  - `paperMask` はノイズ `z=(n01-mean)/std` を0..1へ写像して生成し、`outA` に乗算して適用する。
+  - 適用順序は SkiaTester 互換で `outA → paperMask → cutoff`。
+- `DotTester/MainWindow.xaml.cs`
+  - `PaperMask` UI（mode/th/gain/edge）を読み取り、`DotReproRenderer.Options` へ配線。
+
+## 追加実装: DotTesterで紙目強度を外縁ほど強める（edge boost）（2026-03）
+- 背景: `PaperMask` は outA に直接マスクを掛けるため、微小な調整が難しく（小gainだと全域で減衰して中心まで抜けやすい）、外縁部だけを狙って調整できる方式が必要だった。
+- 方針: 紙目の `Strength`（および ZNormの `strength*gain`）を、中心→外縁に向かって半径依存でスケールする。
+  - 中心は1倍、外縁で `1 + boost` 倍。
+  - `gamma` で立ち上がりの形を調整。
+- `DotTester/Helpers/DotReproRenderer.cs`
+  - `DotReproRenderer.Options` に `EnablePaperNoiseEdgeBoost` / `PaperNoiseEdgeBoost` / `PaperNoiseEdgeBoostGamma` を追加。
+  - kMean事前計測と描画の両方で同じスケールを適用し、再正規化の不整合を避けた。
+- `DotTester/MainWindow.xaml` / `DotTester/MainWindow.xaml.cs`
+  - edge boostのON/OFFと `boost/gamma` 入力を追加してOptionsへ配線。
+
+## 変更: DotTesterのUI変更を即時レンダへ反映（2026-03）
+- 背景: パラメータ調整で都度 `Render` ボタンを押すのが手間なため、UI変更時に自動で再レンダしたい。
+- 対応: `DotTester/MainWindow.xaml.cs` で主要入力（`NumberBox/ComboBox/CheckBox/TextBox`）の変更イベントを購読し、デバウンス（150ms）で自動レンダをスケジュールする。
+  - 自動レンダ時はエラーでダイアログ連発しないよう、Status表示のみ更新。
+  - `Render (N=1)` ボタンは従来通り明示実行（エラーはダイアログ表示）。
+
+## 追加実装: DotTesterで紙目タイル極値点の一致度スコアを算出（2026-03）
+- 背景: タイル内の最明/最暗画素が周期的に現れる点（例: 明16点・暗18点）の値が一致すれば、紙目の位相/強度が視覚的に近いと判断しやすい。
+- 対応: `DotTester` にタイル座標（Bright/Dark）とexpected解釈（Auto/alpha/白背景255-輝度）を指定して、該当点群の誤差（MAE/RMSE/MaxAbs、上位差分）を表示する評価機能を追加。
+- `DotTester/Helpers/TileExtremaMatchEvaluator.cs`
+  - タイル周期からキャンバス上の該当座標を列挙（texel中心を厳密にサンプルできる点のみ）し、expected/renderedの値を比較してスコア化。
+- `DotTester/MainWindow.xaml` / `DotTester/MainWindow.xaml.cs`
+  - 座標入力とEvaluateボタンを追加。
+
+## 追加実装: DotTesterでタイル極値点スコアを目的関数にした総当たり探索（2026-03）
+- 目的: 紙目の見た目合わせを「目視」から「スコア最小化」へ寄せ、offset/strength/gain等の探索を自動化する。
+- `DotTester/MainWindow.xaml`
+  - `Sweep` UIを追加（Offset/Strength/Gainの範囲・step、kMean stride、Search/Cancel、Apply）。
+- `DotTester/MainWindow.xaml.cs`
+  - 非同期で候補を総当たりし、タイル極値点のMAEが最小になる設定を探索。
+  - `Apply`有効時は最良値をUIへ反映し、最後にフルレンダでRenderedを更新。
+
+### 追記（2026-03）
+- Sweepの進捗が分かるように、`SweepProgressBar` と `SweepProgressTextBlock` を追加。
+- 探索対象に `FalloffScale` / `FalloffRNormScale` / `FalloffGamma` も追加し、必要に応じて総当たり可能にした。
+
+### 追記（2026-03）
+- Sweepを段階探索（Coarse→Refine）に対応。
+  - 粗探索: `SweepCoarseOffsetStepNumberBox`（offsetの間引き）と `SweepCoarseStepMultiplierNumberBox`（各step倍率）で探索点を削減。
+  - 局所探索: `SweepRefineTopKNumberBox`（上位K）をseedに、`SweepRefineOffsetRadiusNumberBox`（offset±）と `SweepRefineStepsRadiusNumberBox`（各step±N）で近傍のみを細かく再探索。
+- Sweepを並列評価に対応。
+  - `SweepParallelDegreeNumberBox` で最大同時実行数を指定（既定4）。
+- 反復上限をUIで設定可能に変更。
+  - `SweepMaxItersNumberBox`（既定200万）。段階探索では上限内に収まるseed数に自動調整。
+
+### 追記（2026-03）
+- Sweep結果の比較上位10件をCSV出力。
+  - `sweep-top10-settings-*.csv`: 上位10件の設定値（offset/strength/gain/falloff等）とMAE。
+  - `sweep-top10-score-*.csv`: 上位10件のスコア詳細（MAE/RMSE/MaxAbs/平均expected/rendered等）。
+  - 出力先はExpected PNGと同じフォルダ配下の `SweepResult`。
+  - `sweep-top10-points-*.csv`: 上位10件×34点の点詳細（expected/rendered/diff）を点ごとに1行で出力。
+
+### 追記（2026-03）
+- InkDrawGenに「紙目周期解析CSV(PNG)」を追加。
+  - PNGのαから自己相関（X/Y方向の相関係数・MAE）を算出して、周期候補をCSV/ダイアログ/ログに出力。
+
+### 追記（2026-03）
+- 紙目タイル周期の確定: **435pxではなく436px**。
+  - 周期（タイルサイズ）と切り出し位相（開始位置）を正しく合わせると、DotTesterの基本設定（falloff系=1）でもDotLabの差分で規則的な格子が消えることを確認。
+  - 切り出し位置は縦横で2〜3px程度の補正が効いた。
+
+### 追記（2026-03）
+- DotTesterに edge帯の「Expected α × Noise × Falloff」散布図CSV出力を追加。
+  - 目的: 外縁部での「単純乗算モデル」 vs 「閾値/減算/マスク系モデル」や、`Nearest` vs `Bilinear` の影響を当てるための観測データを出す。
+  - UI: `Edge scatter`（a8 min/max, stride）→ `Export CSV`
+  - 出力: Expected PNGと同じフォルダ配下の `SweepResult/edge-scatter-*.csv`
+  - CSV列: `expected_a8` / `rendered_a8` / `n01_nearest` / `n01_bilinear` / `f` / `base_a01`（ほか座標/距離）
+
+### 追記（2026-03）
+- DotTesterに `Bicubic` サンプリング（Catmull-Rom）と outA の実験モデル `Wall-through` を追加。
+  - 目的: 4) サンプラー差（Nearest/Bilinear/Bicubic）と、1) 合成式差（掛け算系 vs 減算/閾値系）をUI切替で素早く試す。
+  - UI:
+    - `Sampling: Bicubic`
+    - `Model: Wall-through` / `WallK`
+  - モデル概要: `wall = 1 - n01`、`outA = clamp((baseA01 - wall) / WallK, 0..1)`（N=1）
+  - `edge-scatter-*.csv` に `n01_bicubic` 列を追加し、同一点の `Nearest/Bilinear/Bicubic` を同時に比較できるようにした。
+- `DotTester/Helpers/DotReproRenderer.cs`
+  - フルレンダを回さず、指定座標のα(8bit)だけ評価できる`PointEvaluator`を追加。
+  - ZNormalizedでkMean再正規化が有効な場合、探索用にkMeanをstride指定で粗く計算可能。
+- `DotTester/Helpers/TileExtremaMatchEvaluator.cs`
+  - 点列挙(`EnumeratePoints`)とexpectedのα換算(`GetExpectedAlphaByte`)を公開し、探索で再利用。
+
+## 修正: kernel-sweep→normalized-falloff変換を線形補間に変更（2026-03）
+- 背景: `kernel-sweep`（`dx_px`）から `normalized-falloff`（`r_norm`）へ落とす際に、scaleや欠損の影響で最近傍1点を拾うと落ち方が段付きになりやすい。
+- 対応: 変換時に `dxTarget=r*scale` の前後2点（`dx0<dxTarget<dx1`）から線形補間して `alpha(r_norm)` を生成する。
+- `InkDrawGen/Helpers/KernelSweepToNormalizedFalloffExportService.cs`
+  - `ReadKernelSweepAlphaByRNormAsync` の近傍探索（最寄り点）を、前後2点の線形補間に置換（範囲外は端でクランプ）。
 
 ### DotLabの新モデル（壁貫通モデル）
 - GIMPの手動分解で得た仮説を実装優先の形に落とし込み、以下の式を `DotLab.Rendering.DotModel` として実装した。
@@ -424,3 +735,14 @@
 ### 次の作業候補
 - `th=2/3` で union/coverage が十分な条件での best がどう変わるかを再評価。
 - `alpha_k` を適用した後に 2値化/差分強度を再可視化（補正が効くかの確認）。
+
+## 追加実装: DotTester SweepのWall-through拡張 + ROI評価 + CSV出力整理（2026-03）
+- `DotTester/Helpers/DotReproRenderer.cs`
+  - `OutAlphaModel=WallThrough` でも `Strength`（+`EdgeBoost`）で紙目寄与を調整できるよう、紙目 `n01` を `mean` へブレンドしてから壁貫通計算へ入れるようにした（中心の紙目が立ちやすい問題の緩和）。
+- `DotTester/MainWindow.xaml`
+  - Sweep項目に `WallK` / `Wall base×` / `Wall bias` の探索（ON + min/max/step）を追加。
+  - Sweepの評価点として ROI(xywh) を指定できるUIを追加（stride、詳細CSV最大行数も指定）。
+- `DotTester/MainWindow.xaml.cs`
+  - Sweep候補に `WallK/base/bias` を追加し、staged（coarse/refine）も含めて探索できるようにした。
+  - Sweepの評価点を「タイル極値点（従来）」または「ROIサンプル（stride間引き）」へ切り替え可能にした。
+  - Sweep結果CSVを Top10の `summary`（候補パラメータ+スコア詳細+ROI設定）と `detail`（点/ROIのサンプル差分）に整理した。ROI詳細は行数上限で抑制。

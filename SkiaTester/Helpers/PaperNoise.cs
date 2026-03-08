@@ -13,21 +13,26 @@ public sealed class PaperNoise : IDisposable
     }
     public enum InvalidPixelMode
     {
-        // ]—ˆ‹““®i•‚ğ–³Œøˆµ‚¢j
+        // å¾“æ¥æŒ™å‹•ï¼ˆç„¡åŠ¹èƒŒæ™¯ã®åˆ¤å®šï¼‰
+        // - RgbAverage: é»’(RGB==0)ã‚’ç„¡åŠ¹æ‰±ã„
+        // - Alpha: é€æ˜(A==0)ã‚’ç„¡åŠ¹æ‰±ã„
         Legacy,
-        // –³Œø”»’è‚ğ‚µ‚È‚¢i“§‰ßƒ^ƒCƒ‹‚ÅRGB‚É’l‚ª“ü‚Á‚Ä‚¢‚é‘O’ñj
+        // ç„¡åŠ¹åˆ¤å®šã‚’ã—ãªã„ï¼ˆé€éã‚¿ã‚¤ãƒ«ã§RGBã«å€¤ãŒå…¥ã£ã¦ã„ã‚‹å‰æï¼‰
         None
     }
     public enum EdgeMode
     {
-        // –³ŒøƒsƒNƒZƒ‹‚Í 1.0i‰e‹¿‚È‚µj‚Æ‚µ‚Äˆµ‚¤iŠù’èj
+        // ç„¡åŠ¹ãƒ”ã‚¯ã‚»ãƒ«ã¯ 1.0ï¼ˆå½±éŸ¿ãªã—ï¼‰ã¨ã—ã¦æ‰±ã†ï¼ˆæ—¢å®šï¼‰
         TreatInvalidAsOne,
 
-        // –³ŒøƒsƒNƒZƒ‹‚Ìê‡A‹ß–T‚Ì—LŒøƒsƒNƒZƒ‹‚ÖƒNƒ‰ƒ“ƒv‚µ‚ÄƒTƒ“ƒvƒ‹‚·‚é
+        // ç„¡åŠ¹ãƒ”ã‚¯ã‚»ãƒ«ã®å ´åˆã€è¿‘å‚ã®æœ‰åŠ¹ãƒ”ã‚¯ã‚»ãƒ«ã¸ã‚¯ãƒ©ãƒ³ãƒ—ã—ã¦ã‚µãƒ³ãƒ—ãƒ«ã™ã‚‹
         ClampToValid,
     }
 
     private readonly SKBitmap _bitmap;
+    private readonly SKColor[] _pixels;
+    private readonly int _width;
+    private readonly int _height;
     private readonly InvalidPixelMode _invalidMode;
     private readonly SampleChannel _sampleChannel;
     private readonly double _mean01;
@@ -39,6 +44,9 @@ public sealed class PaperNoise : IDisposable
     private PaperNoise(SKBitmap bitmap, InvalidPixelMode invalidMode, SampleChannel sampleChannel)
     {
         _bitmap = bitmap;
+        _width = bitmap.Width;
+        _height = bitmap.Height;
+        _pixels = bitmap.Pixels;
         _invalidMode = invalidMode;
         _sampleChannel = sampleChannel;
         var stats = ComputeStats01(bitmap, invalidMode, sampleChannel);
@@ -49,8 +57,8 @@ public sealed class PaperNoise : IDisposable
         _validRatio = stats.validRatio;
     }
 
-    public int Width => _bitmap.Width;
-    public int Height => _bitmap.Height;
+    public int Width => _width;
+    public int Height => _height;
 
     public double Mean01 => _mean01;
     public double Min01 => _min01;
@@ -60,8 +68,8 @@ public sealed class PaperNoise : IDisposable
 
     public string GetPixelDiagnostics()
     {
-        var w = _bitmap.Width;
-        var h = _bitmap.Height;
+        var w = _width;
+        var h = _height;
         if (w <= 0 || h <= 0) return "(empty)";
 
         long n = (long)w * h;
@@ -76,7 +84,7 @@ public sealed class PaperNoise : IDisposable
         {
             for (var x = 0; x < w; x++)
             {
-                var c = _bitmap.GetPixel(x, y);
+                var c = GetPixelUnchecked(x, y);
                 var r = c.Red;
                 var g = c.Green;
                 var b = c.Blue;
@@ -128,26 +136,26 @@ public sealed class PaperNoise : IDisposable
         var bitmap = SKBitmap.Decode(stream);
         if (bitmap == null)
         {
-            throw new InvalidOperationException($"PNG‚Ì“Ç‚İ‚İ‚É¸”s‚µ‚Ü‚µ‚½: {fullPath}");
+            throw new InvalidOperationException($"PNGã®èª­ã¿è¾¼ã¿ã«å¤±æ•—ã—ã¾ã—ãŸ: {fullPath}");
         }
 
         if (bitmap.Width <= 0 || bitmap.Height <= 0)
         {
             bitmap.Dispose();
-            throw new InvalidOperationException($"PNG‚ÌƒTƒCƒY‚ª•s³‚Å‚·: {fullPath}");
+            throw new InvalidOperationException($"PNGã®ã‚µã‚¤ã‚ºãŒä¸æ­£ã§ã™: {fullPath}");
         }
 
         return new PaperNoise(bitmap, invalidMode, sampleChannel);
     }
 
-    // 0..1 ‚ÌƒmƒCƒY’lBƒ†[ƒU[\‚Åu”½“]Ï‚İv‚È‚Ì‚ÅA‚±‚±‚Å‚Í”½“]‚µ‚È‚¢B
+    // 0..1 ã®ãƒã‚¤ã‚ºå€¤ã€‚ãƒ¦ãƒ¼ã‚¶ãƒ¼ç”³å‘Šã§ã€Œåè»¢æ¸ˆã¿ã€ãªã®ã§ã€ã“ã“ã§ã¯åè»¢ã—ãªã„ã€‚
     public double Sample01(int canvasX, int canvasY)
     {
-        var x = Mod(canvasX, _bitmap.Width);
-        var y = Mod(canvasY, _bitmap.Height);
+        var x = Mod(canvasX, _width);
+        var y = Mod(canvasY, _height);
 
-        var c = _bitmap.GetPixel(x, y);
-        if (IsInvalidBackground(c, _invalidMode))
+        var c = GetPixelUnchecked(x, y);
+        if (IsInvalidBackground(c, _invalidMode, _sampleChannel))
         {
             return InvalidEdgeMode == EdgeMode.ClampToValid
                 ? SampleNearestValid01(x, y)
@@ -156,17 +164,20 @@ public sealed class PaperNoise : IDisposable
         return Read01(c);
     }
 
-    // 0..1 ‚ÌƒmƒCƒY’lidoubleÀ•WE‘oüŒ`•âŠÔjBƒ^ƒCƒ‹‚Íƒ[ƒ‹ƒhŒÅ’è‚Ås‚¤B
+    // 0..1 ã®ãƒã‚¤ã‚ºå€¤ï¼ˆdoubleåº§æ¨™ãƒ»åŒç·šå½¢è£œé–“ï¼‰ã€‚ã‚¿ã‚¤ãƒ«ã¯ãƒ¯ãƒ¼ãƒ«ãƒ‰å›ºå®šã§è¡Œã†ã€‚
     public double Sample01Bilinear(double canvasX, double canvasY)
     {
-        var w = _bitmap.Width;
-        var h = _bitmap.Height;
+        var w = _width;
+        var h = _height;
         if (w <= 0 || h <= 0) return 1.0;
 
-        // ƒ^ƒCƒ‹i•‰’l‚àˆÀ‘S‚ÉŒJ‚è•Ô‚·j
-        var x0f = canvasX % w;
+        // ã‚¿ã‚¤ãƒ«ï¼ˆè² å€¤ã‚‚å®‰å…¨ã«ç¹°ã‚Šè¿”ã™ï¼‰
+        // ã“ã“ã§ã®canvasX/canvasYã¯ã€Œãƒ”ã‚¯ã‚»ãƒ«ä¸­å¿ƒåº§æ¨™ï¼ˆ... 0.5, 1.5, 2.5 ...ï¼‰ã€ã¨ã—ã¦æ‰±ã†ã€‚
+        // å‘¼ã³å‡ºã—å´ãŒ (x + 0.5) ã‚’æ¸¡ã™å‰æãªã®ã§ã€ã‚µãƒ³ãƒ—ãƒ«æ™‚ã¯ -0.5 ã—ã¦ texel index ã¨åˆã‚ã›ã‚‹ã€‚
+        // ã“ã‚Œã«ã‚ˆã‚Šã€æ¥µå€¤ï¼ˆã‚¿ã‚¤ãƒ«ã®æœ€æ·±/æœ€æµ…ç”»ç´ ï¼‰ãŒåŒç·šå½¢ã§æ½°ã‚Œã«ãããªã‚‹ã€‚
+        var x0f = (canvasX - 0.5) % w;
         if (x0f < 0) x0f += w;
-        var y0f = canvasY % h;
+        var y0f = (canvasY - 0.5) % h;
         if (y0f < 0) y0f += h;
 
         var x0 = (int)Math.Floor(x0f);
@@ -181,16 +192,16 @@ public sealed class PaperNoise : IDisposable
 
         double Gray01OrFallback(int x, int y, SKColor c)
         {
-            if (!IsInvalidBackground(c, _invalidMode)) return Read01(c);
+            if (!IsInvalidBackground(c, _invalidMode, _sampleChannel)) return Read01(c);
             return InvalidEdgeMode == EdgeMode.ClampToValid
                 ? SampleNearestValid01(x, y)
                 : 1.0;
         }
 
-        var c00 = _bitmap.GetPixel(x0, y0);
-        var c10 = _bitmap.GetPixel(x1, y0);
-        var c01 = _bitmap.GetPixel(x0, y1);
-        var c11 = _bitmap.GetPixel(x1, y1);
+        var c00 = GetPixelUnchecked(x0, y0);
+        var c10 = GetPixelUnchecked(x1, y0);
+        var c01 = GetPixelUnchecked(x0, y1);
+        var c11 = GetPixelUnchecked(x1, y1);
 
         var v00 = Gray01OrFallback(x0, y0, c00);
         var v10 = Gray01OrFallback(x1, y0, c10);
@@ -204,11 +215,11 @@ public sealed class PaperNoise : IDisposable
 
     private double SampleNearestValid01(int x, int y)
     {
-        var w = _bitmap.Width;
-        var h = _bitmap.Height;
+        var w = _width;
+        var h = _height;
         if (w <= 0 || h <= 0) return 1.0;
 
-        // Å‘å”¼Œa‚Í¬‚³‚ß‚Å\•ªi¡‰ñ‚Ì—p“r‚Í‰~ŠO=“§–¾—Ìˆæ‚ÌŒŠ–„‚ßj
+        // æœ€å¤§åŠå¾„ã¯å°ã•ã‚ã§ååˆ†ï¼ˆä»Šå›ã®ç”¨é€”ã¯å††å¤–=é€æ˜é ˜åŸŸã®ç©´åŸ‹ã‚ï¼‰
         const int maxR = 8;
         for (var r = 1; r <= maxR; r++)
         {
@@ -224,8 +235,8 @@ public sealed class PaperNoise : IDisposable
                 var xx0 = x + dx0;
                 if (xx0 < 0) xx0 += w;
                 if (xx0 >= w) xx0 -= w;
-                var c0 = _bitmap.GetPixel(xx0, yy);
-                if (!IsInvalidBackground(c0, _invalidMode))
+                var c0 = GetPixelUnchecked(xx0, yy);
+                if (!IsInvalidBackground(c0, _invalidMode, _sampleChannel))
                 {
                     return Read01(c0);
                 }
@@ -233,8 +244,8 @@ public sealed class PaperNoise : IDisposable
                 var xx1 = x + dx1;
                 if (xx1 < 0) xx1 += w;
                 if (xx1 >= w) xx1 -= w;
-                var c1 = _bitmap.GetPixel(xx1, yy);
-                if (!IsInvalidBackground(c1, _invalidMode))
+                var c1 = GetPixelUnchecked(xx1, yy);
+                if (!IsInvalidBackground(c1, _invalidMode, _sampleChannel))
                 {
                     return Read01(c1);
                 }
@@ -249,8 +260,8 @@ public sealed class PaperNoise : IDisposable
                 var yy0 = y - r;
                 if (yy0 < 0) yy0 += h;
                 if (yy0 >= h) yy0 -= h;
-                var c0 = _bitmap.GetPixel(xx, yy0);
-                if (!IsInvalidBackground(c0, _invalidMode))
+                var c0 = GetPixelUnchecked(xx, yy0);
+                if (!IsInvalidBackground(c0, _invalidMode, _sampleChannel))
                 {
                     return Read01(c0);
                 }
@@ -258,8 +269,8 @@ public sealed class PaperNoise : IDisposable
                 var yy1 = y + r;
                 if (yy1 < 0) yy1 += h;
                 if (yy1 >= h) yy1 -= h;
-                var c1 = _bitmap.GetPixel(xx, yy1);
-                if (!IsInvalidBackground(c1, _invalidMode))
+                var c1 = GetPixelUnchecked(xx, yy1);
+                if (!IsInvalidBackground(c1, _invalidMode, _sampleChannel))
                 {
                     return Read01(c1);
                 }
@@ -279,8 +290,8 @@ public sealed class PaperNoise : IDisposable
         return g / 255.0;
     }
 
-    // 0..1 ‚ÌƒmƒCƒY’lidoubleÀ•WjB’áü”g¬•ª‚ğ¬‚º‚Ä—±‚Ì‘å‚«‚³‚ğ’²®‚·‚éB
-    // mix: 0=Œ³‚Ìü”g”, 1=’áü”g‚Ì‚İ
+    // 0..1 ã®ãƒã‚¤ã‚ºå€¤ï¼ˆdoubleåº§æ¨™ï¼‰ã€‚ä½å‘¨æ³¢æˆåˆ†ã‚’æ··ãœã¦ç²’ã®å¤§ãã•ã‚’èª¿æ•´ã™ã‚‹ã€‚
+    // mix: 0=å…ƒã®å‘¨æ³¢æ•°, 1=ä½å‘¨æ³¢ã®ã¿
     public double Sample01Mixed(double canvasX, double canvasY, double lowFreqScale, double mix)
     {
         if (mix <= 0) return Sample01Bilinear(canvasX, canvasY);
@@ -296,13 +307,22 @@ public sealed class PaperNoise : IDisposable
         return (1.0 - mix) * hi + mix * lo;
     }
 
-    private static bool IsInvalidBackground(SKColor c, InvalidPixelMode mode)
+    private static bool IsInvalidBackground(SKColor c, InvalidPixelMode mode, SampleChannel sampleChannel)
     {
-        return mode switch
+        if (mode == InvalidPixelMode.None)
         {
-            InvalidPixelMode.None => false,
-            _ => (c.Red == 0 && c.Green == 0 && c.Blue == 0)
-        };
+            return false;
+        }
+
+        // Alphaãƒãƒ£ãƒ³ãƒãƒ«ã‚’ãƒã‚¤ã‚ºå€¤ã¨ã—ã¦ä½¿ã†å ´åˆã€RGBã¯ç„¡æ„å‘³ãªã®ã§ã€Œé€æ˜ã€ã‚’ç„¡åŠ¹èƒŒæ™¯ã¨ã—ã¦æ‰±ã†ã€‚
+        // (ç´™ç›®ã‚¿ã‚¤ãƒ«ã‚„dotç”±æ¥ã®ã‚¿ã‚¤ãƒ«ã§ã€èƒŒæ™¯ãŒA==0ã®ã“ã¨ãŒå¤šã„ãŸã‚)
+        if (sampleChannel == SampleChannel.Alpha)
+        {
+            return c.Alpha == 0;
+        }
+
+        // å¾“æ¥: é»’èƒŒæ™¯ã‚’ç„¡åŠ¹æ‰±ã„
+        return c.Red == 0 && c.Green == 0 && c.Blue == 0;
     }
 
     private static (double min, double max, double mean, double stddev, double validRatio) ComputeStats01(SKBitmap bitmap, InvalidPixelMode invalidMode, SampleChannel sampleChannel)
@@ -310,6 +330,8 @@ public sealed class PaperNoise : IDisposable
         var w = bitmap.Width;
         var h = bitmap.Height;
         if (w <= 0 || h <= 0) return (0.0, 0.0, 1.0, 0.0, 0.0);
+
+        var pixels = bitmap.Pixels;
 
         double sum = 0;
         double sumSq = 0;
@@ -322,8 +344,8 @@ public sealed class PaperNoise : IDisposable
         {
             for (var x = 0; x < w; x++)
             {
-                var c = bitmap.GetPixel(x, y);
-                if (IsInvalidBackground(c, invalidMode))
+                var c = pixels[(y * w) + x];
+                if (IsInvalidBackground(c, invalidMode, sampleChannel))
                 {
                     continue;
                 }
@@ -364,5 +386,10 @@ public sealed class PaperNoise : IDisposable
     public void Dispose()
     {
         _bitmap.Dispose();
+    }
+
+    private SKColor GetPixelUnchecked(int x, int y)
+    {
+        return _pixels[(y * _width) + x];
     }
 }

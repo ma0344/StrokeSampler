@@ -627,6 +627,14 @@
                         Content="距離減衰CSV一括(P×S×N)"
                         Click="ExportRadialFalloffBatchPsSizesNsButton_Click" />
 
+                <Button x:Name="ExportRadialAlphaBatchPsSizesNsButton"
+                        Content="半径αCSV一括(P×S×N)"
+                        Click="ExportRadialAlphaBatchPsSizesNsButton_Click" />
+
+                <Button x:Name="ExportRadialAlphaKneeSummaryButton"
+                        Content="半径α kneeサマリCSV"
+                        Click="ExportRadialAlphaKneeSummaryButton_Click" />
+
                 <Button x:Name="ExportCenterAlphaSummaryButton"
                         Content="中心αサマリCSV"
                         Click="ExportCenterAlphaSummaryButton_Click" />

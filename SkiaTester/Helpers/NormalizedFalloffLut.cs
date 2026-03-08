@@ -6,7 +6,7 @@ using System.IO;
 namespace SkiaTester.Helpers;
 
 /// <summary>
-/// normalized-falloff(S0=200) CSVのLUTを読み込み、r_normで線形補間評価するためのクラスです。
+/// normalized-falloff(S0=200) CSV縺ｮLUT繧定ｪｭ縺ｿ霎ｼ縺ｿ縲〉_norm縺ｧ邱壼ｽ｢陬憺俣隧穂ｾ｡縺吶ｋ縺溘ａ縺ｮ繧ｯ繝ｩ繧ｹ縺ｧ縺吶�
 /// </summary>
 public sealed class NormalizedFalloffLut
 {
@@ -17,14 +17,24 @@ public sealed class NormalizedFalloffLut
         _mean = mean;
     }
 
-    internal static NormalizedFalloffLut LoadFromCsv(string filePath)
+    public static NormalizedFalloffLut CreateFromMeanArray(double[] mean)
+    {
+        if (mean is null) throw new ArgumentNullException(nameof(mean));
+        if (mean.Length == 0) throw new ArgumentException("mean 縺檎ｩｺ縺ｧ縺吶�", nameof(mean));
+
+        var a = new double[mean.Length];
+        Array.Copy(mean, a, mean.Length);
+        return new NormalizedFalloffLut(a);
+    }
+
+    public static NormalizedFalloffLut LoadFromCsv(string filePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
         var fullPath = Path.GetFullPath(filePath);
         if (!File.Exists(fullPath))
         {
-            throw new FileNotFoundException($"normalized-falloff CSVが見つかりません: {fullPath}", fullPath);
+            throw new FileNotFoundException($"normalized-falloff CSV縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ: {fullPath}", fullPath);
         }
 
         var lines = File.ReadAllLines(fullPath);
@@ -61,13 +71,13 @@ public sealed class NormalizedFalloffLut
 
         if (meanByIndex.Count == 0)
         {
-            throw new InvalidOperationException($"normalized-falloff CSVの読み取りに失敗しました: {fullPath}");
+            throw new InvalidOperationException($"normalized-falloff CSV縺ｮ隱ｭ縺ｿ蜿悶ｊ縺ｫ螟ｱ謨励＠縺ｾ縺励◆: {fullPath}");
         }
 
         return new NormalizedFalloffLut(meanByIndex.ToArray());
     }
 
-    internal double Eval(double rNorm)
+    public double Eval(double rNorm)
     {
         if (rNorm <= 0) return _mean[0];
 

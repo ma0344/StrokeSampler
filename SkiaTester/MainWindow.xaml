@@ -1,4 +1,4 @@
-﻿<Window x:Class="SkiaTester.MainWindow"
+<Window x:Class="SkiaTester.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -61,6 +61,7 @@
 
                 <Button x:Name="RenderButton" Content="Render" Width="90" Click="RenderButton_Click" />
                 <Button x:Name="ExportCenterAlphaCsvButton" Content="Export centerα vs N" Width="160" Margin="8,0,0,0" Click="ExportCenterAlphaCsvButton_Click" />
+                <Button x:Name="ExportAlignedNFromN1So255Button" Content="Export alignedN (so255) from N1 PNG" Width="240" Margin="8,0,0,0" Click="ExportAlignedNFromN1So255Button_Click" />
             </StackPanel>
             <StackPanel Orientation="Horizontal"
                         Margin="0,0,0,8">

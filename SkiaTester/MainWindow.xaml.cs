@@ -1,10 +1,12 @@
-﻿using SkiaTester.Helpers;
+using Microsoft.Win32;
+using SkiaTester.Helpers;
 using SkiaSharp;
 using SkiaSharp.Views.Desktop;
 using SkiaSharp.Views.WPF;
 using System;
 using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Windows;
 using static SkiaTester.SkiaHelpers;
 using static SkiaTester.Constants;
@@ -27,6 +29,146 @@ namespace SkiaTester
         private NormalizedFalloffLut? _normalizedFalloff;
         private string? _normalizedFalloffPath;
         private bool isLoaded = false;
+
+        private void ExportAlignedNFromN1So255Button_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var open = new Microsoft.Win32.OpenFileDialog
+                {
+                    Filter = "PNG (*.png)|*.png",
+                    Multiselect = false,
+                    Title = "alignedN1 のPNGを選択（so255で alignedN2/4/8 を生成）"
+                };
+                if (open.ShowDialog(this) != true) return;
+
+                var srcPath = open.FileName;
+                if (string.IsNullOrWhiteSpace(srcPath)) return;
+
+                var outDir = OutputDirectoryTextBox.Text?.Trim();
+                if (string.IsNullOrWhiteSpace(outDir))
+                {
+                    System.Windows.MessageBox.Show(this, "Out Dir が空です。", "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                Directory.CreateDirectory(outDir);
+
+                using var srcBmp = SKBitmap.Decode(srcPath);
+                if (srcBmp is null)
+                {
+                    System.Windows.MessageBox.Show(this, "PNGの読み込みに失敗しました。", "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var w = srcBmp.Width;
+                var h = srcBmp.Height;
+                if (w <= 0 || h <= 0)
+                {
+                    System.Windows.MessageBox.Show(this, "PNGサイズが不正です。", "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var srcAlpha = ExtractAlpha(srcBmp);
+
+                // Nは最小限（2/4/8）だけ出す。必要なら後で拡張する。
+                var ns = new[] { 2, 4, 8 };
+                foreach (var n in ns)
+                {
+                    var lut = BuildSo255RoundLut(n);
+                    using var outBmp = ApplyAlphaLutToTransparentBitmap(srcAlpha, w, h, lut);
+
+                    var outName = BuildAlignedNOutputFileName(srcPath, n, suffix: "so255-round");
+                    var outPath = Path.Combine(outDir, outName + ".png");
+                    SavePng(outBmp, outPath);
+                }
+
+                System.Windows.MessageBox.Show(this, "完了: alignedN2/4/8 を出力しました。", "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(this, ex.ToString(), "SkiaTester", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private static byte[] ExtractAlpha(SKBitmap src)
+        {
+            var w = src.Width;
+            var h = src.Height;
+            var n = checked(w * h);
+            var a = new byte[n];
+            var px = src.Pixels;
+            for (var i = 0; i < n; i++)
+            {
+                a[i] = px[i].Alpha;
+            }
+            return a;
+        }
+
+        private static byte[] BuildSo255RoundLut(int n)
+        {
+            if (n <= 0) throw new ArgumentOutOfRangeException(nameof(n));
+
+            var lut = new byte[256];
+            for (var srcA = 0; srcA <= 255; srcA++)
+            {
+                var x = 0;
+                for (var k = 0; k < n; k++)
+                {
+                    var numer = srcA * (255 - x);
+                    var inc = (numer + 127) / 255;
+                    x += inc;
+                    if (x > 255)
+                    {
+                        x = 255;
+                        break;
+                    }
+                }
+                lut[srcA] = (byte)x;
+            }
+            return lut;
+        }
+
+        private static SKBitmap ApplyAlphaLutToTransparentBitmap(byte[] srcAlpha, int w, int h, byte[] lut)
+        {
+            if (lut.Length != 256) throw new ArgumentException("lutの長さが不正です。", nameof(lut));
+            if (srcAlpha.Length != w * h) throw new ArgumentException("srcAlphaの長さが一致しません。", nameof(srcAlpha));
+
+            var outBmp = new SKBitmap(w, h, SKColorType.Bgra8888, SKAlphaType.Unpremul);
+            var dstPx = outBmp.Pixels;
+            for (var i = 0; i < srcAlpha.Length; i++)
+            {
+                var a = lut[srcAlpha[i]];
+                dstPx[i] = new SKColor(0, 0, 0, a);
+            }
+            outBmp.Pixels = dstPx;
+            return outBmp;
+        }
+
+        private static string BuildAlignedNOutputFileName(string srcPath, int n, string suffix)
+        {
+            var baseName = Path.GetFileNameWithoutExtension(srcPath);
+            if (string.IsNullOrWhiteSpace(baseName)) baseName = "image";
+
+            // 例: ...-alignedN1-... を ...-alignedN4-... へ置換
+            var replaced = Regex.Replace(baseName, @"alignedN1(?!\d)", "alignedN" + n.ToString(CultureInfo.InvariantCulture), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (string.Equals(replaced, baseName, StringComparison.OrdinalIgnoreCase))
+            {
+                replaced = baseName + "-alignedN" + n.ToString(CultureInfo.InvariantCulture);
+            }
+
+            return replaced + "-" + suffix;
+        }
+
+        private static void SavePng(SKBitmap bmp, string path)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
+
+            using var image = SKImage.FromBitmap(bmp);
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            using var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read);
+            data.SaveTo(fs);
+            fs.Flush(flushToDisk: true);
+        }
 
         private bool IsCheckedByName(string name)
         {

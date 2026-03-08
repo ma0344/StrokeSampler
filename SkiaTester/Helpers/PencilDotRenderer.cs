@@ -36,9 +36,9 @@ public static class PencilDotRenderer
 
     public enum PaperNoiseApplyStage
     {
-        // Šù‘¶‹““®: ‡¬‘Oia01 ‚Ü‚½‚Í nEffj‚Ék‚ğ“K—p
+        // æ—¢å­˜æŒ™å‹•: åˆæˆå‰ï¼ˆa01 ã¾ãŸã¯ nEffï¼‰ã«kã‚’é©ç”¨
         PreComposite,
-        // ÀŒ±—p: ‡¬ŒãioutAj‚Ék‚ğ“K—p
+        // å®Ÿé¨“ç”¨: åˆæˆå¾Œï¼ˆoutAï¼‰ã«kã‚’é©ç”¨
         PostComposite,
     }
 
@@ -62,8 +62,8 @@ public static class PencilDotRenderer
         if (mode == PaperMaskMode.None) return 1.0;
         if (gain <= 0) return 1.0;
 
-        // Šù‘¶‚Ìk¶¬‚Æ“¯—l‚Éz‚Ö³‹K‰»‚µ‚Ä‚©‚çg‚¤B
-        // uo‚Á’£‚è‚ªŒõ‚évƒCƒ[ƒW‚É‹ß‚Ã‚¯‚é‚½‚ßAz‚ğ0..1‚É—‚Æ‚µ‚Äƒ}ƒXƒN‚É‚·‚éB
+        // æ—¢å­˜ã®kç”Ÿæˆã¨åŒæ§˜ã«zã¸æ­£è¦åŒ–ã—ã¦ã‹ã‚‰ä½¿ã†ã€‚
+        // ã€Œå‡ºã£å¼µã‚ŠãŒå…‰ã‚‹ã€ã‚¤ãƒ¡ãƒ¼ã‚¸ã«è¿‘ã¥ã‘ã‚‹ãŸã‚ã€zã‚’0..1ã«è½ã¨ã—ã¦ãƒã‚¹ã‚¯ã«ã™ã‚‹ã€‚
         if (noiseStd01 <= 0) return 1.0;
 
         var z = (n01 - noiseMean01) / noiseStd01;
@@ -72,7 +72,7 @@ public static class PencilDotRenderer
         // z=-3..+3 => t=0..1
         var t = (z + 3.0) / 6.0;
 
-        // gain‚ÅƒRƒ“ƒgƒ‰ƒXƒg‚ğ’²®
+        // gainã§ã‚³ãƒ³ãƒˆãƒ©ã‚¹ãƒˆã‚’èª¿æ•´
         t = 0.5 + (t - 0.5) * gain;
         t = Math.Clamp(t, 0.0, 1.0);
 
@@ -83,8 +83,8 @@ public static class PencilDotRenderer
 
         if (mode == PaperMaskMode.SoftOutAlpha)
         {
-            // °•t‚«‚Ì˜A‘±ƒ}ƒXƒN: threshold‚ğ‹«‚ÉŠŠ‚ç‚©‚É—§‚¿ã‚°‚é
-            // gain‚Íu‚Ç‚ê‚¾‚¯‹}‚É—§‚¿ã‚°‚é‚©v‚Æ‚µ‚Äg‚¤
+            // åºŠä»˜ãã®é€£ç¶šãƒã‚¹ã‚¯: thresholdã‚’å¢ƒã«æ»‘ã‚‰ã‹ã«ç«‹ã¡ä¸Šã’ã‚‹
+            // gainã¯ã€Œã©ã‚Œã ã‘æ€¥ã«ç«‹ã¡ä¸Šã’ã‚‹ã‹ã€ã¨ã—ã¦ä½¿ã†
             var g = gain;
             if (g <= 0) g = 1.0;
             if (falloffWeight > 0) g *= falloffWeight;
@@ -106,7 +106,7 @@ public static class PencilDotRenderer
         return Render(canvasSizePx, diameterPx, pressure, stampCount: 1, noise, paperNoiseStrength: 0.35, paperNoiseScale: 2.0, paperNoiseOffsetX: 0.0, paperNoiseOffsetY: 0.0, paperNoiseGain: 0.2, paperNoiseLowFreqScale: 4.0, paperNoiseLowFreqMix: 0.0, paperNoiseApplyMode: PaperNoiseApplyMode.Alpha, falloffLut: null, disableKMeanNormalization: false, paperNoiseApplyStage: PaperNoiseApplyStage.PreComposite, alphaCutoff01: 0.0, noiseDependentCutoff: false, paperMaskMode: PaperMaskMode.None, paperMaskThreshold01: 0.5, paperMaskGain: 1.0, paperMaskFalloffMode: PaperMaskFalloffMode.None, baseShapeMode: BaseShapeMode.IdealCircle, paperOnlyFalloffMode: PaperOnlyFalloffMode.None, paperOnlyRadiusThNorm: 1.0, paperCapMode: PaperCapMode.None, paperCapGain: 1.0);
     }
 
-    public static SkiaSharp.SKBitmap Render(int canvasSizePx, int diameterPx, double pressure, int stampCount, PaperNoise? noise, double paperNoiseStrength, double paperNoiseScale, double paperNoiseOffsetX, double paperNoiseOffsetY, double paperNoiseGain, double paperNoiseLowFreqScale, double paperNoiseLowFreqMix, PaperNoiseApplyMode paperNoiseApplyMode, NormalizedFalloffLut? falloffLut, bool disableKMeanNormalization, PaperNoiseApplyStage paperNoiseApplyStage, double alphaCutoff01, bool noiseDependentCutoff, PaperMaskMode paperMaskMode, double paperMaskThreshold01, double paperMaskGain, PaperMaskFalloffMode paperMaskFalloffMode, BaseShapeMode baseShapeMode, PaperOnlyFalloffMode paperOnlyFalloffMode, double paperOnlyRadiusThNorm, PaperCapMode paperCapMode, double paperCapGain)
+    public static SkiaSharp.SKBitmap Render(int canvasSizePx, int diameterPx, double pressure, int stampCount, PaperNoise? noise, double paperNoiseStrength, double paperNoiseScale, double paperNoiseOffsetX, double paperNoiseOffsetY, double paperNoiseGain, double paperNoiseLowFreqScale, double paperNoiseLowFreqMix, PaperNoiseApplyMode paperNoiseApplyMode, NormalizedFalloffLut? falloffLut, bool disableKMeanNormalization, PaperNoiseApplyStage paperNoiseApplyStage, double alphaCutoff01, bool noiseDependentCutoff, PaperMaskMode paperMaskMode, double paperMaskThreshold01, double paperMaskGain, PaperMaskFalloffMode paperMaskFalloffMode, BaseShapeMode baseShapeMode, PaperOnlyFalloffMode paperOnlyFalloffMode, double paperOnlyRadiusThNorm, PaperCapMode paperCapMode, double paperCapGain, double radiusPadPx = 0.0, double paperNoiseKClampMin = 0.5, double paperNoiseKClampMax = 1.5, double falloffScale = 1.0)
     {
         if (canvasSizePx <= 0) throw new ArgumentOutOfRangeException(nameof(canvasSizePx));
         if (diameterPx <= 0) throw new ArgumentOutOfRangeException(nameof(diameterPx));
@@ -116,77 +116,48 @@ public static class PencilDotRenderer
         if (paperNoiseGain < 0) throw new ArgumentOutOfRangeException(nameof(paperNoiseGain));
 
         var bitmap = new SkiaSharp.SKBitmap(canvasSizePx, canvasSizePx, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+        bitmap.Erase(SkiaSharp.SKColors.Transparent);
 
-        using (var canvas = new SkiaSharp.SKCanvas(bitmap))
+        var pFloor = PencilPressureFloorTable.GetPFloor(diameterPx);
+        if (pressure <= pFloor)
         {
-            canvas.Clear(SkiaSharp.SKColors.Transparent);
+            return bitmap;
+        }
 
-            var pFloor = PencilPressureFloorTable.GetPFloor(diameterPx); 
-            if (pressure <= pFloor)
+            // åŠå¾„æ¸›è¡°ï¼ˆUWPè¦³æ¸¬ï¼‰
+            // - normalized-falloff(S0=200) LUTã‚’å„ªå…ˆã—ã¦ä½¿ç”¨ã™ã‚‹ï¼ˆç´™ç›®è¾¼ã¿radial-falloffã®äºŒé‡é©ç”¨ã‚’é¿ã‘ã‚‹ï¼‰
+            // - falloffLutãŒæœªæŒ‡å®šã®å ´åˆã®ã¿æ—¢å­˜ã®é…åˆ—ã«ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯ã™ã‚‹
+        var falloff = UwpS200P1RadialFalloff;
+
+        var radiusPx = diameterPx * 0.5;
+        var effectiveRadiusPx = radiusPx + Math.Max(0.0, radiusPadPx);
+        var cx = (canvasSizePx - 1) * 0.5;
+        var cy = (canvasSizePx - 1) * 0.5;
+
+        var pScale = Math.Clamp(pressure, 0.0, 1.0);
+
+        var falloffScaleClamped = falloffScale;
+        if (!double.IsFinite(falloffScaleClamped) || falloffScaleClamped < 0)
+        {
+            falloffScaleClamped = 1.0;
+        }
+
+            // 1) kã®å¹³å‡ã‚’è¨ˆæ¸¬ï¼ˆåŠå¾„å†…ã®ã¿ï¼‰
+        var kMean = 1.0;
+        if (noise != null && paperNoiseStrength > 0 && paperNoiseGain > 0)
+        {
+            // æ—¢å®šã¯ 0.5..1.5 ã ãŒã€å¤–å‘¨ã®ã€Œã¾ã°ã‚‰ã€ã‚’ä½œã‚‹æ¤œè¨¼ã®ãŸã‚ã«ç¯„å›²ã‚’èª¿æ•´ã§ãã‚‹ã‚ˆã†ã«ã™ã‚‹ã€‚
+            var kMin = paperNoiseKClampMin;
+            var kMax = paperNoiseKClampMax;
+            if (!double.IsFinite(kMin) || !double.IsFinite(kMax) || kMin <= 0 || kMax <= 0 || kMax < kMin)
             {
-                return bitmap;
+                kMin = 0.5;
+                kMax = 1.5;
             }
 
-            // ”¼ŒaŒ¸ŠiUWPŠÏ‘ªj
-            // - normalized-falloff(S0=200) LUT‚ğ—Dæ‚µ‚Äg—p‚·‚éi†–Ú‚İradial-falloff‚Ì“ñd“K—p‚ğ”ğ‚¯‚éj
-            // - falloffLut‚ª–¢w’è‚Ìê‡‚Ì‚İŠù‘¶‚Ì”z—ñ‚ÉƒtƒH[ƒ‹ƒoƒbƒN‚·‚é
-            var falloff = UwpS200P1RadialFalloff;
+            double kSum = 0;
+            long kCount = 0;
 
-            var radiusPx = diameterPx * 0.5;
-            var cx = (canvasSizePx - 1) * 0.5;
-            var cy = (canvasSizePx - 1) * 0.5;
-
-            var pScale = Math.Clamp(pressure, 0.0, 1.0);
-
-            // 1) k‚Ì•½‹Ï‚ğŒv‘ªi”¼Œa“à‚Ì‚İj
-            var kMean = 1.0;
-            if (noise != null && paperNoiseStrength > 0 && paperNoiseGain > 0)
-            {
-                double kSum = 0;
-                long kCount = 0;
-
-                for (var y = 0; y < canvasSizePx; y++)
-                {
-                    var dy = y - cy;
-                    for (var x = 0; x < canvasSizePx; x++)
-                    {
-                        var dx = x - cx;
-                        var dist = Math.Sqrt(dx * dx + dy * dy);
-                        if (dist > radiusPx) continue;
-
-                        var nx = ((x + 0.5) + paperNoiseOffsetX) / paperNoiseScale;
-                        var ny = ((y + 0.5) + paperNoiseOffsetY) / paperNoiseScale;
-                        var n01 = noise.Sample01Mixed(nx, ny, paperNoiseLowFreqScale, paperNoiseLowFreqMix);
-                        var mean = noise.Mean01;
-                        var std = noise.Stddev01;
-                        if (std <= 0) continue;
-
-                        var z = (n01 - mean) / std;
-                        z = Math.Clamp(z, -3.0, 3.0);
-
-                        var k = 1.0 + (paperNoiseStrength * paperNoiseGain) * z;
-                        k = Math.Clamp(k, 0.5, 1.5);
-                        kSum += k;
-                        kCount++;
-                    }
-                }
-
-                if (kCount > 0)
-                {
-                    kMean = kSum / kCount;
-                    if (double.IsNaN(kMean) || double.IsInfinity(kMean) || kMean <= 0)
-                    {
-                        kMean = 1.0;
-                    }
-                }
-            }
-
-            if (disableKMeanNormalization)
-            {
-                kMean = 1.0;
-            }
-
-            // 2) À•`‰æik‚ğ•½‹Ï1‚ÉÄ³‹K‰»j
             for (var y = 0; y < canvasSizePx; y++)
             {
                 var dy = y - cy;
@@ -194,11 +165,55 @@ public static class PencilDotRenderer
                 {
                     var dx = x - cx;
                     var dist = Math.Sqrt(dx * dx + dy * dy);
+                    if (dist > effectiveRadiusPx) continue;
 
-                    if (dist > radiusPx)
-                    {
-                        continue;
-                    }
+                    var nx = ((x + 0.5) + paperNoiseOffsetX) / paperNoiseScale;
+                    var ny = ((y + 0.5) + paperNoiseOffsetY) / paperNoiseScale;
+                    var n01 = noise.Sample01Mixed(nx, ny, paperNoiseLowFreqScale, paperNoiseLowFreqMix);
+                    var mean = noise.Mean01;
+                    var std = noise.Stddev01;
+                    if (std <= 0) continue;
+
+                    var z = (n01 - mean) / std;
+                    z = Math.Clamp(z, -3.0, 3.0);
+
+                    var k = 1.0 + (paperNoiseStrength * paperNoiseGain) * z;
+                    k = Math.Clamp(k, kMin, kMax);
+                    kSum += k;
+                    kCount++;
+                }
+            }
+
+            if (kCount > 0)
+            {
+                kMean = kSum / kCount;
+                if (double.IsNaN(kMean) || double.IsInfinity(kMean) || kMean <= 0)
+                {
+                    kMean = 1.0;
+                }
+            }
+        }
+
+        if (disableKMeanNormalization)
+        {
+            kMean = 1.0;
+        }
+
+        var pixels = bitmap.Pixels;
+
+            // 2) å®Ÿæç”»ï¼ˆkã‚’å¹³å‡1ã«å†æ­£è¦åŒ–ï¼‰
+        for (var y = 0; y < canvasSizePx; y++)
+        {
+            var dy = y - cy;
+            for (var x = 0; x < canvasSizePx; x++)
+            {
+                var dx = x - cx;
+                var dist = Math.Sqrt(dx * dx + dy * dy);
+
+                if (dist > effectiveRadiusPx)
+                {
+                    continue;
+                }
 
                     var rNorm = dist * (200.0 / diameterPx);
                     double f;
@@ -220,7 +235,7 @@ public static class PencilDotRenderer
                     }
                     else
                     {
-                    // PaperOnly: Šù’è‚Ífalloff–³ŒøiŒİŠ·j
+                    // PaperOnly: æ—¢å®šã¯falloffç„¡åŠ¹ï¼ˆäº’æ›ï¼‰
                     if (paperOnlyFalloffMode == PaperOnlyFalloffMode.RadiusThreshold)
                     {
                         var th = Math.Clamp(paperOnlyRadiusThNorm, 0.0, 1.0);
@@ -232,70 +247,81 @@ public static class PencilDotRenderer
                     }
                     }
 
-                    var a01 = f * pScale;
-                    var nEff = (double)stampCount;
-                    var kApplied = 1.0;
-                    var paperMask01 = 1.0;
-                    if (noise != null)
+                f *= falloffScaleClamped;
+                f = Math.Clamp(f, 0.0, 1.0);
+
+                var a01 = f * pScale;
+                var nEff = (double)stampCount;
+                var kApplied = 1.0;
+                var paperMask01 = 1.0;
+                if (noise != null)
+                {
+                    var kMin = paperNoiseKClampMin;
+                    var kMax = paperNoiseKClampMax;
+                    if (!double.IsFinite(kMin) || !double.IsFinite(kMax) || kMin <= 0 || kMax <= 0 || kMax < kMin)
                     {
-                        var mean = noise.Mean01;
-                        var std = noise.Stddev01;
-                        if (std > 0)
-                        {
-                            var nx = ((x + 0.5) + paperNoiseOffsetX) / paperNoiseScale;
-                            var ny = ((y + 0.5) + paperNoiseOffsetY) / paperNoiseScale;
-                            var n01 = noise.Sample01Mixed(nx, ny, paperNoiseLowFreqScale, paperNoiseLowFreqMix);
+                        kMin = 0.5;
+                        kMax = 1.5;
+                    }
+
+                    var mean = noise.Mean01;
+                    var std = noise.Stddev01;
+                    if (std > 0)
+                    {
+                        var nx = ((x + 0.5) + paperNoiseOffsetX) / paperNoiseScale;
+                        var ny = ((y + 0.5) + paperNoiseOffsetY) / paperNoiseScale;
+                        var n01 = noise.Sample01Mixed(nx, ny, paperNoiseLowFreqScale, paperNoiseLowFreqMix);
 
                             var falloffWeight = 1.0;
                             var thresholdAdj = paperMaskThreshold01;
                             if (paperMaskFalloffMode == PaperMaskFalloffMode.StrongerAtEdge)
                             {
-                                // ŠO‰‚Ù‚Ç‹­‚­FSoftOutAlpha‚Ì—§‚¿ã‚ª‚è(gain)‚ğŠO‘¤‚Å‹}‚É‚·‚é
+                                // å¤–ç¸ã»ã©å¼·ãï¼šSoftOutAlphaã®ç«‹ã¡ä¸ŠãŒã‚Š(gain)ã‚’å¤–å´ã§æ€¥ã«ã™ã‚‹
                                 var denom = Math.Max(0.15, Math.Clamp(f, 0.0, 1.0));
                                 falloffWeight = Math.Clamp(1.0 / denom, 1.0, 6.0);
                             }
                             else if (paperMaskFalloffMode == PaperMaskFalloffMode.ThresholdAtEdge)
                             {
-                                // ŠO‰‚Ù‚ÇŒµ‚µ‚­FSoftOutAlpha‚Ì°(threshold)‚ğŠO‘¤‚Åã‚°‚é
-                                // f=1 => +0, f=0 => +0.35iƒNƒ‰ƒ“ƒvj
+                                // å¤–ç¸ã»ã©å³ã—ãï¼šSoftOutAlphaã®åºŠ(threshold)ã‚’å¤–å´ã§ä¸Šã’ã‚‹
+                                // f=1 => +0, f=0 => +0.35ï¼ˆã‚¯ãƒ©ãƒ³ãƒ—ï¼‰
                                 var edge = 1.0 - Math.Clamp(f, 0.0, 1.0);
                                 thresholdAdj = Math.Clamp(paperMaskThreshold01 + 0.35 * edge, 0.0, 1.0);
                             }
 
-                            paperMask01 = ComputePaperMask01(paperMaskMode, thresholdAdj, paperMaskGain, falloffWeight, n01, mean, std);
+                        paperMask01 = ComputePaperMask01(paperMaskMode, thresholdAdj, paperMaskGain, falloffWeight, n01, mean, std);
 
-                            var z = (n01 - mean) / std;
-                            z = Math.Clamp(z, -3.0, 3.0);
+                        var z = (n01 - mean) / std;
+                        z = Math.Clamp(z, -3.0, 3.0);
 
-                            kApplied = 1.0 + (paperNoiseStrength * paperNoiseGain) * z;
-                            kApplied = Math.Clamp(kApplied, 0.5, 1.5);
-                            kApplied /= kMean;
-                            if (paperNoiseApplyStage == PaperNoiseApplyStage.PreComposite)
+                        kApplied = 1.0 + (paperNoiseStrength * paperNoiseGain) * z;
+                        kApplied = Math.Clamp(kApplied, kMin, kMax);
+                        kApplied /= kMean;
+                        if (paperNoiseApplyStage == PaperNoiseApplyStage.PreComposite)
+                        {
+                            if (paperNoiseApplyMode == PaperNoiseApplyMode.StampCount)
                             {
-                                if (paperNoiseApplyMode == PaperNoiseApplyMode.StampCount)
-                                {
-                                    nEff *= kApplied;
-                                }
-                                else
-                                {
-                                    a01 *= kApplied;
-                                }
+                                nEff *= kApplied;
+                            }
+                            else
+                            {
+                                a01 *= kApplied;
                             }
                         }
                     }
+                }
 
-                    if (a01 <= 0)
-                    {
-                        continue;
-                    }
+                if (a01 <= 0)
+                {
+                    continue;
+                }
 
-                    // “¯ˆêƒXƒ^ƒ“ƒviblack, alpha=a01j‚ğN‰ñ SrcOver ‚Åd‚Ë‚½Œ‹‰Ê:
+                    // åŒä¸€ã‚¹ã‚¿ãƒ³ãƒ—ï¼ˆblack, alpha=a01ï¼‰ã‚’Nå› SrcOver ã§é‡ã­ãŸçµæœ:
                     // outA = 1 - (1-a)^N
-                    // RGB‚Í•‚È‚Ì‚ÅA‚¾‚¯‚ÅŒˆ‚Ü‚éB
+                    // RGBã¯é»’ãªã®ã§Aã ã‘ã§æ±ºã¾ã‚‹ã€‚
                     double outA;
                     if (baseShapeMode == BaseShapeMode.PaperOnly)
                     {
-                        // †–Ú{ˆ³—Í{Œ¸Ši‚½‚¾‚µ—‘z‰~‚ÌN‰ñSrcOver‡¬‚Íg‚í‚È‚¢j
+                        // ç´™ç›®ï¼‹åœ§åŠ›ï¼‹æ¸›è¡°ï¼ˆãŸã ã—ç†æƒ³å††ã®Nå›SrcOveråˆæˆã¯ä½¿ã‚ãªã„ï¼‰
                         outA = Math.Clamp(a01, 0.0, 1.0);
                     }
                     else
@@ -308,35 +334,35 @@ public static class PencilDotRenderer
                         outA = Math.Clamp(outA, 0.0, 1.0);
                     }
 
-                    if (paperMaskMode != PaperMaskMode.None)
-                    {
-                        outA *= paperMask01;
-                    }
+                if (paperMaskMode != PaperMaskMode.None)
+                {
+                    outA *= paperMask01;
+                }
 
                     if (paperCapMode == PaperCapMode.CapOutAlpha && noise != null)
                     {
-                        // †–Ú‚ÅãŒÀ‚ğŒˆ‚ß‚éio‚Á’£‚è‚Ù‚ÇãŒÀ‚ª‚‚¢j
+                        // ç´™ç›®ã§ä¸Šé™ã‚’æ±ºã‚ã‚‹ï¼ˆå‡ºã£å¼µã‚Šã»ã©ä¸Šé™ãŒé«˜ã„ï¼‰
                         var cap01 = Math.Clamp(paperMask01 * paperCapGain, 0.0, 1.0);
                         if (outA > cap01) outA = cap01;
                     }
 
-                    var localCutoff = alphaCutoff01;
-                    if (noiseDependentCutoff)
-                    {
-                        localCutoff *= kApplied;
-                    }
-                    if (localCutoff > 0 && outA < localCutoff)
-                    {
-                        continue;
-                    }
-                    var a8 = (byte)Math.Clamp((int)Math.Round(outA * 255.0), 0, 255);
-                    if (a8 == 0) continue;
-
-                    bitmap.SetPixel(x, y, new SkiaSharp.SKColor(0, 0, 0, a8));
+                var localCutoff = alphaCutoff01;
+                if (noiseDependentCutoff)
+                {
+                    localCutoff *= kApplied;
                 }
+                if (localCutoff > 0 && outA < localCutoff)
+                {
+                    continue;
+                }
+                var a8 = (byte)Math.Clamp((int)Math.Round(outA * 255.0), 0, 255);
+                if (a8 == 0) continue;
+
+                pixels[(y * canvasSizePx) + x] = new SkiaSharp.SKColor(0, 0, 0, a8);
             }
         }
 
+        bitmap.Pixels = pixels;
         return bitmap;
     }
 
@@ -412,7 +438,7 @@ public static class PencilDotRenderer
         var cy = (canvasSizePx - 1) * 0.5;
         var pScale = Math.Clamp(pressure, 0.0, 1.0);
 
-        // k‚Ì•½‹Ï‚ğæ‚ÉŒv‘ª‚µ‚ÄA•½‹Ï1‚ÉÄ³‹K‰»‚·‚é
+        // kã®å¹³å‡ã‚’å…ˆã«è¨ˆæ¸¬ã—ã¦ã€å¹³å‡1ã«å†æ­£è¦åŒ–ã™ã‚‹
         var kMeanNorm = 1.0;
         if (noise != null && paperNoiseStrength > 0 && paperNoiseGain > 0)
         {
@@ -615,7 +641,7 @@ public static class PencilDotRenderer
         var cy = (canvasSizePx - 1) * 0.5;
         var pScale = Math.Clamp(pressure, 0.0, 1.0);
 
-        // k‚Ì•½‹Ï‚ğæ‚ÉŒv‘ª‚µ‚ÄA•½‹Ï1‚ÉÄ³‹K‰»‚·‚é
+        // kã®å¹³å‡ã‚’å…ˆã«è¨ˆæ¸¬ã—ã¦ã€å¹³å‡1ã«å†æ­£è¦åŒ–ã™ã‚‹
         var kMeanNorm = 1.0;
         if (noise != null && paperNoiseStrength > 0 && paperNoiseGain > 0)
         {
@@ -732,7 +758,7 @@ public static class PencilDotRenderer
 
                         paperMask01 = ComputePaperMask01(paperMaskMode, thresholdAdj, paperMaskGain, falloffWeight, n01, mean, std);
 
-                        // •½‹Ï1.0‚ğˆÛ‚·‚é‚½‚ßAƒmƒCƒY‚ğ’†S‰»‚µ‚Ä‘ÎÌ‚É—h‚ç‚·
+                        // å¹³å‡1.0ã‚’ç¶­æŒã™ã‚‹ãŸã‚ã€ãƒã‚¤ã‚ºã‚’ä¸­å¿ƒåŒ–ã—ã¦å¯¾ç§°ã«æºã‚‰ã™
                         var z = (n01 - mean) / std;
                         z = Math.Clamp(z, -3.0, 3.0);
 
@@ -812,8 +838,8 @@ public static class PencilDotRenderer
         return outAlpha;
     }
 
-    // UWPŠÏ‘ª: Sample/Compair/CSV/radial-falloff-S200-P1-N1.csv
-    // r=0..100 ‚Í”ñƒ[ƒB101ˆÈ~‚Í0B
+    // UWPè¦³æ¸¬: Sample/Compair/CSV/radial-falloff-S200-P1-N1.csv
+    // r=0..100 ã¯éã‚¼ãƒ­ã€‚101ä»¥é™ã¯0ã€‚
     private static readonly double[] UwpS200P1RadialFalloff =
     {
         0.59901961,

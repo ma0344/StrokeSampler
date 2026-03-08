@@ -137,6 +137,7 @@ namespace InkDrawGen.Helpers
         internal RangeSpec S;
         internal RangeSpec P;
         internal OpacityRangeSpec Opacity;
+        internal double[] OpacityList;
         internal IntRangeSpec N;
         internal int Repeat;
         internal int Scale;
@@ -169,6 +170,7 @@ namespace InkDrawGen.Helpers
             DotStepCountRange = new IntRangeSpec { Start = 2, End = 2, Step = 0 };
             RepeatCount = 0;
             Opacity = new OpacityRangeSpec { Start = 1, End = 1, Step = 0 };
+            OpacityList = null;
             EndXSweep = new RangeSpec { Start = 118, End = 280, Step = 18 };
         }
     }

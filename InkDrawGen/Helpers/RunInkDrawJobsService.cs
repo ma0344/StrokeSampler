@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.IO;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using Windows.Foundation;
 using Windows.Storage;
 using Windows.Storage.Streams;
@@ -188,8 +189,34 @@ namespace InkDrawGen.Helpers
                 st.RepeatCount = row.RepeatCount;
                 st.End = new Windows.Foundation.Point(row.EndX, row.EndY);
 
+                // 線長を I と Np で指定する（水平線）
+                // - interval: 更新点間隔 I（DIP）
+                // - npoints: 始点からの更新点数 Np
+                // 指定がある場合は、EndX/EndY をここで上書きする。
+                if (row.Npoints > 0)
+                {
+                    var interval = row.Interval;
+                    if (double.IsNaN(interval) || double.IsInfinity(interval) || interval <= 0)
+                    {
+                        // interval省略時は、既知の関係 I=0.09*S を使う（Sは行内で固定の前提）
+                        interval = row.SStart * 0.09;
+                    }
+
+                    var len = interval * Math.Max(0, row.Npoints - 1);
+                    st.End = new Windows.Foundation.Point(st.Start.X + len, st.Start.Y);
+                }
+
                 st.DotStepFixedCount = row.DotStepFixedCount;
                 st.DotStepCount = row.DotStepCount;
+                if (!double.IsNaN(row.DotStepStart) || !double.IsNaN(row.DotStepEnd) || !double.IsNaN(row.DotStepStep))
+                {
+                    var dotStepStart = !double.IsNaN(row.DotStepStart) ? row.DotStepStart : st.DotStepX.Start;
+                    var dotStepEnd = !double.IsNaN(row.DotStepEnd) ? row.DotStepEnd : dotStepStart;
+                    var dotStepStep = !double.IsNaN(row.DotStepStep) ? row.DotStepStep : 0;
+                    st.DotStepX = new RangeSpec { Start = dotStepStart, End = dotStepEnd, Step = dotStepStep };
+                }
+
+                st.DotStepTwoPoints = row.DotStepTwoPoints;
                 if (row.DotStepCountStart > 0 || row.DotStepCountEnd > 0 || row.DotStepCountStep != 0)
                 {
                     st.DotStepCountRange = new IntRangeSpec
@@ -198,6 +225,28 @@ namespace InkDrawGen.Helpers
                         End = Math.Max(1, row.DotStepCountEnd > 0 ? row.DotStepCountEnd : row.DotStepCount),
                         Step = row.DotStepCountStep,
                     };
+                }
+                else if (st.DotStepFixedCount && !st.DotStepTwoPoints)
+                {
+                    // CSVで dot_step_fixed_count=true のとき、UI側のdot countレンジが残っていると
+                    // dot_step_count を無視して別のNが出てしまうため、単一値レンジへ正規化する。
+                    var n = Math.Max(1, st.DotStepCount);
+                    st.DotStepCountRange = new IntRangeSpec { Start = n, End = n, Step = 0 };
+                }
+
+                // Opacity override from CSV
+                // - op_values: "," or ";" separated list (e.g. "0.2;0.35;0.5436")
+                // - op_start/op_end/op_step: range
+                st.OpacityList = ParseOpacityValues(row.OpValues);
+                if (st.OpacityList == null || st.OpacityList.Length == 0)
+                {
+                    if (!double.IsNaN(row.OpStart) || !double.IsNaN(row.OpEnd) || !double.IsNaN(row.OpStep))
+                    {
+                        var opStart = !double.IsNaN(row.OpStart) ? row.OpStart : st.Opacity.Start;
+                        var opEnd = !double.IsNaN(row.OpEnd) ? row.OpEnd : opStart;
+                        var opStep = !double.IsNaN(row.OpStep) ? row.OpStep : 0;
+                        st.Opacity = new OpacityRangeSpec { Start = opStart, End = opEnd, Step = opStep };
+                    }
                 }
                 st.Roi = new Windows.Foundation.Rect(row.RoiX, row.RoiY, row.RoiW, row.RoiH);
                 st.RunTag = row.RunTag;
@@ -220,12 +269,14 @@ namespace InkDrawGen.Helpers
         {
             if (s.Scale <= 0 || s.Roi.Width <= 0 || s.Roi.Height <= 0) return 0;
 
-            var outW = s.OutWidthPx > 0 ? s.OutWidthPx : Math.Max(1, (int)Math.Round(s.Roi.Width * s.Scale));
-            var outH = s.OutHeightPx > 0 ? s.OutHeightPx : Math.Max(1, (int)Math.Round(s.Roi.Height * s.Scale));
+            var outW = Math.Max(1, (int)Math.Round(s.Roi.Width * s.Scale));
+            var outH = Math.Max(1, (int)Math.Round(s.Roi.Height * s.Scale));
 
             var sList = s.S.Expand();
             var pList = s.P.Expand();
-            var opList = s.Opacity.Expand();
+            var opList = (s.OpacityList != null && s.OpacityList.Length > 0)
+                ? s.OpacityList
+                : s.Opacity.Expand();
             var nList = s.N.Expand();
             var dotStepList = s.DotStepX.Expand();
             var dotCountList = (s.DotStepFixedCount && !s.DotStepTwoPoints)
@@ -263,8 +314,8 @@ namespace InkDrawGen.Helpers
                                 foreach (var dotCount in dotCounts)
                                 {
                                     var jobType = s.JobType == JobType.Line ? "line" : "dot";
-                                    var xTag = "StartX" + ((int)Math.Round(s.Start.X)).ToString(CultureInfo.InvariantCulture)
-                                        + "-EndX" + ((int)Math.Round(s.End.X)).ToString(CultureInfo.InvariantCulture);
+                                        var xTag = "StartX" + FormatCoordTag(s.Start.X)
+                                            + "-EndX" + FormatCoordTag(s.End.X);
 
                                     WriteableBitmap bmp;
                                     if (s.JobType == JobType.Line && dotStep > 0)
@@ -401,6 +452,47 @@ namespace InkDrawGen.Helpers
             var tb = page.FindName("LogTextBox") as TextBox;
             if (tb == null) return;
             tb.Text = (tb.Text ?? string.Empty) + s;
+        }
+
+        private static string FormatCoordTag(double v)
+        {
+            // CSVバッチでは0.5px刻み等の小数座標を使うことがある。
+            // ここでint丸めしてしまうとファイル名が衝突して上書きされ、
+            // 「小数座標が受け付けられていない」ように見えるため、タグには小数も出す。
+            var r = Math.Round(v, 5, MidpointRounding.AwayFromZero);
+            var i = Math.Round(r, 0, MidpointRounding.AwayFromZero);
+            if (Math.Abs(r - i) < 1e-9)
+            {
+                return ((int)i).ToString(CultureInfo.InvariantCulture);
+            }
+
+            return r.ToString("0.00000", CultureInfo.InvariantCulture);
+        }
+
+        private static double[] ParseOpacityValues(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            s = s.Trim();
+
+            // separator: ',' or ';' (allow whitespace)
+            var parts = Regex.Split(s, "[;,]");
+            var list = new List<double>(parts.Length);
+            foreach (var p in parts)
+            {
+                var t = (p ?? "").Trim();
+                if (t.Length == 0) continue;
+
+                if (double.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ||
+                    double.TryParse(t, NumberStyles.Float, CultureInfo.CurrentCulture, out v))
+                {
+                    // OpacityRangeSpec.Normalize相当の丸め・clamp（ファイル名の揺れ/描画差分を抑える）
+                    v = Math.Round(v, 5, MidpointRounding.AwayFromZero);
+                    v = Math.Clamp(v, 0.01, 5.0);
+                    list.Add(v);
+                }
+            }
+
+            return list.Count == 0 ? null : list.ToArray();
         }
     }
 }

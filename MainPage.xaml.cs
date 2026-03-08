@@ -1099,6 +1099,16 @@ namespace StrokeSampler
             await RadialFalloffExportService.ExportRadialFalloffBatchPsSizesNsAsync(this);
         }
 
+        private async void ExportRadialAlphaBatchPsSizesNsButton_Click(object sender, RoutedEventArgs e)
+        {
+            await RadialFalloffExportService.ExportRadialAlphaBatchPsSizesNsAsync(this);
+        }
+
+        private async void ExportRadialAlphaKneeSummaryButton_Click(object sender, RoutedEventArgs e)
+        {
+            await RadialFalloffExportService.ExportRadialAlphaKneeSummaryAsync(this);
+        }
+
         private async void ExportCenterAlphaSummaryButton_Click(object sender, RoutedEventArgs e)
         {
             await ExportCenterAlphaSummary.ExportAsync(this);
