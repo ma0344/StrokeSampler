@@ -156,6 +156,10 @@ namespace InkDrawGen.Helpers
         internal Rect Roi;
         internal int OutWidthPx;
         internal int OutHeightPx;
+        internal double KernelAngleStepDeg;
+        internal int KernelMaxParallelism;
+        internal int KernelDebugRadiusPx;
+        internal double KernelDebugAngleDeg;
 
         internal InkDrawGenUiState()
         {
@@ -172,6 +176,10 @@ namespace InkDrawGen.Helpers
             Opacity = new OpacityRangeSpec { Start = 1, End = 1, Step = 0 };
             OpacityList = null;
             EndXSweep = new RangeSpec { Start = 118, End = 280, Step = 18 };
+            KernelAngleStepDeg = 60.0;
+            KernelMaxParallelism = 0;
+            KernelDebugRadiusPx = 8000;
+            KernelDebugAngleDeg = 0.0;
         }
     }
 }

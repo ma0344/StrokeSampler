@@ -30,10 +30,12 @@ namespace DotTester
 
         private PaperNoiseTile? _paperNoise;
         private string? _paperNoisePath;
+        private int? _paperNoiseLoadedScale;
 
         private NormalizedFalloffLut? _falloffLut;
         private string? _falloffCsvPath;
         private int? _falloffLoadedScale;
+        private int? _falloffSourceScale;
 
         private CancellationTokenSource? _sweepCts;
         private bool _isSweeping;
@@ -75,6 +77,7 @@ namespace DotTester
             PaperNoiseOffsetXNumberBox.ValueChanged += AnyNumberBoxValueChanged;
             PaperNoiseOffsetYNumberBox.ValueChanged += AnyNumberBoxValueChanged;
             AlphaCutoffByteNumberBox.ValueChanged += AnyNumberBoxValueChanged;
+            MultiplyCutoffBiasNumberBox.ValueChanged += AnyNumberBoxValueChanged;
             PaperMaskThresholdNumberBox.ValueChanged += AnyNumberBoxValueChanged;
             PaperMaskGainNumberBox.ValueChanged += AnyNumberBoxValueChanged;
             FalloffScaleNumberBox.ValueChanged += AnyNumberBoxValueChanged;
@@ -493,6 +496,7 @@ namespace DotTester
             if (File.Exists(falloff))
             {
                 FalloffCsvPathTextBox.Text = falloff;
+                ApplyInferredFalloffScale(falloff);
             }
         }
 
@@ -546,6 +550,7 @@ namespace DotTester
 
             FalloffCsvPathTextBox.Text = open.FileName;
             InvalidateFalloffCache();
+            ApplyInferredFalloffScale(open.FileName);
         }
 
         private void BrowseExpectedButton_Click(object sender, RoutedEventArgs e)
@@ -575,6 +580,7 @@ namespace DotTester
 
             PaperNoisePathTextBox.Text = open.FileName;
             InvalidatePaperNoiseCache();
+            ApplyInferredPaperNoiseScale(open.FileName);
             ApplyAutoUiState();
         }
 
@@ -765,6 +771,11 @@ namespace DotTester
                     throw new ArgumentException("Cutoff(alpha) の入力が不正です。", nameof(alphaCutoffByte));
                 }
                 var alphaCutoff01 = alphaCutoffByte / 255.0;
+                var multiplyCutoffBias01 = MultiplyCutoffBiasNumberBox.Value;
+                if (!double.IsFinite(multiplyCutoffBias01) || multiplyCutoffBias01 < -1.0 || multiplyCutoffBias01 > 1.0)
+                {
+                    throw new ArgumentException("Multiply bias の入力が不正です。", nameof(multiplyCutoffBias01));
+                }
                 var noiseDependentCutoff = NoiseDependentCutoffCheckBox.IsChecked == true;
 
                 var kClampMin = PaperNoiseKClampMinNumberBox.Value;
@@ -994,8 +1005,9 @@ namespace DotTester
                     PaperNoiseApplyMode: applyMode,
                     OutAlphaModel: outAlphaModel,
                     WallK: wallK,
-                WallBaseScale: wallBaseScale,
-                WallThresholdBias: wallThresholdBias,
+                    WallBaseScale: wallBaseScale,
+                    WallThresholdBias: wallThresholdBias,
+                    MultiplyCutoffBias01: multiplyCutoffBias01,
                     KClampMin: kClampMin,
                     KClampMax: kClampMax,
                     AlphaCutoff01: alphaCutoff01,
@@ -2622,6 +2634,11 @@ namespace DotTester
                 throw new ArgumentException("Cutoff(alpha) の入力が不正です。", nameof(alphaCutoffByte));
             }
             var alphaCutoff01 = alphaCutoffByte / 255.0;
+            var multiplyCutoffBias01 = MultiplyCutoffBiasNumberBox.Value;
+            if (!double.IsFinite(multiplyCutoffBias01) || multiplyCutoffBias01 < -1.0 || multiplyCutoffBias01 > 1.0)
+            {
+                throw new ArgumentException("Multiply bias の入力が不正です。", nameof(multiplyCutoffBias01));
+            }
             var noiseDependentCutoff = NoiseDependentCutoffCheckBox.IsChecked == true;
 
             var falloffScale = FalloffScaleNumberBox.Value;
@@ -2794,6 +2811,7 @@ namespace DotTester
                 WallK: wallK,
                 WallBaseScale: wallBaseScale,
                 WallThresholdBias: wallThresholdBias,
+                MultiplyCutoffBias01: multiplyCutoffBias01,
                 KClampMin: kClampMin,
                 KClampMax: kClampMax,
                 AlphaCutoff01: alphaCutoff01,
@@ -2914,6 +2932,7 @@ namespace DotTester
             _paperNoise?.Dispose();
             _paperNoise = null;
             _paperNoisePath = null;
+            _paperNoiseLoadedScale = null;
         }
 
         private void InvalidateFalloffCache()
@@ -2921,6 +2940,7 @@ namespace DotTester
             _falloffLut = null;
             _falloffCsvPath = null;
             _falloffLoadedScale = null;
+            _falloffSourceScale = null;
         }
 
         private PaperNoiseTile GetOrLoadPaperNoise()
@@ -2938,6 +2958,7 @@ namespace DotTester
             InvalidatePaperNoiseCache();
             _paperNoise = PaperNoiseTile.LoadFromFile(path);
             _paperNoisePath = path;
+            _paperNoiseLoadedScale = TryInferScaleFromPath(path);
             return _paperNoise;
         }
 
@@ -2956,13 +2977,15 @@ namespace DotTester
                 return _falloffLut;
             }
 
-            _falloffLut = LoadFalloffLut(path, renderScale);
+            var sourceScale = TryInferFalloffScale(path);
+            _falloffLut = LoadFalloffLut(path, renderScale, sourceScale);
             _falloffCsvPath = path;
             _falloffLoadedScale = renderScale;
+            _falloffSourceScale = sourceScale;
             return _falloffLut;
         }
 
-        private static NormalizedFalloffLut LoadFalloffLut(string path, int renderScale)
+        private static NormalizedFalloffLut LoadFalloffLut(string path, int renderScale, int? sourceScale)
         {
             if (!File.Exists(path))
             {
@@ -2992,6 +3015,11 @@ namespace DotTester
                 return NormalizedFalloffLut.LoadFromCsv(path);
             }
 
+            if (header.StartsWith("r_px", StringComparison.OrdinalIgnoreCase) || header.IndexOf("kernel01", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return LoadInkDrawGenKernelAsFalloffLut(path);
+            }
+
             if (header.StartsWith("r_bin", StringComparison.OrdinalIgnoreCase))
             {
                 return LoadKernelProfileAsFalloffLut(path);
@@ -2999,11 +3027,159 @@ namespace DotTester
 
             if (header.StartsWith("dx_px", StringComparison.OrdinalIgnoreCase))
             {
-                return LoadKernelSweepAsFalloffLut(path, renderScale);
+                return LoadKernelSweepAsFalloffLut(path, sourceScale ?? renderScale);
             }
 
             // フォーマット不一致でも、既存のパーサで救える可能性があるので最後に試す
             return NormalizedFalloffLut.LoadFromCsv(path);
+        }
+
+        private static NormalizedFalloffLut LoadInkDrawGenKernelAsFalloffLut(string path)
+        {
+            var lines = File.ReadAllLines(path);
+            string[]? header = null;
+            foreach (var raw in lines)
+            {
+                var line = raw.Trim();
+                if (line.Length == 0) continue;
+                if (line.StartsWith('#')) continue;
+                header = line.Split(',');
+                break;
+            }
+
+            if (header == null)
+            {
+                throw new InvalidOperationException("InkDrawGen kernel CSV のヘッダが読み取れません。");
+            }
+
+            var rNormIndex = Array.FindIndex(header, x => string.Equals((x ?? string.Empty).Trim(), "r_norm", StringComparison.OrdinalIgnoreCase));
+            var kernelIndex = Array.FindIndex(header, x => string.Equals((x ?? string.Empty).Trim(), "kernel01", StringComparison.OrdinalIgnoreCase));
+            if (rNormIndex < 0 || kernelIndex < 0)
+            {
+                throw new InvalidOperationException("InkDrawGen kernel CSV に r_norm / kernel01 列がありません。");
+            }
+
+            var points = new List<(double rNorm, double value)>(256);
+            var headerPassed = false;
+            foreach (var raw in lines)
+            {
+                var line = raw.Trim();
+                if (line.Length == 0) continue;
+                if (line.StartsWith('#')) continue;
+                if (!headerPassed)
+                {
+                    headerPassed = true;
+                    continue;
+                }
+
+                var parts = line.Split(',');
+                if (parts.Length <= Math.Max(rNormIndex, kernelIndex)) continue;
+                if (!double.TryParse(parts[rNormIndex], NumberStyles.Float, CultureInfo.InvariantCulture, out var rNorm)) continue;
+                if (!double.TryParse(parts[kernelIndex], NumberStyles.Float, CultureInfo.InvariantCulture, out var kernel01)) continue;
+                points.Add((rNorm, Math.Clamp(kernel01, 0.0, 1.0)));
+            }
+
+            if (points.Count == 0)
+            {
+                throw new InvalidOperationException("InkDrawGen kernel CSV の読み取りに失敗しました。データ行がありません。");
+            }
+
+            points.Sort((a, b) => a.rNorm.CompareTo(b.rNorm));
+            var mean = new double[101];
+            for (var rNorm = 0; rNorm <= 100; rNorm++)
+            {
+                mean[rNorm] = SampleKernelPoint(points, rNorm);
+            }
+
+            return NormalizedFalloffLut.CreateFromMeanArray(mean);
+        }
+
+        private static double SampleKernelPoint(List<(double rNorm, double value)> points, double targetRNorm)
+        {
+            if (points.Count == 0) return 0.0;
+            if (targetRNorm <= points[0].rNorm) return points[0].value;
+
+            var last = points.Count - 1;
+            if (targetRNorm >= points[last].rNorm) return points[last].value;
+
+            for (var i = 1; i < points.Count; i++)
+            {
+                var current = points[i];
+                if (targetRNorm > current.rNorm) continue;
+
+                var prev = points[i - 1];
+                var dx = current.rNorm - prev.rNorm;
+                if (dx <= 1e-9) return current.value;
+
+                var t = (targetRNorm - prev.rNorm) / dx;
+                return ((1.0 - t) * prev.value) + (t * current.value);
+            }
+
+            return points[last].value;
+        }
+
+        private void ApplyInferredPaperNoiseScale(string path)
+        {
+            var inferredScale = TryInferScaleFromPath(path);
+            _paperNoiseLoadedScale = inferredScale;
+            if (inferredScale.HasValue && PaperNoiseTileScaleNumberBox != null)
+            {
+                PaperNoiseTileScaleNumberBox.Value = inferredScale.Value;
+                UpdateStatus($"Tile scale inferred: {inferredScale.Value}");
+            }
+        }
+
+        private void ApplyInferredFalloffScale(string path)
+        {
+            var inferredScale = TryInferFalloffScale(path);
+            _falloffSourceScale = inferredScale;
+            if (inferredScale.HasValue)
+            {
+                UpdateStatus($"Falloff scale inferred: {inferredScale.Value}");
+            }
+        }
+
+        private static int? TryInferFalloffScale(string path)
+        {
+            var csvScale = TryReadScaleFromCsvMetadata(path);
+            if (csvScale.HasValue) return csvScale;
+            return TryInferScaleFromPath(path);
+        }
+
+        private static int? TryReadScaleFromCsvMetadata(string path)
+        {
+            if (!File.Exists(path)) return null;
+            foreach (var raw in File.ReadLines(path))
+            {
+                var line = raw.Trim();
+                if (!line.StartsWith("# scale=", StringComparison.OrdinalIgnoreCase)) continue;
+                var valueText = line.Substring(8).Trim();
+                if (int.TryParse(valueText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var scale) && scale > 0)
+                {
+                    return scale;
+                }
+            }
+
+            return null;
+        }
+
+        private static int? TryInferScaleFromPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+
+            var fileName = Path.GetFileNameWithoutExtension(path);
+            if (string.IsNullOrWhiteSpace(fileName)) return null;
+
+            foreach (var part in fileName.Split('-','_'))
+            {
+                if (part.Length < 6 || !part.StartsWith("scale", StringComparison.OrdinalIgnoreCase)) continue;
+                if (int.TryParse(part.Substring(5), NumberStyles.Integer, CultureInfo.InvariantCulture, out var scale) && scale > 0)
+                {
+                    return scale;
+                }
+            }
+
+            return null;
         }
 
         private static NormalizedFalloffLut LoadKernelSweepAsFalloffLut(string path, int renderScale)

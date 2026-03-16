@@ -90,6 +90,10 @@ namespace InkDrawGen.Helpers
 
             state.OutWidthPx = (int)(state.Roi.Width*state.Scale);
             state.OutHeightPx = (int)(state.Roi.Height*state.Scale);
+            state.KernelAngleStepDeg = ReadDouble(Find<TextBox>(page, "KernelAngleStepDegTextBox").Text, 60.0);
+            state.KernelMaxParallelism = Math.Max(0, ReadInt(Find<TextBox>(page, "KernelMaxParallelismTextBox").Text, 0));
+            state.KernelDebugRadiusPx = ReadInt(Find<TextBox>(page, "KernelDebugRadiusPxTextBox").Text, 8000);
+            state.KernelDebugAngleDeg = ReadDouble(Find<TextBox>(page, "KernelDebugAngleDegTextBox").Text, 0.0);
 
             return state;
         }

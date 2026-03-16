@@ -44,6 +44,7 @@ public static class DotReproRenderer
         private readonly double _wallK;
         private readonly double _wallBaseScale;
         private readonly double _wallThresholdBias;
+        private readonly double _multiplyCutoffBias01;
 
         internal PointEvaluator(
             Options opt,
@@ -65,7 +66,8 @@ public static class DotReproRenderer
             double edgeBoostGamma,
             double wallK,
             double wallBaseScale,
-            double wallThresholdBias)
+            double wallThresholdBias,
+            double multiplyCutoffBias01)
         {
             _opt = opt;
             _canvas = canvas;
@@ -87,6 +89,7 @@ public static class DotReproRenderer
             _wallK = wallK;
             _wallBaseScale = wallBaseScale;
             _wallThresholdBias = wallThresholdBias;
+            _multiplyCutoffBias01 = multiplyCutoffBias01;
         }
 
         public byte EvalAlphaByte(int x, int y)
@@ -294,6 +297,10 @@ public static class DotReproRenderer
                     cutoff *= k;
                 }
             }
+            if (_opt.OutAlphaModel == OutAlphaModel.MultiplyK)
+            {
+                cutoff = Math.Clamp(cutoff + _multiplyCutoffBias01, 0.0, 1.0);
+            }
             if (cutoff > 0 && outA01 < cutoff)
             {
                 return 0;
@@ -381,6 +388,12 @@ public static class DotReproRenderer
         if (!double.IsFinite(wallThresholdBias))
         {
             wallThresholdBias = 0.0;
+        }
+
+        var multiplyCutoffBias01 = opt.MultiplyCutoffBias01;
+        if (!double.IsFinite(multiplyCutoffBias01))
+        {
+            multiplyCutoffBias01 = 0.0;
         }
 
         var stride = kMeanStridePx;
@@ -473,7 +486,8 @@ public static class DotReproRenderer
             edgeBoostGamma,
             wallK,
             wallBaseScale,
-            wallThresholdBias);
+            wallThresholdBias,
+            multiplyCutoffBias01);
     }
 
     private static double ComputePaperMask01(
@@ -593,6 +607,7 @@ public static class DotReproRenderer
         double WallK,
         double WallBaseScale,
         double WallThresholdBias,
+        double MultiplyCutoffBias01,
         double KClampMin,
         double KClampMax,
         double AlphaCutoff01,
@@ -633,6 +648,7 @@ public static class DotReproRenderer
             WallK: 0.08,
             WallBaseScale: 1.0,
             WallThresholdBias: 0.0,
+            MultiplyCutoffBias01: 0.0,
             KClampMin: 0.0001,
             KClampMax: 1.5,
             AlphaCutoff01: 0.0,
@@ -678,6 +694,10 @@ public static class DotReproRenderer
             if (!double.IsFinite(opt.PaperNoiseScale) || opt.PaperNoiseScale <= 0) throw new ArgumentOutOfRangeException(nameof(opt.PaperNoiseScale));
             if (!double.IsFinite(opt.PaperNoiseStrength) || opt.PaperNoiseStrength < 0 || opt.PaperNoiseStrength > 1) throw new ArgumentOutOfRangeException(nameof(opt.PaperNoiseStrength));
             if (!double.IsFinite(opt.PaperNoiseGain) || opt.PaperNoiseGain < 0) throw new ArgumentOutOfRangeException(nameof(opt.PaperNoiseGain));
+        }
+        if (!double.IsFinite(opt.MultiplyCutoffBias01) || opt.MultiplyCutoffBias01 < -1.0 || opt.MultiplyCutoffBias01 > 1.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(opt.MultiplyCutoffBias01));
         }
 
         var canvas = opt.CanvasSizePx;
@@ -1020,6 +1040,10 @@ public static class DotReproRenderer
                     {
                         cutoff *= k;
                     }
+                }
+                if (opt.OutAlphaModel == OutAlphaModel.MultiplyK)
+                {
+                    cutoff = Math.Clamp(cutoff + opt.MultiplyCutoffBias01, 0.0, 1.0);
                 }
                 if (cutoff > 0 && outA01 < cutoff)
                 {

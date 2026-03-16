@@ -1,5 +1,238 @@
 # Copilot 作業サマリ（スレッド共有用）
 
+## スレッド引き継ぎまとめ（2026-03-10）
+
+### 1. このスレッドの目的
+- VS Code への移行後も、既存プロジェクト群をビルド・デバッグできる状態に整える。
+- UWP InkCanvas Pencil の再現検証を進めるため、従来の「1画素中心Xスイープ」依存の紙目抽出フローを見直し、より頑健な kernel / 紙目抽出基盤を InkDrawGen に追加する。
+
+### 2. 背景と変更に至った経緯
+- ユーザーは Visual Studio 2026 Community から VS Code へ移行したため、まず VS Code で `DotLab` をデバッグできるようにする必要があった。
+- その後、全プロジェクトを VS Code から扱えるようにしたいという要望があり、WPF と UWP でビルド方式が異なる点を整理して構成を追加した。
+- さらに本題として、UWP Pencil の紙目再現で「紙目抽出範囲に対応する正方形だけ差分の出方が違う」問題があり、原因調査を行った。
+- 調査の結果、主因は再現式そのものよりも、**紙目タイルの抽出元と falloff 相殺手法の粗さ** にある可能性が高いと判断した。
+- 従来の `ExportKernelSweepCsvButton` + `ExportKernelCanceledDotPngButton` は、1画素固定の水平断面から `f(r)` を作る方式であり、外周や周方向の揺らぎ、量子化、紙目の局所偏りを十分に平均化できないという限界があった。
+- そのため、以下の方針へ切り替えた。
+  - PNG 全周の半径統計から頑健な kernel を作る。
+  - 統計量は mean ではなく `P90` または `Median` を選べるようにする。
+  - falloff は整数binではなく連続補間で評価する。
+  - 複数条件 PNG から共通紙目を推定する。
+  - 必要なら簡易な交互最適化で kernel と紙目を再推定する。
+
+### 3. 実施した追加・修正内容
+
+#### 3-1. VS Code デバッグ / ビルド環境の整備
+- 追加・修正対象
+  - `.vscode/launch.json`
+  - `.vscode/tasks.json`
+  - [DotLab/Properties/launchSettings.json](DotLab/Properties/launchSettings.json)
+  - [DotTester/Properties/launchSettings.json](DotTester/Properties/launchSettings.json)
+  - [SkiaTester/Properties/launchSettings.json](SkiaTester/Properties/launchSettings.json)
+- 実施内容
+  - `DotLab` / `DotTester` / `SkiaTester` の WPF 3件に VS Code 起動構成を追加。
+  - `StrokeSampler` / `InkDrawGen` の UWP 2件には VS Code からのビルドタスクを追加。
+  - UWP は `dotnet build` ではなく、`vswhere.exe` で検出した Visual Studio Build Tools の `MSBuild.exe` を使う構成にした。
+- 検討
+  - 初回は `coreclr` を試したが、VS Code 側の debug adapter 解決に失敗したため `dotnet` へ切替。
+  - その後も `debug adapter descriptor` 問題が出たが、最終的には拡張機能破損が原因と判断し、ユーザーの再インストールで解消した。
+- 結論
+  - WPF 3件は VS Code から F5 起動可能。
+  - UWP 2件は VS Code から直接デバッグ起動までは未整備だが、ビルドタスク経由で安定してビルド可能。
+
+#### 3-2. 既存の紙目抽出フローの課題整理
+- 調査対象
+  - [InkDrawGen/Helpers/KernelSweepExportService.cs](InkDrawGen/Helpers/KernelSweepExportService.cs)
+  - [InkDrawGen/Helpers/KernelCanceledDotExportService.cs](InkDrawGen/Helpers/KernelCanceledDotExportService.cs)
+  - [DotTester/Helpers/PaperNoiseTile.cs](DotTester/Helpers/PaperNoiseTile.cs)
+  - [DotTester/Helpers/DotReproRenderer.cs](DotTester/Helpers/DotReproRenderer.cs)
+- 抽出した課題
+  - `kernel-sweep` は 1画素固定・X方向断面のみで、full-circumference の情報がない。
+  - `alpha / f(r)` 相殺時に整数bin参照を使っており、半径方向の変化が段付きになりやすい。
+  - 紙目タイルは抽出元の統計や位相の偏りをそのまま持ち込みやすい。
+  - 複数条件から共通紙目を抽出する手段がなかった。
+- 結論
+  - 既存フローは「軽量な試作」には有効だが、最終的な紙目再現の土台としては不十分。
+
+#### 3-3. InkDrawGen に頑健kernel抽出を追加
+- 追加対象
+  - [InkDrawGen/Helpers/RobustRadialKernelExportService.cs](InkDrawGen/Helpers/RobustRadialKernelExportService.cs)
+  - [InkDrawGen/MainPage.xaml](InkDrawGen/MainPage.xaml)
+  - [InkDrawGen/MainPage.xaml.cs](InkDrawGen/MainPage.xaml.cs)
+- 実施内容
+  - `頑健kernel CSV(PNG→CSV)` ボタンを追加。
+  - PNG を複数選択し、画像中心 `((w-1)/2,(h-1)/2)` 基準で半径binごとの統計を計算する処理を追加。
+  - 統計量は `P90` / `Median` を切替可能にした。
+  - `bin内α=0を除外` を追加し、外周のゼロ画素を統計に含めるか制御できるようにした。
+  - 画像ごとの中心近傍 `p90` を gain として使い、条件差を吸収してから `normalized_falloff01` を作るようにした。
+  - 単調減少を軽く強制し、量子化ノイズで局所的に上振れる bin を抑えるようにした。
+- 検討
+  - mean では紙目の谷や外れ値に引っ張られやすい。
+  - `P90` は「欠けを減らす」方向に強く、`Median` はより保守的な代表値として機能する。
+- 結論
+  - 従来の断面 kernel よりも、全周情報を使った安定した falloff 推定が可能になった。
+
+#### 3-4. 共通 falloff ローダ / 連続補間を追加
+- 追加対象
+  - [InkDrawGen/Helpers/RadialFalloffProfile.cs](InkDrawGen/Helpers/RadialFalloffProfile.cs)
+  - [InkDrawGen/Helpers/KernelCanceledDotExportService.cs](InkDrawGen/Helpers/KernelCanceledDotExportService.cs)
+- 実施内容
+  - `kernel-sweep` / `normalized-falloff` / `robust-kernel` の3形式を共通で読めるローダを追加。
+  - 半径pxを引数にした線形補間サンプル `SampleByRadiusPx()` を追加。
+  - `KernelCanceledDotExportService` は旧来の整数bin参照から、この共通ローダ経由の連続補間へ変更した。
+- 検討
+  - 整数binの最寄り参照では scale や欠損の影響で段差が出やすい。
+  - 今後 falloff 形式が増えても、呼び出し側を共通化しておくと検証の差し替えが容易。
+- 結論
+  - 相殺処理はより滑らかになり、新旧CSVの互換性も確保できた。
+
+#### 3-5. 複数PNGからの共有紙目抽出を追加
+- 追加対象
+  - [InkDrawGen/Helpers/SharedPaperTextureExportService.cs](InkDrawGen/Helpers/SharedPaperTextureExportService.cs)
+  - [InkDrawGen/MainPage.xaml](InkDrawGen/MainPage.xaml)
+  - [InkDrawGen/MainPage.xaml.cs](InkDrawGen/MainPage.xaml.cs)
+- 実施内容
+  - `共有紙目PNG(複数PNG)` ボタンを追加。
+  - 現在の ROI を 1周期タイルサイズとみなし、複数PNGの同一位置から `paper = alpha / (gain * f(r))` を逆算して画素ごとに median 合成する処理を追加。
+  - gain は `alpha / f(r)` の `p90` から推定する。
+  - 出力タイルは tile 全体の `p90=1` になるよう正規化する。
+  - ROI が画像範囲外の場合は説明付きダイアログで中止するようにした。
+  - `min kernel` を追加し、`f(r)` が小さすぎる外周は gain 推定 / 紙目推定から除外するようにした。
+  - `refine iter` を追加し、抽出した紙目タイルを使って kernel を再推定する簡易交互最適化を実装した。
+- 検討
+  - 外周では `f(r)` が小さくなり、`alpha / f(r)` が不安定になるため、その領域を除外する必要があった。
+  - そのためのしきい値として `min kernel` を導入した。既定値は `0.15`。
+  - 交互最適化は本格実装ではなく、まずは「紙目→kernel→紙目」の簡易反復で改善余地を確認する段階に留めた。
+- 結論
+  - 複数条件の PNG から共通紙目を作る基盤ができた。
+  - 単一画像依存よりも、紙目の共通成分を抽出しやすくなった。
+
+#### 3-6. UWP 旧形式 csproj への明示登録
+- 追加対象
+  - [InkDrawGen/InkDrawGen.csproj](InkDrawGen/InkDrawGen.csproj)
+- 実施内容
+  - `RadialFalloffProfile.cs`
+  - `RobustRadialKernelExportService.cs`
+  - `SharedPaperTextureExportService.cs`
+  を `Compile Include=...` に追加。
+- 結論
+  - このプロジェクトは SDK-style ではなく、`.cs` 自動認識ではないため、明示登録が必要だった。
+
+### 4. ビルド・検証結果
+- `DotLab` は VS Code / `dotnet build` でビルド成功。
+- `DotTester` / `SkiaTester` も `dotnet build` でビルド成功。
+- `StrokeSampler` / `InkDrawGen` は `MSBuild.exe /p:Configuration=Debug /p:Platform=x64` でビルド成功。
+- `InkDrawGen` の新規実装追加後もビルド成功。
+- `InkDrawGen` の警告は既存の nullable 注釈に関するものが中心で、今回追加分の致命的問題は確認していない。
+
+### 5. このスレッドでの最終結論
+- VS Code 移行に必要な最小限のデバッグ / ビルド基盤は整備済み。
+- 紙目再現の主課題は、現時点では「再現側の式」より先に、**kernel と紙目の抽出基盤の粗さ** にあると判断した。
+- そのため、今後の比較・調整は、まず以下を使う前提に切り替えるのがよい。
+  1. `頑健kernel CSV(PNG→CSV)` で full-circumference kernel を作る。
+  2. `共有紙目PNG(複数PNG)` で複数条件から紙目タイルを抽出する。
+  3. 必要なら `refine iter` を 1 以上にして簡易交互最適化を試す。
+  4. その後に DotTester / DotLab 側で sampler / offset / k定義 / cutoff を詰める。
+
+### 6. 次スレッドでまず確認すべきこと
+- 実データ（scale80 画像群）で、`P90` と `Median` のどちらが under を減らしやすいかを比較する。
+- `min kernel` を `0.15 / 0.20 / 0.25` で変えたときの紙目タイルの安定性を比較する。
+- `refine iter=0` と `1` で、差分画像の改善有無を確認する。
+- 抽出した shared paper tile の周期・位相が、既知の 436px 仮説と整合するかを改めて検証する。
+
+## 追加実装: InkDrawGen に頑健kernel抽出 / 共有紙目抽出を追加（2026-03）
+- 目的: 単一点の中心Xスイープではなく、PNG全周の半径統計から `f(r)` を作り、さらに複数条件のPNGから共通の紙目タイルを抽出できるようにする。
+- 追加UI: [InkDrawGen/MainPage.xaml](InkDrawGen/MainPage.xaml)
+  - `頑健kernel CSV(PNG→CSV)` ボタン
+  - `共有紙目PNG(複数PNG)` ボタン
+  - `bin(px)` / `P90|Median` / `bin内α=0を除外`
+  - `min kernel` / `refine iter`
+  - 共有紙目抽出は「現在のROIをタイルサイズとして使う」注記を追加
+- 追加実装:
+  - [InkDrawGen/Helpers/RobustRadialKernelExportService.cs](InkDrawGen/Helpers/RobustRadialKernelExportService.cs)
+    - 複数PNGを選択し、画像中心 `((w-1)/2,(h-1)/2)` 基準で full-circumference の半径bin統計を計算
+    - `P90` / `Median` 切替に対応
+    - bin内 `α=0` を含める/除外する切替に対応
+    - 画像ごとの中心近傍 `p90` を gain として正規化したうえで、`normalized_falloff01` をCSV出力
+    - 単調減少を軽く強制して量子化のギザつきを抑制
+  - [InkDrawGen/Helpers/RadialFalloffProfile.cs](InkDrawGen/Helpers/RadialFalloffProfile.cs)
+    - `kernel-sweep` / `normalized-falloff` / 新しい `robust-kernel` CSV を共通で読めるfalloffローダを追加
+    - 半径pxでの線形補間サンプルを提供
+  - [InkDrawGen/Helpers/SharedPaperTextureExportService.cs](InkDrawGen/Helpers/SharedPaperTextureExportService.cs)
+    - 複数PNG + falloff CSV から、現在のROIを1周期タイルとして `alpha / (gain * f(r))` を取り、画素ごとに median 合成して共有紙目PNGを出力
+    - 画像ごとの gain は `alpha / f(r)` の `p90` で推定
+    - 出力タイルは最後に tile全体の `p90=1` になるよう正規化
+    - `refine iter > 0` のときは、共有紙目タイルを使って頑健kernelを再推定し直す簡易交互最適化を実行し、refined kernel CSV も保存
+  - [InkDrawGen/Helpers/KernelCanceledDotExportService.cs](InkDrawGen/Helpers/KernelCanceledDotExportService.cs)
+    - falloff読込を `RadialFalloffProfile` 経由へ切替
+    - 旧来の整数bin参照ではなく、半径pxでの線形補間サンプルへ更新
+    - 既存の `kernel-sweep` に加え、新しい `robust-kernel` / `normalized-falloff` CSV もそのまま使えるようにした
+- プロジェクト設定:
+  - [InkDrawGen/InkDrawGen.csproj](InkDrawGen/InkDrawGen.csproj) に新規 `.cs` を明示追加した。
+  - このUWPプロジェクトは `Compile Include=...` を列挙する旧形式だったため、自動認識ではなくcsproj追記が必要だった。
+- 検証:
+  - `MSBuild.exe .\InkDrawGen\InkDrawGen.csproj /p:Configuration=Debug /p:Platform=x64` 成功
+  - エラー 0 / 警告 5
+  - 警告5件は既存ファイルの `?` 注釈に関する既知警告で、今回追加ファイル由来の警告は出ていない
+
+## 追加実装: VS Code から DotLab をデバッグする構成を追加（2026-03）
+- 目的: VisualStudio 2026 Community から VS Code へ移行したため、`DotLab\bin\Debug\net8.0-windows10.0.19041.0\DotLab.exe` をワークスペースから直接デバッグできるようにする。
+- 追加: `.vscode/launch.json` に `DotLab (.NET 8 WPF)` の起動構成を追加。
+  - 初回は `coreclr` を使っていたが、VS Code 側で `Couldn't find a debug adapter descriptor for debug type 'coreclr'` が出たため、`type: dotnet` へ切替。
+  - `projectPath`: `DotLab/DotLab.csproj`
+  - `preLaunchTask`: `build DotLab`
+- 追加: `.vscode/tasks.json` に `dotnet build DotLab/DotLab.csproj -c Debug` を実行する `build DotLab` タスクを追加。
+- 追加: `DotLab/Properties/launchSettings.json` を作成し、`workingDirectory` をプロジェクトフォルダ (`.`) に固定。
+- 検証: `dotnet build .\DotLab\DotLab.csproj -c Debug` は成功。既存警告3件のみで、Debug出力は生成されることを確認。
+
+## 追加実装: 全プロジェクト向けの VS Code デバッグ/ビルド構成を追加（2026-03）
+- `.vscode/launch.json`
+  - `DotLab (.NET 8 WPF)`
+  - `DotTester (.NET 8 WPF)`
+  - `SkiaTester (.NET 8 WPF)`
+  を追加し、3つのWPFプロジェクトは VS Code の F5 で起動できるようにした。
+- `DotTester/Properties/launchSettings.json` と `SkiaTester/Properties/launchSettings.json` を追加し、作業ディレクトリを各プロジェクト直下 (`.`) に固定した。
+- `.vscode/tasks.json`
+  - `build DotLab`
+  - `build DotTester`
+  - `build SkiaTester`
+  - `build StrokeSampler (UWP x64)`
+  - `build InkDrawGen (UWP x64)`
+  - `build All Desktop Projects`
+  - `build All Projects`
+  を追加した。
+- UWP (`StrokeSampler` / `InkDrawGen`) は `dotnet build` ではなく、`vswhere.exe` で検出した Visual Studio Build Tools の `MSBuild.exe` を使うタスクでビルドする方式にした。
+- 検証:
+  - `dotnet build .\DotTester\DotTester.csproj -c Debug` 成功
+  - `dotnet build .\SkiaTester\SkiaTester.csproj -c Debug` 成功
+  - `MSBuild.exe .\StrokeSampler.csproj /p:Configuration=Debug /p:Platform=x64` 成功
+  - `MSBuild.exe .\InkDrawGen\InkDrawGen.csproj /p:Configuration=Debug /p:Platform=x64` 成功
+- 制約:
+  - VS Code からの F5 直起動を構成したのは `dotnet` デバッグアダプターで扱える WPF 3件のみ。
+  - UWP 2件は VS Code では通常の `dotnet` 起動対象ではないため、現時点では **ビルドタスクまで** を整備し、直接デバッグ起動の設定は追加していない。
+
+## 調査メモ: Dot単発N=1の紙目差分に中心正方形が出る件（2026-03）
+- 観測: DotLabの差分で、紙目を取得した範囲に対応する正方形だけ差分の出方が変わる。
+- 暫定結論: falloffや合成式より前に、**紙目タイルの作り方（周期/位相/切り出し）** が主因の可能性が高い。
+  - 既知の確定事項として、紙目タイル周期は `435px` ではなく `436px`、さらに切り出し位相に `2〜3px` 補正が必要。
+  - 正方形の痕跡が出るのは、抽出した有限パッチをそのままタイルとして使っており、抽出元範囲だけ統計や位相が他領域と異なる場合の見え方と整合する。
+- 実装上の観点:
+  - `DotTester/Helpers/PaperNoiseTile.cs` はタイル全体のαから `mean/stddev` をそのまま算出する。
+  - `DotTester/Helpers/DotReproRenderer.cs` はその `mean/stddev` と、`((x+0.5)+offset)/scale` のワールド固定サンプリングを用いて `k` を作る。
+
+## 設計メモ: Pスイープしたkernelの現時点での整理（2026-03）
+- `P` によって kernel 曲線は変化する。変化は単なる高さ差ではなく、階段構造・終端位置・強変化点の現れ方にも及ぶ。
+- `Kernel01 * P` で見ると全体の包絡は放物線状に近いが、単一の放物線や単一の数式では記述しにくい。特に高P帯では局所的な regime change がある。
+- 同一 `P` 内では、観測された `riser_to_next01` は量子化誤差レベルの微差を除けばほぼ一定とみなしてよい。
+- `tread_px` は段ごとに変化し、`delta_tread_to_prev` / `tread_ratio_to_prev` / `log2_tread_ratio_to_prev` で追うと、局所的に強く縮むポイントがある。
+- `Kernel01 * P` の最初の plateau は一般の踏面列と別扱いにした方がよい。`initial_tread_px`（最初の1段目までの距離）は平均蹴上だけでは説明できず、頂上近傍の局所形状と最初の閾値 crossing に支配されている。
+- `P0.1` から `P0.4` までは初期 plateau が非常に長く、`P0.5` 以上では初期 plateau が急に短くなるため、少なくとも低P帯と中高P帯で別 regime を疑うのが自然。
+- `P0.5` 以上では、最も強い踏面縮小が出る位置は概ね `r_norm ≈ 36〜40` 付近に集まる一方、そこへ到達する `plateau_index` は `P` が高いほど増える傾向がある。したがって、Pは「崖の半径位置」そのものより「そこへ至る段数」と「崖の鋭さ」に強く効いている可能性がある。
+- 実務上は、単純な近似式を急いで作るより、`initial_tread_px` / `second_to_first_tread_ratio` / `first_major_shrink_plateau_index` / `first_major_shrink_r_norm` / `mean_riser01` を指標として保持し、Pごとの差を比較する方針を優先する。
+  - したがって、入力タイル自体に「抽出範囲の偏り」や「非周期な境界」が入っていると、その癖が描画全体へ持ち込まれる。
+- 次の優先順:
+  1. `tileSize=436px` と切り出し位相補正を先に固定する。
+  2. 正方形の痕跡が消えてから、offset / sampler / falloff / k定義を詰める。
+
 ## 追加: 検証手順書の集約（2026-02）
 - 手順書: `docs/pencil-parity-playbook.md`
 - 以後の検証手順（InkDrawGenでの生成→DotLabでの差分/集計→目視確認）は上記へ集約する。
@@ -745,4 +978,581 @@
 - `DotTester/MainWindow.xaml.cs`
   - Sweep候補に `WallK/base/bias` を追加し、staged（coarse/refine）も含めて探索できるようにした。
   - Sweepの評価点を「タイル極値点（従来）」または「ROIサンプル（stride間引き）」へ切り替え可能にした。
+
+## 設計メモ追記: Pスイープしたkernelの整理の補正（2026-03）
+- regime 分けは、現時点では `P0.1〜0.6` と `P0.7〜1.0` の2群として見る仮説を優先する。
+- 高Pほど `plateau_count`（階段の段数）は増え、`mean_tread_px`（平均踏面）は小さくなる。
+- 高Pほど `mean_riser01`（平均蹴上）は小さくなる。
+- `last_nonzero_r_px` は低P側で観測限界 `8000` に張り付き、高P側でのみ実終端が見え始める。
+- 強変化点の半径位置は比較的安定している一方、その `plateau_index`（段番号）は `P` の増加とともに増える傾向がある。
+- `second_to_first_tread_ratio` は、初段だけの特殊性を直ちに意味する指標というより、量子化された滑らかなカーブを局所段差群として見たときの「初期区間の階段化のされ方」を表す補助指標として解釈する方針を優先する。
+- したがって、初段と2段目の比率は単独で解釈するより、周辺の複数段 (`1〜3段目` や `2〜5段目`) を含む局所系列の一部として扱う方が自然である。
+
+### 優先度付き調査項目（2026-03）
+1. 強変化点の位置と `P` の関係を調べる。
+   - `r_norm` / `r_px` / `plateau_index` のどれが最も安定な指標かを確認する。
+2. 前半直線区間の変化率と `P` の関係を調べる。
+   - `P0.1` を除き、初段以降から強変化点の手前までがほぼ直線に見える仮説を確認する。
+3. 中間区間の変化率と `P` の関係を調べる。
+   - 強変化点前後で勾配がどう切り替わるかを比較する。
+4. 後半区間の変化率と `P` の関係を調べる。
+   - 終端付近の段差群を、局所的な勾配としてどの程度安定して見られるかを確認する。
+5. 初段の長さの法則を調べる。
+   - `initial_tread_px` を独立指標として扱い、全体平均ではなく局所閾値 crossing として解釈できるかを確認する。
+6. 実終端の法則を調べる。
+   - `last_nonzero_r_px` / `last_nonzero_r_norm` が高P帯でどう減少し始めるかを確認する。
+
+### 調査開始メモ（第1優先: 強変化点の位置, 2026-03）
+- 入力: `DotLab/Kernel/kernel-sweep-wide-count10-stair-detail.csv`
+- `P0.1` を除く各 `P` について、`plateau_index >= 2` の範囲で `log2_tread_ratio_to_prev` が最もマイナス側に大きい行を強変化点候補として見た。
+- 暫定観測:
+  - `P0.2`: `plateau_index=3`, `r_norm=44.1875..58.125`
+  - `P0.3`: `plateau_index=4`, `r_norm=40.55..47.125`
+  - `P0.4`: `plateau_index=5`, `r_norm=39.7125..43.475`
+  - `P0.5`: `plateau_index=7`, `r_norm=38.0375..40.4625`
+  - `P0.6`: `plateau_index=8`, `r_norm=35.9625..38.7375`
+  - `P0.7`: `plateau_index=10`, `r_norm=37.95..39.225`
+  - `P0.8`: `plateau_index=12`, `r_norm=37.65..38.675`
+  - `P0.9`: `plateau_index=13`, `r_norm=37.0875..38.25`
+  - `P1.0`: `plateau_index=14`, `r_norm=36.8125..38.1`
+- 暫定結論:
+  - `P0.5〜1.0` では、強変化点の半径位置は概ね `r_norm ≈ 36.8〜40.5` に集まり、位置自体は比較的安定している。
+  - 一方で `plateau_index` は `P` の増加とともに概ね単調増加しており、`P` は強変化点の位置そのものより「そこへ至る段数」に強く効いている可能性が高い。
+  - `P0.2〜0.4` は強変化点がやや外側へずれており、`P0.1〜0.6` と `P0.7〜1.0` の regime 仮説と整合する。
+
+### 調査開始メモ（第2優先: 前半直線区間の変化率, 2026-03）
+- 入力: `DotLab/Kernel/kernel-sweep-wide-count10-stair-detail.csv`
+- 定義:
+  - 各 `P` について、`plateau_index=2` から「第1優先で抽出した強変化点の1つ手前」までを前半直線区間の候補とした。
+  - 各 plateau の頂点を `(start_r_norm, level_eff01)` とみなし、この区間に対して一次回帰の傾き `slope` を求めた。
+- 暫定結果（`P0.2` は前半サンプル不足のため参考外）:
+  - `P0.3`: `slope ≈ -0.000944`, `R^2 ≈ 1.000000`
+  - `P0.4`: `slope ≈ -0.001279`, `R^2 ≈ 0.999995`
+  - `P0.5`: `slope ≈ -0.001548`, `R^2 ≈ 0.999997`
+  - `P0.6`: `slope ≈ -0.001821`, `R^2 ≈ 1.000000`
+  - `P0.7`: `slope ≈ -0.002050`, `R^2 ≈ 0.999994`
+  - `P0.8`: `slope ≈ -0.002187`, `R^2 ≈ 0.999967`
+  - `P0.9`: `slope ≈ -0.002257`, `R^2 ≈ 0.999915`
+  - `P1.0`: `slope ≈ -0.002216`, `R^2 ≈ 0.999800`
+- 暫定結論:
+  - `P0.3〜1.0` では、前半直線区間は非常に高い直線性を持つ（`R^2 ≈ 0.9998〜1.0`）。
+  - 傾きの絶対値は `P` の増加とともに概ね大きくなり、前半区間の減衰は高Pほど急になる。
+  - ただし `P0.9→1.0` ではわずかな頭打ち/揺れがあり、完全な一次比例ではなく、量子化や regime 境界の影響を含む可能性がある。
+  - したがって現時点では、「前半直線区間の変化率は `P` に対して概ね単調増加し、少なくとも `P0.3〜0.9` では非常に素直な相関を持つ」が、完全な単一式へ固定するにはまだ保留、という整理が妥当。
+
+### 調査開始メモ（第3優先: 中間区間の変化率, 2026-03）
+- 入力: `DotLab/Kernel/kernel-sweep-wide-count10-stair-detail.csv`
+- 定義:
+  - 各 `P` について、第1優先で抽出した強変化点の直後から始まる plateau 群のうち、`|log2_tread_ratio_to_prev| <= 0.15` を満たす連続区間を中間区間の候補とした。
+  - 各 plateau の頂点を `(start_r_norm, level_eff01)` とみなし、この区間に対して一次回帰の傾き `slope` を求めた。
+- 暫定結果（`P0.2` は中間サンプル不足のため参考外）:
+  - `P0.3`: `middle=5〜14`, `slope ≈ -0.003251`, `R^2 ≈ 0.993935`
+  - `P0.4`: `middle=6〜24`, `slope ≈ -0.004865`, `R^2 ≈ 0.993456`
+  - `P0.5`: `middle=8〜38`, `slope ≈ -0.006331`, `R^2 ≈ 0.992347`
+  - `P0.6`: `middle=10〜55`, `slope ≈ -0.008150`, `R^2 ≈ 0.990878`
+  - `P0.7`: `middle=11〜76`, `slope ≈ -0.010018`, `R^2 ≈ 0.988018`
+  - `P0.8`: `middle=13〜100`, `slope ≈ -0.011774`, `R^2 ≈ 0.983844`
+  - `P0.9`: `middle=15〜125`, `slope ≈ -0.013683`, `R^2 ≈ 0.978115`
+  - `P1.0`: `middle=16〜64`, `slope ≈ -0.010137`, `R^2 ≈ 0.994934`
+- 暫定結論:
+  - 中間区間も一次近似はかなり効くが、前半区間より直線性は少し落ちる（`R^2 ≈ 0.978〜0.994`）。
+  - `P0.3〜0.9` では傾きの絶対値は概ね単調増加しており、高Pほど中間区間の減衰も急になる。
+  - ただし `P1.0` は `P0.9` より傾きが緩くなっており、中間区間では単純な単調式よりも regime 境界や量子化後の局所構造の影響が強い可能性がある。
+  - したがって、中間区間の変化率は「概ねPに相関するが、前半区間ほど素直ではない」という整理が妥当。
+
+### 調査開始メモ（第4優先: 後半区間の変化率, 2026-03）
+- 入力: `DotLab/Kernel/kernel-sweep-wide-count10-stair-detail.csv`
+- 定義:
+  - 各 `P` について、終端の1段手前から逆向きに見て、`|log2_tread_ratio_to_prev| <= 0.07` を満たす terminal plateau 群を後半区間の候補とした。
+  - 各 plateau の頂点を `(start_r_norm, level_eff01)` とみなし、この区間に対して一次回帰の傾き `slope` を求めた。
+- 暫定結果（`P0.2` は後半サンプル不足のため参考外）:
+  - `P0.3`: `tail=10〜14`, `slope ≈ -0.003755`, `R^2 ≈ 0.999751`
+  - `P0.4`: `tail=15〜24`, `slope ≈ -0.005627`, `R^2 ≈ 0.999696`
+  - `P0.5`: `tail=22〜38`, `slope ≈ -0.007416`, `R^2 ≈ 0.999569`
+  - `P0.6`: `tail=30〜55`, `slope ≈ -0.009645`, `R^2 ≈ 0.999444`
+  - `P0.7`: `tail=39〜76`, `slope ≈ -0.012140`, `R^2 ≈ 0.999208`
+  - `P0.8`: `tail=50〜99`, `slope ≈ -0.014699`, `R^2 ≈ 0.998876`
+  - `P0.9`: `tail=59〜124`, `slope ≈ -0.017605`, `R^2 ≈ 0.998228`
+  - `P1.0`: `tail=67〜151`, `slope ≈ -0.020838`, `R^2 ≈ 0.997126`
+- 暫定結論:
+  - 後半区間は、前半・中間よりもさらに素直に `P` と相関しており、`P0.3〜1.0` で傾きの絶対値はほぼ単調増加する。
+  - 直線性も高く、`R^2 ≈ 0.997〜0.9998` で、量子化後の plateau 群として見ても一次近似がかなり強く効く。
+  - 簡易な線形近似では `tail_slope ≈ -0.0243 * P + 0.0043`（`R^2 ≈ 0.990`）となり、少なくとも観測範囲では「後半区間の減衰勾配はP増加に応じてほぼ線形に急になる」とみなせる可能性が高い。
+
+### 調査開始メモ（第5優先: 初段の長さの法則, 2026-03）
+- 入力: `DotLab/Kernel/kernel-sweep-wide-count10-stair-detail.csv`
+- 観測対象:
+  - `initial_tread_px`（`plateau_index=1` の `tread_px`）
+  - `initial_tread_r_norm`（`plateau_index=1` の `end_r_norm`）
+  - 第1優先の強変化点位置
+  - 第2優先の前半直線区間勾配
+- 暫定結果:
+  - `initial_tread_r_norm`
+    - `P0.2=20.475`
+    - `P0.3=10.225`
+    - `P0.4=10.4875`
+    - `P0.5=0.725`
+    - `P0.6=1.875`
+    - `P0.7=3.6`
+    - `P0.8=1.525`
+    - `P0.9=2.0875`
+    - `P1.0=1.3375`
+  - 強変化点開始半径に対する比 `initial_tread_r_norm / major_start_r_norm`
+    - `P0.2≈0.463`
+    - `P0.3≈0.252`
+    - `P0.4≈0.264`
+    - `P0.5≈0.019`
+    - `P0.6≈0.052`
+    - `P0.7≈0.095`
+    - `P0.8≈0.041`
+    - `P0.9≈0.056`
+    - `P1.0≈0.036`
+  - 前半勾配から単純推定した閾値距離 `riser / |front_slope|` と比べると、`initial_tread_r_norm` は概ねそれより短く、特に `P0.5` では比が `≈0.094` と極端に小さい。
+- 暫定結論:
+  - 初段の長さは `P` に対して単調ではなく、単独の数式へ素直には乗らない。
+  - ただし regime はかなり明確で、`P0.2〜0.4` では初段が非常に長く、`P0.5〜1.0` では強変化点に対してごく短い初期区間へ急減する。
+  - 初段の長さは、前半直線区間の勾配や平均蹴上だけでは説明しきれず、頂上近傍の局所的な丸まり/平坦化の影響を別に受けている可能性が高い。
+  - したがって `initial_tread` は、前半・中間・後半の勾配法則とは別の「初期閾値 crossing 指標」として独立に保持するのが妥当。
+
+### 調査開始メモ（第6優先: 実終端の法則, 2026-03）
+- 入力: `DotLab/Kernel/kernel-sweep-wide-count10-stair-detail.csv`
+- 観測対象:
+  - 各 `P` の最終 plateau（最後の `plateau_index`）の `end_r_norm`
+  - `headroom = 100 - end_r_norm`
+  - 最終 plateau の `tread_px`
+- 暫定結果:
+  - `P0.1〜0.7`: `end_r_norm = 100` で観測限界に張り付き、実終端は見えていない。
+  - `P0.8`: `end_r_norm = 99.1625`, `headroom = 0.8375`, `last_tread = 39`
+  - `P0.9`: `end_r_norm = 98.55`, `headroom = 1.45`, `last_tread = 29`
+  - `P1.0`: `end_r_norm = 98.325`, `headroom = 1.675`, `last_tread = 22`
+- 暫定結論:
+  - 実終端の法則は、低P側では観測限界 `8000px` に打ち切られているため、この範囲からは決められない。
+  - 少なくとも高P側 (`P0.8〜1.0`) では、`P` が高いほど `headroom` は増加し、実終端は手前へ寄る。
+  - 同時に最終 plateau の `tread_px` は `39 → 29 → 22` と縮んでおり、高Pほど「終端へ落ちる最後の区間」も短くなる。
+  - 高P3点だけの簡易近似では `headroom ≈ 4.19 * P - 2.45`（`R^2 ≈ 0.93`）となるが、点数が少ないため法則としては暫定扱いに留める。
+  - 現時点では、「実終端は高P側でのみ観測可能であり、高Pほど終端は早く来る」が最も堅い整理である。
+
+### 設計メモ: 実終端の分類整理（2026-03）
+- 実終端は、終盤の安定区間の勾配を保ったまま `level_eff01` が 0 に到達する点として考えるのが自然。
+- `level_eff01` が 0 に達した後は、その外側も 0 を維持するものとして扱う。
+- ただし観測上の終端には、真の終端と観測範囲上限による打ち切り終端が混在するため、両者を分けて扱う必要がある。
+- 終端は少なくとも次の3種類に分類して扱う。
+  - 真の終端: 終盤安定勾配の延長で実際に 0 に到達した点。
+  - 観測打ち切り終端: 実際には 0 に達していないが、観測範囲上限 (`r_norm=100`, `8000px`) で打ち切られた点。
+  - 準終端: まだ 0 ではないが、終盤安定区間に入っており、その勾配延長で真の終端が推定できそうな点。
+- 現在の観測では、`P0.1〜0.7` は観測打ち切り終端、`P0.8〜1.0` は準終端〜真の終端に近い挙動として扱うのが自然。
+- 高P側では、終盤勾配が急になるほど `headroom` が増え、実終端は手前に寄るという理解が最も自然。
+- 実務上は終端指標を次のように分けて保持する。
+  - `observed_terminal`: 観測上の終端
+  - `censored_terminal`: 観測打ち切り終端
+  - `estimated_true_terminal`: 終盤勾配から推定した真の終端
+
+### 設計メモ: 初段余り仮説を調べる終端基準指標案（2026-03）
+- `observed_terminal_r_px` / `observed_terminal_r_norm`
+  - 観測上の終端位置。打ち切り終端も含む。
+- `censored_terminal`
+  - 観測上限 (`r_norm=100`, `8000px`) に達して打ち切られているかどうか。
+- `estimated_true_terminal_r_px` / `estimated_true_terminal_r_norm`
+  - 終盤安定区間の一次回帰から `level_eff01=0` を外挿した推定真終端。
+- `tail_reference_tread_px`
+  - 終盤安定区間の代表踏面。現時点では `median(tread_px)` を優先して使う。
+- `terminal_phase_offset_px`
+  - `estimated_true_terminal_r_px mod tail_reference_tread_px`。
+  - 終端から逆向きに階段を並べたときの位相余りを見る指標。
+- `terminal_phase_complement_px`
+  - `tail_reference_tread_px - terminal_phase_offset_px`。
+  - 余りが先頭側/末尾側どちらへ押し出されるかの補助確認に使う。
+- `initial_tread_px`
+  - 初段の長さそのもの。余り仮説の説明対象。
+- `initial_vs_terminal_phase_error_px`
+  - `min(|initial_tread_px - terminal_phase_offset_px|, |initial_tread_px - terminal_phase_complement_px|)`。
+  - 単純な終端剰余モデルで初段長を説明できるかを確認する指標。
+
+### 調査開始メモ（終端基準の初段余り仮説, 2026-03）
+- 入力: `DotLab/Kernel/kernel-sweep-wide-count10-stair-detail.csv`
+- 手順:
+  - 第4優先で抽出した終盤安定区間から `estimated_true_terminal_r_px` を一次回帰で外挿した。
+  - 同じ終盤安定区間の `median(tread_px)` を `tail_reference_tread_px` とした。
+  - `terminal_phase_offset_px = estimated_true_terminal_r_px mod tail_reference_tread_px` を計算し、`initial_tread_px` と比較した。
+- 暫定結果:
+  - `estimated_true_terminal_r_px`
+    - `P0.3≈9272.6`, `P0.4≈8772.6`, `P0.5≈8448.1`, `P0.6≈8220.7`, `P0.7≈8069.4`, `P0.8≈7980.4`, `P0.9≈7941.8`, `P1.0≈7939.0`
+  - `tail_reference_tread_px`
+    - `P0.3=350`, `P0.4=201`, `P0.5=127`, `P0.6=85`, `P0.7=59.5`, `P0.8=43`, `P0.9=32`, `P1.0=25`
+  - `initial_vs_terminal_phase_error_px`
+    - `P0.3≈641.6`, `P0.4≈710.4`, `P0.5≈1.9`, `P0.6≈90.3`, `P0.7≈252.1`, `P0.8≈97.6`, `P0.9≈141.8`, `P1.0≈94.0`
+- 暫定結論:
+  - 単純な終端剰余モデル（`initial_tread = estimated_true_terminal mod tail_reference_tread`）は、大半の `P` では成立しない。
+  - `P0.5` 付近だけ誤差が小さいが、全体傾向から見ると偶然一致の可能性が高い。
+  - 終端基準の見方自体は有効で、`estimated_true_terminal` と `tail_reference_tread` は保持すべき指標である。
+  - ただし初段長は、終端位相だけではなく、前半〜中盤の非一様な踏面配分を含んだ「複数区間の余り」として見る方が自然である。
+
+### 設計メモ: 強変化点を起点にした逆算モデルの見通し（2026-03）
+- 強変化点を断定的に算出できる法則が見つかれば、終端側からの逆算経路はかなり組み立てやすくなる。
+- 現時点でも、終端側については `estimated_true_terminal` と終盤勾配の法則候補があり、さらに強変化点については「半径位置は比較的安定」「段番号はPとともに増える」「強変化点手前までの累積相対変化量は概ね `0.10P` 前後」という観測が得られている。
+- このため、少なくとも
+  - 終端 → 強変化点
+  - 強変化点 → 前半直線区間
+  の骨格は、法則化できる可能性が高い。
+- 一方で初段は、終端剰余だけでも前半勾配だけでも説明しきれず、最後に残る位相/余り/局所丸まりの補正項として扱う可能性が高い。
+- 実務上は、まず
+  - 終端勾配
+  - 強変化点位置
+  - 強変化点手前までの累積相対変化量
+  を固定し、その後で初段の補正を別モデルとして重ねる方針が自然である。
+
+### 調査開始メモ（初段終端は前半直線の閾値crossingか, 2026-03）
+- 入力: `DotLab/Kernel/kernel-sweep-wide-count10-stair-detail.csv`
+- 仮説:
+  - 初段を除く前半区間はほぼ直線なので、その一次近似 `f_front(r)` を中心側へ延長したとき、初段終端は最初の量子化閾値crossingで決まる。
+- 比較した閾値候補:
+  - `f_front(r) = P - riser`
+  - `f_front(r) = P - riser/2`
+- 暫定結果（実測の初段終端 `actualEndPx` との比較）:
+  - `P0.3`: `actual=818`, `x(P-riser)=819`（誤差 `1px`）, `x(P-riser/2)=112.5`（誤差 `705.5px`）
+  - `P0.4`: `actual=839`, `x(P-riser)=838.829`（誤差 `0.171px`）, `x(P-riser/2)=392.076`（誤差 `446.924px`）
+  - `P0.5`: `actual=58`, `x(P-riser)=57.397`（誤差 `0.603px`）, `x(P-riser/2)=-250.204`（誤差 `308.204px`）
+  - `P0.6`: `actual=150`, `x(P-riser)=150.857`（誤差 `0.857px`）, `x(P-riser/2)=-76.372`（誤差 `226.372px`）
+  - `P0.7`: `actual=288`, `x(P-riser)=291.909`（誤差 `3.909px`）, `x(P-riser/2)=114.539`（誤差 `173.461px`）
+  - `P0.8`: `actual=122`, `x(P-riser)=130.812`（誤差 `8.812px`）, `x(P-riser/2)=-15.520`（誤差 `137.520px`）
+  - `P0.9`: `actual=167`, `x(P-riser)=180.300`（誤差 `13.300px`）, `x(P-riser/2)=52.685`（誤差 `114.315px`）
+  - `P1.0`: `actual=107`, `x(P-riser)=128.534`（誤差 `21.534px`）, `x(P-riser/2)=9.780`（誤差 `97.220px`）
+  - `P0.2` は前半サンプル不足で比較対象外。
+- 暫定結論:
+  - `P0.3〜0.7` では `f_front(r)=P-riser` が初段終端を非常に高精度で再現し、`P-riser/2` は明確に不適切。
+  - `P0.8〜1.0` でも `P-riser` の方がはるかに近く、誤差は増えるが主仮説としては維持できる。
+  - したがって現時点では、**初段終端は「前半直線を中心側へ延長したときの `P-riser` 閾値crossing」で近似できる**、が最有力仮説である。
+  - 高P側の残差は、前半直線のわずかな曲がり・量子化・頂上近傍の局所丸まりを補正項として別扱いするのが自然。
+
+### 調査開始メモ（初段終端の局所直線モデル比較, 2026-03）
+- 入力: `DotLab/Kernel/kernel-sweep-wide-count10-stair-detail.csv`
+- 比較対象:
+  - `2-3段目` のみで作る局所直線
+  - `2-4段目` で作る局所直線
+  - 強変化点手前までの `全前半` 直線
+- `P-riser` 閾値crossingでの初段終端誤差（px）:
+  - `2-3段目`: 平均 `1.0`, 中央 `1.0`, 最大 `1.0`
+  - `2-4段目`: 平均 `7.972`, 中央 `1.0`, 最大 `56.782`
+  - `全前半`: 平均 `6.273`, 中央 `2.455`, 最大 `21.534`
+- 解釈:
+  - `2-3段目` は見かけ上もっとも高精度だが、2段目の開始点自体が `level_eff01 = P-riser` を持つため、交点がほぼ自明に `2段目開始位置` へ落ちる。したがって説明力の高い独立検証とは言いにくい。
+  - 実務上の比較対象としては `2-4段目` と `全前半` の比較が妥当であり、高P側 (`P0.8〜1.0`) では `2-4段目` の方が明らかに精度が良い。
+  - したがって、初段終端の予測には「前半全体の平均勾配」より「初期数段の局所勾配」を使う方が自然で、特に高P側では `2-4段目` ベースの局所直線が有力候補となる。
+
+### 調査開始メモ（`2-3段` と `3-4段` の局所勾配差とPの相関, 2026-03）
+- 入力: `DotLab/Kernel/kernel-sweep-wide-count10-stair-detail.csv`
+- 定義:
+  - `s23 = (level4? ではなく) 3段目頂点と2段目頂点を結ぶ局所勾配`
+  - `s34 = 4段目頂点と3段目頂点を結ぶ局所勾配`
+  - 比較指標として `delta_s = s34 - s23`、`ratio_s = s34 / s23`、`delta_theta = atan(s34) - atan(s23)` を見た。
+- 暫定結果:
+  - `s23` と `P` の相関は強い（Pearson `≈ -0.953`, Spearman `≈ -0.950`）。
+  - `s34` と `P` の相関も強い（Pearson `≈ -0.928`, Spearman `≈ -0.883`）。
+  - 一方で `delta_s` や `ratio_s` の `P` との相関は弱い。
+    - `corr(P, delta_s)`: Pearson `≈ 0.684`, Spearman `≈ 0.100`
+    - `corr(P, ratio_s)`: Pearson `≈ -0.701`, Spearman `≈ -0.100`
+- 解釈:
+  - `2-3段` と `3-4段` の各勾配そのものは `P` と強く相関するが、両者の差は `P0.2〜0.3` の低P帯で大きく、`P0.4〜0.9` ではほぼ 0 に張り付く。
+  - したがって、`2-3段` と `3-4段` の角度差そのものを `P` の連続関数として使うより、
+    - 低P帯では「初期曲率あり」
+    - 中高P帯では「ほぼ同一勾配」
+    という regime 指標として使う方が自然である。
+  - 実務的には、初段終端の補正量としては `delta_s` 単独より、`2-4段目` の局所勾配そのものを使う方が安定していそうである。
+
+### 設計メモ: 再現モデル案 v1（2026-03）
+- 目的は、観測値の物理的な完全説明ではなく、`P` と相関する量をテーブル・定数・数式で定量化し、kernel再現に使える形へ整理すること。
+- この `v1` は、`P` による kernel の変化法則モデルとして扱う。入力 `P` から区分ごとの再現パラメータ群を引き、最終的な半径プロファイルを再構成する。
+- 現在の観測値は 8bit 量子化の影響を強く受けているため、各区間の誤差や矛盾に見える差も量子化誤差内で説明できる可能性を前提に扱う。
+- したがって再現モデルは、厳密一致よりも「量子化誤差内で整合するか」を評価基準にする。
+- 再現モデル案 `v1` は、全域1本の式ではなく、`P -> パラメータ群` を用いた区分モデルとして構成する。
+- `P` からまず定量化する対象は次の5群とする。
+  - `riser(P)`
+  - 前半局所勾配 `front_local_slope(P)`（当面は `2-4段目` ベースを優先）
+  - 強変化点 `major_change(P)`（半径位置 / 段番号 / 累積相対変化量）
+  - 後半勾配 `tail_slope(P)`
+  - 終端 `terminal(P)`（`observed_terminal` / `estimated_true_terminal` を区別）
+- 高さ方向は、少なくとも一次近似では `start_level=P` と `riser(P)` により
+  - `P`
+  - `P-riser`
+  - `P-2*riser`
+  - ...
+  の段列として構成する。
+- 初段終端は、当面の主仮説として
+  - 前半局所直線を中心側へ延長し
+  - `P-riser` 閾値crossing を取る
+ ことで与える。
+- 強変化点以降は、終端側から得られる `tail_slope(P)` と `estimated_true_terminal(P)` を使い、まず終端→強変化点の骨格を固定する。
+- その上で、強変化点手前までの累積相対変化量（概ね `0.10P` 前後）を使って、前半→中間の接続位置を決める。
+- 初段の残差は、現時点では独立した微小補正項として扱う。候補は
+  - 局所勾配残差
+  - 位相/余り
+  - 頂上近傍の局所丸まり
+  であり、`v1` では必要最小限の補正に留める。
+- 実務上は、まず `P -> {riser, front_local_slope, major_change, tail_slope, terminal}` を確定し、最後に初段補正を重ねる順序を優先する。
+- 手順の骨格は次の通りとする。
+  1. `P` から `riser(P)`、`front_local_slope(P)`、`major_change(P)`、`tail_slope(P)`、`terminal(P)` を求める。
+  2. 高さ列を `P, P-riser, P-2*riser, ...` として構成する。
+  3. 初段終端を、前半局所直線の `P-riser` 閾値crossing で与える。
+  4. 強変化点までは前半局所勾配で接続し、強変化点以降は中間区間を経て終端勾配へ遷移させる。
+  5. 終端では `estimated_true_terminal` もしくは `observed_terminal` を使い、`level_eff01<=0` 以降は 0 に固定する。
   - Sweep結果CSVを Top10の `summary`（候補パラメータ+スコア詳細+ROI設定）と `detail`（点/ROIのサンプル差分）に整理した。ROI詳細は行数上限で抑制。
+
+## 追加実装: InkDrawGenのカーネル断面CSVを多角度kernel抽出へ更新（2026-03）
+- `InkDrawGen/MainPage.xaml`
+  - `angle step(deg)` を追加し、0度から360度未満を任意stepで掃引できるようにした（例: 60 → 0/60/120/180/240/300）。
+- `InkDrawGen/Helpers/InkDrawGenUiState.cs` / `InkDrawGen/Helpers/InkDrawGenUiReader.cs`
+  - `KernelAngleStepDeg` を追加し、UI値を状態へ取り込めるようにした。
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - 固定観測点に対して描画中心を複数角度・半径へ移動し、各角度断面を取得する方式へ更新。
+  - `α=0` は欠損扱いとし、内側の欠損は線形補間、外周は `effectiveRadiusPx = 0.5 * size * scale` の `±1px` を基準に終端扱いにした。
+  - 各角度断面は `r <= max(2, scale * 0.05)` の安定領域の代表値で正規化し、半径ごとにMedianで統合した `kernel01` を出力する。
+  - 出力CSVは `r_px,r_norm,kernel01,valid_angle_count,mean01,min01,max01,stddev01` を持つ最終kernel用形式へ変更した。
+- `InkDrawGen/Helpers/RadialFalloffProfile.cs`
+  - 新しい多角度kernel CSVの `kernel01` 列を、そのままfalloffとして読み込めるようにした。
+
+## 追加実装: InkDrawGenのkernel sweep観測条件を確認するdebug PNG出力を追加（2026-03）
+- `InkDrawGen/MainPage.xaml`
+  - `debug r(px)` / `debug angle(deg)` 入力と `debug PNG` ボタンを追加した。
+- `InkDrawGen/Helpers/InkDrawGenUiState.cs` / `InkDrawGen/Helpers/InkDrawGenUiReader.cs`
+  - debug PNG用の半径・角度設定を保持/読取できるようにした。
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - 現在の `obs x/y`・`sample canvas(px)`・`scale`・`S/P/Op`・指定した `r/angle` 条件でオフスクリーン描画したBGRA8結果を、そのままPNG保存する `ExportKernelDebugPngAsync` を追加した。
+
+## 追加実装: InkDrawGen に kernel予測比較CSV出力を追加（2026-03）
+- 目的: `P` による kernel 変化法則モデル（再現モデル案 `v1`）の予測値を、現在の `wide` 観測CSVから抽出した観測値と並べて比較できるようにする。
+- 追加UI: `InkDrawGen/MainPage.xaml`
+  - `カーネル断面CSV(予測比較)` ボタンを追加。
+- 追加実装: `InkDrawGen/MainPage.xaml.cs`
+  - `ExportKernelSweepPredictionComparisonButton_Click()` を追加し、`KernelSweepExportService.ExportKernelSweepPredictionComparisonAsync(this)` へ1行委譲するようにした。
+- 追加実装: `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - `wide` 集約CSVを読み込み、既存の plateau 生成ロジックから各 `P` の観測指標を抽出する処理を追加。
+  - 観測指標として、少なくとも以下を抽出するようにした。
+    - `riser01`
+    - `front_slope24` / `front_intercept24`
+    - `initial_end_r_px` / `initial_end_r_norm`
+    - `major_change_index` / `major_change_r_px` / `major_relative_drop`
+    - `tail_slope`
+    - `estimated_true_terminal_r_px`
+    - `observed_terminal_r_px` / `censored_terminal`
+  - 各 `P` を1件ずつ外した leave-one-out の線形補間で、`P -> パラメータ群` の予測値を作る処理を追加。
+  - 観測値と予測値を1行に並べた `*-stair-prediction-compare.csv` を出力するようにした。
+- 出力CSVの用途:
+  - 現在の既知 `P` 群では、既存法則がどの程度そのまま再現に使えるかを確認する。
+  - 今後 `0.05, 0.15, ...` の中間 `P` サンプルを追加取得した際に、同じ列構成で予測誤差を直接比較できるようにする。
+
+## 追加運用: セッション記録用MDを作成（2026-03）
+- `docs/Kernel_Prediction_Validation.md`
+  - 本セッションの会話記録用MDを新規作成した。
+  - ユーザープロンプトは原則逐語、Copilot回答は要約、大量データは省略可という方針を反映した。
+
+## 分析メモ: count20 予測比較CSVと階段summaryから見えたこと（2026-03）
+- 優先根拠は `DotLab/Kernel/KernelSweep/kernel-sweep-wide-count20-stair-prediction-compare.csv` と `DotLab/Kernel/KernelSweep/kernel-sweep-wide-count20-stair-summary.csv` とする。
+- `riser(P)`、`front_slope24(P)`、`tail_slope(P)` は引き続き強い法則候補であり、`count20` でも安定している。
+- `major_change_index(P)` は低P帯では不安定だが、中高P帯では `0` か `±1 plateau` 程度に収まるため、段番号法則としては使える寄りである。
+- `major_change_r_px(P)` と `initial_end_r_px(P)` は依然として弱く、勾配法則そのものより「横位置への変換」が主な誤差源である。
+- `kernel-sweep-wide-count20-stair-summary.csv` から、`plateau_count ≈ P / mean_riser01` がかなり強く成立している。特に `P0.8=100`, `P0.9=125`, `P1.0=152` は `P / mean_riser01` と一致する。
+- `mean_tread_px` は `plateau_count` の増加に応じて滑らかに減少しており、実質的には利用可能半径を段数で割った代表幅として振る舞う。これは有用だが、定義上の従属性も強いため独立法則としては扱いすぎない方がよい。
+- `median_tread_px` は `mean_tread_px` よりも滑らかで、長い初段や低P帯の極端な plateau に引っ張られにくい。横方向スケールの代表値としては `mean_tread_px` より `median_tread_px` の方が頑健候補である。
+- `max_tread_px` は低P帯で急激に大きく、中高P帯で急減してから緩やかになるため、初段/低P特例の強さを表す指標として使える可能性がある。
+- `last_nonzero_r_px` は `P0.7` までは `8000` に張り付き、`P0.75` から実終端が見え始める。したがって終端 regime の実用境界は `P≈0.75` 付近とみなすのが自然である。
+- 強変化点の算出根拠は形式上 `plateau_count >= 3` で成立するが、法則として安定に扱えるのは少なくとも `plateau_count >= 8`（概ね `P>=0.2`）以降とみなすのが自然である。`P<=0.15` は低P特例として別扱いする方が安全である。
+- `front_slope24` に加えて `front_slope23` を観測/予測列として追加することは可能であり、初期局所勾配の変化を補助的に追う候補として有効である。
+
+## 追加実装: 予測比較CSVへ `front_slope23` を追加（2026-03）
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - `plateau_index=2..3` の局所勾配 `front_slope23` を観測抽出へ追加した。
+  - leave-one-out 線形補間による `pred_front_slope23` を追加し、比較CSVへ `obs_front_slope23` / `pred_front_slope23` / `err_front_slope23` を出力するようにした。
+  - 既存の `front_slope24` は主列のまま維持し、`front_slope23` は初期局所勾配の補助列として扱う。
+  - 中心画素のalpha値をダイアログとファイル名で確認できるようにした。
+
+## 設計メモ: 関節モデルの指標セット案（2026-03）
+- kernel の階段列は、`plateau_count` を「可動域に上限のある関節数」とみなす関節モデルで整理すると理解しやすい。
+- この見方では、高Pは「関節数が多い・1関節あたりの動きが小さい・根元ロックが弱い」ためしなやか、低Pはその逆で堅いと解釈できる。
+- まず持つべき基本指標は次の5つとする。
+  - `joint_count = plateau_count`
+    - 関節数。多いほど連続曲線へ近づき、しなやかさの基本自由度になる。
+  - `joint_step = mean_riser01 / P`
+    - 1関節あたりの相対可動量。小さいほど段ごとの変化が細かく、しなやか。
+  - `joint_span = median_tread_px`
+    - 関節間の代表長。`mean_tread_px` より外れ値に強く、横方向スケールの代表値として頑健。
+  - `root_lock = initial_tread_px / median_tread_px`
+    - 根元ロック量。大きいほど初段保持が強く、堅い。
+    - 低P補助として `max_tread_px / median_tread_px` も候補にする。
+  - `terminal_headroom = 100 - last_nonzero_r_norm`
+    - 終端がどれだけ手前へ来るか。高P側の閉じ方の強さを見る指標。
+- 中間帯の「しなやかさ」を改善する補助指標として、次の2つを候補にする。
+  - `mid_flex_ratio = |middle_slope| / ((|front_slope24| + |tail_slope|) / 2)`
+    - 前半・後半の平均に対して中間帯がどれだけ柔らかいかを表す。
+  - `curvature_budget = major_relative_drop / joint_step`
+    - 強変化点までに何関節分の可動域を消費しているかを見る。
+- 実務上の優先順は
+  1. `joint_count(P)`
+  2. `joint_step(P)`
+  3. `joint_span(P)`
+  4. `root_lock(P)`
+  5. `terminal_headroom(P)`
+  の順で法則化し、その後に `mid_flex_ratio(P)` と `curvature_budget(P)` を足す。
+- したがって、再現モデルの次段では「勾配を増やす/減らす」よりも、まず `joint_count`・`root_lock`・`mid_flex_ratio` の3軸で堅さ/しなやかさを分離して持つ方が自然である。
+
+## 追加実装: compare CSV を stair detail/summary 入力と関節モデル指標へ対応（2026-03）
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - `カーネル断面CSV(予測比較)` は従来の `wide` CSV に加え、`*-stair-detail.csv` を選択した場合に対応する `*-stair-summary.csv` を自動解決して compare CSV を生成できるようにした。
+  - `stair-detail.csv` から plateau 行を復元し、`stair-summary.csv` の `plateau_count` / `median_tread_px` / `max_tread_px` / `last_nonzero_r_norm` を併用して関節モデル指標を組み立てるようにした。
+  - compare CSV へ次の列を末尾追加した。
+    - `obs_joint_count` / `pred_joint_count` / `err_joint_count`
+    - `obs_joint_step` / `pred_joint_step` / `err_joint_step`
+    - `obs_joint_span` / `pred_joint_span` / `err_joint_span`
+    - `obs_root_lock` / `pred_root_lock` / `err_root_lock`
+    - `obs_root_lock_alt` / `pred_root_lock_alt` / `err_root_lock_alt`
+    - `obs_terminal_headroom` / `pred_terminal_headroom` / `err_terminal_headroom`
+    - `obs_curvature_budget` / `pred_curvature_budget` / `err_curvature_budget`
+  - 既存 compare CSV の列順は維持し、新規指標は末尾追加に留めた。
+
+## 分析メモ: 次段の有力候補は「局所勾配ベクトルの共通尺度化」（2026-03）
+- 現在の compare CSV は `front_slope23/24` と `tail_slope` など、局所勾配の代表値を点で抜き出している段階である。
+- 一方で、中間帯の法則をより直接に見るには、`plateau_index >= 2` の各段での局所勾配列を共通尺度へ正規化して並べる方が自然である。
+- 共通軸の候補は
+  - `plateau_index` 正規化
+  - 累積相対落差 `u=(P-level)/P`
+  - 強変化点基準または終端基準の正規化半径
+  の3系統であり、特に中間帯比較では `u` または強変化点基準が有望である。
+- したがって次段の課題は、`P -> scalar 指標群` だけでなく `P -> 勾配ベクトル` を比較可能な形へ落とすことである。
+
+## 追加実装: `u=(P-level)/P` 基準の局所勾配ベクトル列を compare CSV へ追加（2026-03）
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - `plateau_index >= 2` の各隣接 plateau 間について、`d(level_eff01)/d(radius_px)` を局所勾配として抽出する処理を追加した。
+  - 各局所勾配は、その2点の中間 level に対する `u=(P-level)/P` を共通尺度として持たせ、固定アンカー `u={0.10,0.25,0.40,0.55,0.70,0.85}` へ線形補間で再サンプリングするようにした。
+  - compare CSV へ次の列を追加した。
+    - `obs_local_slope_u100` / `pred_local_slope_u100` / `err_local_slope_u100`
+    - `obs_local_slope_u250` / `pred_local_slope_u250` / `err_local_slope_u250`
+    - `obs_local_slope_u400` / `pred_local_slope_u400` / `err_local_slope_u400`
+    - `obs_local_slope_u550` / `pred_local_slope_u550` / `err_local_slope_u550`
+    - `obs_local_slope_u700` / `pred_local_slope_u700` / `err_local_slope_u700`
+    - `obs_local_slope_u850` / `pred_local_slope_u850` / `err_local_slope_u850`
+  - これにより、従来の `front_slope23/24` と `tail_slope` が「代表点比較」だったのに対し、中間帯を含む局所勾配ベクトルを共通尺度で比較できるようになった。
+
+## 分析メモ: 局所勾配ベクトル追加後の `count20` compare CSV（2026-03）
+- 優先根拠は `DotLab/Kernel/KernelSweep/kernel-sweep-wide-count20-stair-prediction-compare.csv` とする。
+- `joint_count` は全域で `err=0 or 1` に収まり、関節数モデルは非常に強い。
+- `joint_step` も中高Pではかなり安定し、低Pを除けば法則化しやすい。
+- 新規の `local_slope_u*` 系列は、`u250〜u850` が全体にかなり安定しており、中間帯〜後半帯の変形を捉える主力候補である。
+- `local_slope_u100` は頂上近傍の局所性・量子化・サンプル不足の影響を受けやすく、主指標というより診断列として扱う方が自然である。
+- `root_lock` / `root_lock_alt` は依然として誤差が大きく、初段由来の不安定さが強い。
+- `terminal_headroom` は高P側でかなり良く、`curvature_budget` も概ね有望である。
+- したがって次段は、`root_lock` 改善を急ぐよりも `local_slope_u250〜u850` と `curvature_budget` を組み合わせ、中間帯の法則を先に詰める方が効果的である。
+
+## 設計メモ: `stair-detail.csv` に前値からのベクター情報を追加する案（2026-03）
+- `stair-detail.csv` へ「前 plateau から current plateau への遷移ベクトル」を追加する案は有効である。
+- ただしこれは完全な新情報というより、既存の `tread` と `riser` を2次元遷移として明示し直す意味が強い。
+- 列候補は次の通り。
+  - `prev_vec_dx_px` = `start_r_px(i) - start_r_px(i-1)`
+  - `prev_vec_dx_norm` = `start_r_norm(i) - start_r_norm(i-1)`
+  - `prev_vec_dy01` = `level_eff01(i) - level_eff01(i-1)`
+  - `prev_vec_dy_relP` = `prev_vec_dy01 / p_value`
+  - `prev_vec_slope01_per_px` = `prev_vec_dy01 / prev_vec_dx_px`
+  - `prev_vec_slope_relP_per_rnorm` = `prev_vec_dy_relP / prev_vec_dx_norm`
+- `px` と `level01` は単位が異なるため、長さや角度へ直接まとめるより、まずは成分と正規化勾配を持つ方が解釈しやすい。
+- 実務上は compare CSV の主系列というより、detail CSV から後段で `u` 基準ベクトルや regime 解析へ渡すための中間表現として有用である。
+
+## 修正: InkDrawGenのROI変換順序がsample canvas依存の観測ずれを生んでいた問題（2026-03）
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - kernel sweep / debug PNG の `DrawInk` 前の変換行列を `Scale * Translation` から `Translation * Scale` へ修正した。
+- `InkDrawGen/Helpers/InkOffscreenRenderService.cs`
+  - 同じくROI原点化→scaleの順になるよう変換順序を修正した。
+- 背景
+  - debug PNGで `sample canvas` を大きくすると観測中心が `sampleCanvasPx/(2*scale)` 相当だけずれる現象があり、コメントの「ROIを(0,0)へ持ってきてからscale」と実際の行列順が一致していなかった。
+
+## 修正: InkDrawGenのkernel sweepを早期打ち切りなし・補間なしの実測統合へ変更（2026-03）
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - 各角度断面で `α=0` に当たっても早期打ち切りせず、理論半径まで最後まで評価するようにした。
+  - 断面内の補間は一旦行わず、半径ごとに「観測できた角度の実測値だけ」をMedian統合する方針へ切り替えた。
+  - CSVメタ情報の `zero_policy` を `keep_zero_as_missing, no_interpolation` へ更新した。
+
+## 追加実装: InkDrawGenのkernel sweepに角度ごとのRaw観測CSV出力を追加（2026-03）
+- `InkDrawGen/MainPage.xaml`
+  - `raw CSV` ボタンを追加した。
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - 各角度・各半径について、中心画素の `alpha_byte` / `alpha01` / `is_observed` をそのまま出力する `ExportKernelRawCsvAsync` を追加した。
+  - これにより、統合後CSVだけでは見えない「どの角度がどの半径で0になったか」を切り分けられるようにした。
+
+## 追加実装: InkDrawGenにオフセット用の紙目ベース単点PNGボタンを追加（2026-03）
+- `InkDrawGen/MainPage.xaml`
+  - 既存の中央固定版と混同しないよう、`紙目ベース単点PNG(Offset)` ボタンを追加した。
+- `InkDrawGen/Helpers/KernelCanceledDotExportService.cs`
+  - `StartX/StartY` をドット中心、`OutWidthPx/OutHeightPx` を出力サイズとして使う `ExportKernelCanceledDotOffsetPngAsync` を追加した。
+  - 相殺時の半径距離も、画像中心ではなくオフセット中心 (`StartX/StartY`) 基準で計算するようにした。
+- `InkDrawGen/MainPage.xaml.cs`
+  - `紙目ベース単点PNG(Offset)` ボタンから新しいオフセット版出力処理へ1行委譲するハンドラを追加した。
+
+## 追加実装: InkDrawGenに紙目タイル基準のkernel取得を追加（2026-03）
+- `InkDrawGen/MainPage.xaml`
+  - `カーネル断面CSV(紙目Tile)` ボタンを追加した。
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - 実行時に紙目PNGを選択し、現在の `obs x/y` を種点として、紙目9x9近傍の中央値近傍座標を求める処理を追加した。
+  - 続けて、その紙目由来の仮地点を使って実画像9x9近傍をレンダし、中央値近傍の本地点へ微調整したうえで、その本地点を観測点にした多角度kernel sweepを実行するようにした。
+  - 出力CSVに `paper_tile` / `obs_seed_px` / `obs_paper_tile_px` / `obs_actual_px` / `obs_window_px` のメタ情報を追記するようにした。
+- `InkDrawGen/MainPage.xaml.cs`
+  - `カーネル断面CSV(紙目Tile)` ボタンから新しい紙目タイル基準のkernel取得処理へ1行委譲するハンドラを追加した。
+
+## 修正: `カーネル断面CSV(紙目Tile)` をPスイープ対応へ拡張（2026-03）
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - `P start/end/step` を展開し、`S` 固定・`P` 違いのkernel CSVを一括出力できるようにした。
+  - 紙目タイル内の種点選定は1回だけ行い、その後は各Pごとに実画像9x9近傍の本地点を再計算してCSVを書き出すようにした。
+  - 出力CSVメタ情報に `p_sweep_count` を追加し、ダイアログでも各Pの `actualObs` とファイル名をまとめて確認できるようにした。
+
+## 修正: kernel sweepを並列処理化して実行コア数指定に対応（2026-03）
+- `InkDrawGen/MainPage.xaml`
+  - kernel sweep設定に `parallel cores` 入力を追加した。`0` はCPUコア数をそのまま使う自動設定。
+- `InkDrawGen/Helpers/InkDrawGenUiState.cs` / `InkDrawGen/Helpers/InkDrawGenUiReader.cs`
+  - kernel sweep用の最大並列度設定を保持/読取できるようにした。
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - 角度断面の計算を `Task.Run + Parallel.For` でバックグラウンド並列実行する共通処理へ変更した。
+  - 通常版の `カーネル断面CSV` と `カーネル断面CSV(紙目Tile)` の両方で、角度ごとに独立した `CanvasRenderTarget` を使って並列計算するようにした。
+  - 出力CSVメタ情報と完了ダイアログに `max_parallelism` / `parallel_mode=cpu-angle` を追記した。
+
+## 修正: Win2D並列描画で共有CanvasDeviceを使うと`ds.DrawInk`でAccessViolationが出る問題を安定化（2026-03）
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - 並列workerが `CanvasDevice.GetSharedDevice()` を共有しないようにし、各workerで独立した `CanvasDevice` を使うよう修正した。
+  - これにより、GPU経由のWin2D描画は維持しつつ、共有デバイス競合による `ds.DrawInk` のメモリアクセス違反を避ける方針にした。
+
+## 修正: Win2D `DrawInk` 自体が並列不可と判断し、kernel sweepを非同期直列へ戻した（2026-03）
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - 独立 `CanvasDevice` を使っても `ds.DrawInk` で `AccessViolationException` が再発したため、UWP/Win2D の `DrawInk` 呼び出し自体が並列バックグラウンド実行に耐えないと判断した。
+  - kernel sweep の角度断面計算は `Task.Run` 上の直列実行へ戻し、UIブロックを避ける非同期性だけを維持する方針へ切り替えた。
+  - `parallel cores` は requested 値として保持しつつ、この経路では `effective_parallelism=1` をCSVメタ情報と完了ダイアログへ明示するようにした。
+
+## 追加実装: kernel sweep CSV群をP横持ちwide形式へ集約する機能を追加（2026-03）
+- `InkDrawGen/MainPage.xaml`
+  - `カーネル断面CSV(wide集約)` ボタンを追加した。
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - 選択した複数のkernel CSVを読み込み、`r_px` / `r_norm` を基準に同名列をP違いで横持ちするwide集約CSV出力を追加した。
+  - 出力ヘッダーは `kernel01_p0_1` のように、元ファイル名から抽出したP値を付加する仕様にした。
+  - 元CSVファイルはファイル単位で複数選択し、wide集約CSVは出力フォルダへ `kernel-sweep-wide-count{n}.csv` として保存するようにした。
+- `InkDrawGen/MainPage.xaml.cs`
+  - `カーネル断面CSV(wide集約)` ボタンから新しいwide集約処理へ1行委譲するハンドラを追加した。
+
+## 追加実装: kernel wide CSVから踏面・蹴上を集約する階段解析を追加（2026-03）
+- `InkDrawGen/MainPage.xaml`
+  - `カーネル断面CSV(階段解析)` ボタンを追加した。
+- `InkDrawGen/Helpers/KernelSweepExportService.cs`
+  - wide CSV内の `kernel01_p*` 列を読み取り、各Pについて `Kernel01 * P` のplateauを抽出する階段解析処理を追加した。
+  - 詳細CSVでは `plateau_index` / `tread_px` / `level_eff01` / `riser_to_next01` / `delta_tread_to_prev` / `tread_ratio_to_prev` / `log2_tread_ratio_to_prev` を出力するようにした。
+  - サマリCSVでは `plateau_count` / `transition_count` / `mean_tread_px` / `median_tread_px` / `max_tread_px` / `mean_riser01` / `std_riser01` / `last_nonzero_r_px` を出力するようにした。
+- `InkDrawGen/MainPage.xaml.cs`
+  - `カーネル断面CSV(階段解析)` ボタンから新しい階段解析処理へ1行委譲するハンドラを追加した。
+
+## 追加実装: DotTesterでInkDrawGenの最新kernel/tileをScale整合付きで再現へ取り込み対応（2026-03）
+- `DotTester/MainWindow.xaml.cs`
+  - InkDrawGenの `r_px,r_norm,kernel01` 形式CSVを、DotTesterのfalloff LUTとして読み込めるようにした。
+  - falloff CSVの `# scale=` メタ情報、またはPNG/CSVファイル名の `scaleNN` からソースscaleを推定する処理を追加した。
+  - `Tile PNG` 選択時は推定したscaleを `TileScale` へ自動反映し、`Falloff CSV` 選択時は推定scaleを内部保持して従来の `dx_px` 形式読込でもソースscale優先でLUT化するようにした。
+
+## 追加実装: DotTesterにMultiply(k)専用Biasを追加（2026-03）
+- `DotTester/MainWindow.xaml`
+  - 既存の `Cutoff(alpha)` とは別に、`multiply bias(01)` 入力を追加した。
+- `DotTester/MainWindow.xaml.cs`
+  - `multiply bias(01)` を読み取り、`DotReproRenderer.Options` へ渡すようにした。
+  - 値変更時に自動再描画されるよう監視対象にも追加した。
+- `DotTester/Helpers/DotReproRenderer.cs`
+  - `MultiplyCutoffBias01` を追加し、`OutAlphaModel=MultiplyK` のときだけ最終cutoffへ加算する専用Biasとして実装した。
+  - 既存の `AlphaCutoff01` と `NoiseDependentCutoff` は維持しつつ、Wall-throughのbiasとは別目的で外周の落ちやすさを調整できるようにした。

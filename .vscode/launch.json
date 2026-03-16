@@ -1,0 +1,29 @@
+{
+  // IntelliSense を使用して利用可能な属性を学べます。
+  // 既存の属性の説明をホバーして表示します。
+  // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "DotLab (.NET 8 WPF)",
+      "type": "dotnet",
+      "request": "launch",
+      "preLaunchTask": "build DotLab",
+      "projectPath": "${workspaceFolder}/DotLab/DotLab.csproj"
+    },
+    {
+      "name": "DotTester (.NET 8 WPF)",
+      "type": "dotnet",
+      "request": "launch",
+      "preLaunchTask": "build DotTester",
+      "projectPath": "${workspaceFolder}/DotTester/DotTester.csproj"
+    },
+    {
+      "name": "SkiaTester (.NET 8 WPF)",
+      "type": "dotnet",
+      "request": "launch",
+      "preLaunchTask": "build SkiaTester",
+      "projectPath": "${workspaceFolder}/SkiaTester/SkiaTester.csproj"
+    }
+  ]
+}

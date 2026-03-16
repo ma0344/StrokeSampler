@@ -157,7 +157,7 @@
                 <ui:NumberBox x:Name="PaperNoiseTileScaleNumberBox"
                               Width="110"
                               Minimum="1"
-                              Maximum="64"
+                              Maximum="100"
                               Value="10"
                               SpinButtonPlacementMode="Inline" />
                 <TextBlock Text="noiseScale:"
@@ -476,6 +476,17 @@
                               Value="0"
                               SmallChange="1"
                               LargeChange="10"
+                              SpinButtonPlacementMode="Inline" />
+                <TextBlock Text="multiply bias(01):"
+                           VerticalAlignment="Center"
+                           Margin="12,0,6,0" />
+                <ui:NumberBox x:Name="MultiplyCutoffBiasNumberBox"
+                              Width="120"
+                              Minimum="-1"
+                              Maximum="1"
+                              Value="0"
+                              SmallChange="0.002"
+                              LargeChange="0.02"
                               SpinButtonPlacementMode="Inline" />
                 <CheckBox x:Name="NoiseDependentCutoffCheckBox"
                           Content="noise-dependent cutoff (×k)"

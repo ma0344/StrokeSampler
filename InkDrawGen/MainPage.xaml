@@ -5,6 +5,8 @@
     xmlns:local="using:InkDrawGen"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+
     mc:Ignorable="d"
       d:Height="1500"
       d:Width="1800"
@@ -83,56 +85,61 @@
                     <TextBox x:Name="DpiTextBox" Width="120" Header="dpi" Text="96" />
                     <CheckBox x:Name="TransparentCheckBox" Content="transparent" IsChecked="True" VerticalAlignment="Center" />
                 </StackPanel>
-            </StackPanel>
-
-            <StackPanel Grid.Column="2" Spacing="6">
-                <TextBlock Text="配置/ROI" FontWeight="SemiBold" />
-
-                <TextBlock Text="座標" />
+                <TextBlock Text="配置/座標" FontWeight="SemiBold" Margin="0,15,0,0"/>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBox x:Name="StartXTextBox" Width="120" Header="startX" Text="100" />
-                    <TextBox x:Name="StartYTextBox" Width="120" Header="startY" Text="101" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="EndXTextBox" Width="120" Header="endX" Text="500" />
-                    <TextBox x:Name="EndYTextBox" Width="120" Header="endY" Text="101" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="EndXSweepStartTextBox" Width="120" Header="endX sweep start" Text="118" />
-                    <TextBox x:Name="EndXSweepEndTextBox" Width="120" Header="endX sweep end" Text="316" />
-                    <TextBox x:Name="EndXSweepStepTextBox" Width="120" Header="endX sweep step" Text="18" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="StepXTextBox" Width="120" Header="stepX" Text="0" />
-                    <TextBox x:Name="StepYTextBox" Width="120" Header="stepY" Text="0" />
-                    <TextBox x:Name="RepeatCountTextBox" Width="120" Header="repeatCount" Text="0" />
+                    <TextBox x:Name="StartYTextBox" Width="120" Header="startY" Text="100" />
+                    <TextBox x:Name="EndXTextBox" Width="120" Header="endX" Text="100" />
+                    <TextBox x:Name="EndYTextBox" Width="120" Header="endY" Text="100" />
                 </StackPanel>
 
-                <TextBlock Text="疑似線 (Dot連続)" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="DotStepStartTextBox" Width="120" Header="dotStep start" Text="4" />
-                    <TextBox x:Name="DotStepEndTextBox" Width="120" Header="dotStep end" Text="1" />
-                    <TextBox x:Name="DotStepStepTextBox" Width="120" Header="dotStep step" Text="-1" />
-                </StackPanel>
-                <CheckBox x:Name="DotStepTwoPointsCheckBox" Content="2点疑似線（始点+更新点1つ）" IsChecked="False" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <CheckBox x:Name="DotStepFixedCountCheckBox" Content="N個疑似線（StartX基準でN個固定）" IsChecked="False" />
-                    <TextBox x:Name="DotStepCountTextBox" Width="120" Header="dot count" Text="2" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="DotStepCountStartTextBox" Width="120" Header="dot count start" Text="2" />
-                    <TextBox x:Name="DotStepCountEndTextBox" Width="120" Header="dot count end" Text="2" />
-                    <TextBox x:Name="DotStepCountStepTextBox" Width="120" Header="dot count step" Text="0" />
-                </StackPanel>
-
+                <controls:Expander Header="Sweep Settings" HorizontalAlignment="Stretch" IsExpanded="True" HorizontalContentAlignment="Left" Margin="0,0,0,5" Background="Transparent" BorderBrush="Transparent">
+                    <controls:Expander.Resources>
+                        <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="Transparent"/>
+                        <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent"/>
+                    </controls:Expander.Resources>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox x:Name="EndXSweepStartTextBox" Width="120" Header="endX sweep start" Text="100" />
+                            <TextBox x:Name="EndXSweepEndTextBox" Width="120" Header="endX sweep end" Text="100" />
+                            <TextBox x:Name="EndXSweepStepTextBox" Width="120" Header="endX sweep step" Text="100" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox x:Name="StepXTextBox" Width="120" Header="stepX" Text="0" />
+                            <TextBox x:Name="StepYTextBox" Width="120" Header="stepY" Text="0" />
+                            <TextBox x:Name="RepeatCountTextBox" Width="120" Header="repeatCount" Text="0" />
+                        </StackPanel>
+                    </StackPanel>
+                </controls:Expander>
+                <controls:Expander Header="疑似線 (Dot連続)" HorizontalAlignment="Stretch" IsExpanded="True" HorizontalContentAlignment="Left" Margin="0,15" Background="Transparent" BorderBrush="Transparent">
+                    <controls:Expander.Resources>
+                        <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="Transparent"/>
+                        <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent"/>
+                    </controls:Expander.Resources>
+                    <StackPanel Orientation="Vertical">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox x:Name="DotStepStartTextBox" Width="120" Header="dotStep start" Text="1" />
+                            <TextBox x:Name="DotStepEndTextBox" Width="120" Header="dotStep end" Text="1" />
+                            <TextBox x:Name="DotStepStepTextBox" Width="120" Header="dotStep step" Text="1" />
+                        </StackPanel>
+                        <CheckBox x:Name="DotStepTwoPointsCheckBox" Content="2点疑似線（始点+更新点1つ）" IsChecked="False" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <CheckBox x:Name="DotStepFixedCountCheckBox" Content="N個疑似線（StartX基準でN個固定）" IsChecked="False" />
+                            <TextBox x:Name="DotStepCountTextBox" Width="120" Header="dot count" Text="2" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox x:Name="DotStepCountStartTextBox" Width="120" Header="dot count start" Text="1" />
+                            <TextBox x:Name="DotStepCountEndTextBox" Width="120" Header="dot count end" Text="1" />
+                            <TextBox x:Name="DotStepCountStepTextBox" Width="120" Header="dot count step" Text="0" />
+                        </StackPanel>
+                    </StackPanel>
+                </controls:Expander>
                 <TextBlock Text="切り出し (ROI)" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBox x:Name="RoiXTextBox" Width="120" Header="x" Text="0" />
                     <TextBox x:Name="RoiYTextBox" Width="120" Header="y" Text="0" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="RoiWTextBox" Width="120" Header="w" Text="18" LostFocus="RoiWTextBox_LostFocus" />
-                    <TextBox x:Name="RoiHTextBox" Width="120" Header="h" Text="202" LostFocus="RoiHTextBox_LostFocus"/>
+                    <TextBox x:Name="RoiWTextBox" Width="120" Header="w" Text="200" LostFocus="RoiWTextBox_LostFocus" />
+                    <TextBox x:Name="RoiHTextBox" Width="120" Header="h" Text="200" LostFocus="RoiHTextBox_LostFocus"/>
                 </StackPanel>
 
                 <TextBlock Text="出力サイズ (px) ※ROI*w/h*scaleで自動" />
@@ -150,6 +157,9 @@
                     <Button x:Name="RunLine2PointsStartXSweepButton" Content="線(2点) StartXスイープ" Click="RunLine2PointsStartXSweepButton_Click" />
                     <Button x:Name="RunBatchFromCsvButton" Content="CSVからバッチ" Click="RunBatchFromCsvButton_Click" />
                 </StackPanel>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Spacing="6">
 
                 <TextBlock Text="カーネル断面（観測点固定 / 中心Xスイープ）" FontWeight="SemiBold" Margin="0,10,0,0" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -168,27 +178,71 @@
                             Margin="0,8,0,0">
                     <TextBox x:Name="KernelDxStepPxTextBox" Width="140" Header="dx step(px)" Text="1" />
                     <TextBox x:Name="KernelSampleCanvasPxTextBox" Width="160" Header="sample canvas(px)" Text="9" />
+                    <TextBox x:Name="KernelAngleStepDegTextBox" Width="160" Header="angle step(deg)" Text="60" />
+                    <TextBox x:Name="KernelMaxParallelismTextBox" Width="160" Header="parallel cores" Text="0" />
+                </StackPanel>
+
+                <TextBlock Text="※ angle step=60 の場合は 0/60/120/180/240/300 度で多角度kernelを抽出します" Opacity="0.7" />
+
+                <StackPanel Orientation="Horizontal"
+                            Spacing="8"
+                            Margin="0,8,0,0">
+                    <TextBox x:Name="KernelDebugRadiusPxTextBox" Width="160" Header="debug r(px)" Text="8000" />
+                    <TextBox x:Name="KernelDebugAngleDegTextBox" Width="160" Header="debug angle(deg)" Text="0" />
+                    <Button x:Name="ExportKernelDebugPngButton" Content="debug PNG" Click="ExportKernelDebugPngButton_Click" />
+                    <Button x:Name="ExportKernelRawCsvButton" Content="raw CSV" Click="ExportKernelRawCsvButton_Click" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal"
                             Spacing="8"
                             Margin="0,8,0,0">
                     <Button x:Name="ExportKernelSweepCsvButton" Content="カーネル断面CSV" Click="ExportKernelSweepCsvButton_Click" />
+                    <Button x:Name="ExportKernelSweepCsvFromPaperTileButton" Content="カーネル断面CSV(紙目Tile)" Click="ExportKernelSweepCsvFromPaperTileButton_Click" />
+                    <Button x:Name="ExportKernelSweepWideCsvButton" Content="カーネル断面CSV(wide集約)" Click="ExportKernelSweepWideCsvButton_Click" />
+                    <Button x:Name="ExportKernelSweepStairAnalysisButton" Content="カーネル断面CSV(階段解析)" Click="ExportKernelSweepStairAnalysisButton_Click" />
+                    <Button x:Name="ExportKernelSweepPredictionComparisonButton" Content="カーネル断面CSV(予測比較)" Click="ExportKernelSweepPredictionComparisonButton_Click" />
                     <Button x:Name="ExportKernelCanceledDotPngButton" Content="紙目ベース単点PNG" Click="ExportKernelCanceledDotPngButton_Click" />
+                    <Button x:Name="ExportKernelCanceledDotOffsetPngButton" Content="紙目ベース単点PNG(Offset)" Click="ExportKernelCanceledDotOffsetPngButton_Click" />
                     <Button x:Name="ExportNormalizedFalloffFromKernelSweepButton" Content="normalized-falloff CSV" Click="ExportNormalizedFalloffFromKernelSweepButton_Click" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                    <TextBox x:Name="RadialBinSizeTextBox" Width="140" Header="radial bin(px)" Text="1" />
+                    <TextBox x:Name="RadialBinSizeTextBox" Width="140" Header="radial bin(px)" Text="1" VerticalAlignment="Bottom" />
                     <CheckBox x:Name="UseAlphaCentroidCheckBox" Content="α重心を中心にする" IsChecked="False" VerticalAlignment="Bottom" />
-                    <Button x:Name="ExportRadialAlphaCsvFromPngButton" Content="半径αCSV(PNG→CSV)" Click="ExportRadialAlphaCsvFromPngButton_Click" />
-                    <Button x:Name="ExportRadialAlphaKneeSummaryButton" Content="半径α kneeサマリCSV" Click="ExportRadialAlphaKneeSummaryButton_Click" />
+                    <Button x:Name="ExportRadialAlphaCsvFromPngButton" Content="半径αCSV(PNG→CSV)" Click="ExportRadialAlphaCsvFromPngButton_Click" VerticalAlignment="Bottom"/>
+                    <Button x:Name="ExportRadialAlphaKneeSummaryButton" Content="半径α kneeサマリCSV" Click="ExportRadialAlphaKneeSummaryButton_Click" VerticalAlignment="Bottom"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
                     <Button x:Name="ExportPaperNoisePeriodicityCsvButton" Content="紙目周期解析CSV(PNG)" Click="ExportPaperNoisePeriodicityCsvButton_Click" />
                     <TextBlock Text="※自己相関でX/Y方向の周期候補を推定" VerticalAlignment="Center" Opacity="0.7" />
                 </StackPanel>
+                <controls:Expander Header="頑健kernel / 共有紙目抽出" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" BorderBrush="Transparent" Background="Transparent" Margin="0,15">
+                    <controls:Expander.Resources>
+                        <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="Transparent"/>
+                        <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent"/>
+                    </controls:Expander.Resources>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox x:Name="RobustKernelBinSizePxTextBox" Width="140" Header="bin(px)" Text="1" />
+                            <ComboBox x:Name="RobustKernelStatisticComboBox" Width="140" SelectedIndex="1" VerticalAlignment="Bottom">
+                                <ComboBoxItem Content="P90" />
+                                <ComboBoxItem Content="Median" />
+                            </ComboBox>
+                            <CheckBox x:Name="RobustKernelExcludeZeroCheckBox" Content="bin内α=0を除外" IsChecked="True" VerticalAlignment="Bottom" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                            <TextBox x:Name="SharedPaperMinKernelTextBox" Width="160" Header="min kernel" Text="0.15" />
+                            <TextBox x:Name="SharedPaperRefineIterationsTextBox" Width="160" Header="refine iter" Text="0" />
+                            <TextBlock Text="※共有紙目は現在のROIをタイルサイズとして使います" VerticalAlignment="Center" Opacity="0.7" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                            <Button x:Name="ExportRobustKernelCsvFromPngButton" Content="頑健kernel CSV(PNG→CSV)" Click="ExportRobustKernelCsvFromPngButton_Click" />
+                            <Button x:Name="ExportSharedPaperTextureButton" Content="共有紙目PNG(複数PNG)" Click="ExportSharedPaperTextureButton_Click" />
+                    </StackPanel>
+                    
+                    </StackPanel>
+                </controls:Expander>
 
                 <TextBlock Text="ログ" FontWeight="SemiBold" Margin="0,8,0,0" />
                 <TextBox x:Name="LogTextBox" Height="180" TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" />

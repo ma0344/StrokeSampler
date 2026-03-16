@@ -55,8 +55,8 @@ namespace InkDrawGen.Helpers
                     // ROIを(0,0)へ持ってきてからスケールする。
                     // outWidth/outHeightがROIサイズと異なる場合でも「ROIの見えている範囲」は平行移動で一致させ、
                     // その上でbytes配列からcropX/cropYで切り出す（合成すると従来の挙動と互換）。
-                    ds.Transform = System.Numerics.Matrix3x2.CreateScale(exportScale)
-                        * System.Numerics.Matrix3x2.CreateTranslation(-(float)roiDip.X, -(float)roiDip.Y);
+                    ds.Transform = System.Numerics.Matrix3x2.CreateTranslation(-(float)roiDip.X, -(float)roiDip.Y)
+                        * System.Numerics.Matrix3x2.CreateScale(exportScale);
                     for (var i = 0; i < repeat; i++)
                     {
                         ds.DrawInk(strokes);

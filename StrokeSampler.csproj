@@ -223,6 +223,7 @@
     <None Include="docs\aligned-jobs-batch-N1to12-floor-full.csv" />
     <None Include="docs\aligned-jobs-batch-N1to12-floor.csv" />
     <None Include="docs\aligned-jobs-sample.csv" />
+    <None Include="docs\ChatHistory.md" />
     <None Include="docs\copilot-session-summary.md" />
     <None Include="docs\dotlab-handover.md" />
     <None Include="docs\drow-inkcanvas-pencil-from-code-answers.md" />
@@ -242,6 +243,7 @@
     <None Include="docs\Issues\issue-09-ui-wiring.md" />
     <None Include="docs\Issues\issue-10-build.md" />
     <None Include="docs\Issues\issue-11-validate-exported-png.md" />
+    <None Include="docs\Kernel_Prediction_Validation.md" />
     <None Include="docs\pencil-parity-playbook.md" />
     <None Include="docs\pencil-stroke-sampler-roadmap.md" />
     <None Include="docs\representative-sample-subset.md" />
