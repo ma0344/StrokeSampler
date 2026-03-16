@@ -566,6 +566,119 @@ namespace InkDrawGen.Helpers
             }.ShowAsync();
         }
 
+        internal static async Task ExportKernelReproductionFeaturesCsvAsync(MainPage page)
+        {
+            if (page == null) throw new ArgumentNullException(nameof(page));
+
+            var state = InkDrawGenUiReader.Read(page);
+            var file = await PickCsvFileAsync();
+            if (file is null)
+            {
+                return;
+            }
+
+            var folder = await PickOutputFolderBestEffortAsync(page, state.OutputFolder);
+            if (folder is null)
+            {
+                return;
+            }
+
+            List<KernelObservedMetrics> observedRows;
+            string inputFileName;
+            string outputBaseName;
+
+            if (file.Name.EndsWith("-stair-detail.csv", StringComparison.OrdinalIgnoreCase))
+            {
+                var summaryName = BuildSiblingSummaryFileName(file.Name);
+                var summaryFile = await TryResolveSiblingCsvAsync(file, summaryName);
+                if (summaryFile == null)
+                {
+                    throw new InvalidOperationException($"対応する階段summary CSVが見つかりません: {summaryName}");
+                }
+
+                var detailRows = await LoadKernelStairDetailRowsAsync(file);
+                var summaryRows = await LoadKernelStairSummaryRowsAsync(summaryFile);
+                observedRows = BuildKernelObservedMetricsFromStairRows(detailRows, summaryRows);
+                inputFileName = $"{file.Name};{summaryFile.Name}";
+                outputBaseName = RemovePredictionInputSuffix(RemoveExtensionSafe(file.Name));
+            }
+            else
+            {
+                var source = await LoadWideKernelAnalysisSourceAsync(file);
+                var maxObservedRadiusPx = source.Rows.Count > 0 ? source.Rows[source.Rows.Count - 1].RadiusPx : 0;
+                var radiusNormScale = ResolveRadiusNormScale(source.Rows);
+                observedRows = new List<KernelObservedMetrics>(source.Pressures.Count);
+
+                foreach (var pressure in source.Pressures)
+                {
+                    var plateaus = BuildKernelPlateaus(source.Rows, pressure.HeaderSuffix, pressure.PressureValue);
+                    if (plateaus.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    observedRows.Add(BuildKernelObservedMetrics(
+                        pressure.HeaderSuffix,
+                        pressure.PressureValue,
+                        plateaus,
+                        maxObservedRadiusPx,
+                        radiusNormScale,
+                        null));
+                }
+
+                inputFileName = file.Name;
+                outputBaseName = RemoveExtensionSafe(file.Name);
+            }
+
+            var outFile = await folder.CreateFileAsync($"{outputBaseName}-reproduction-features.csv", CreationCollisionOption.ReplaceExisting);
+            await FileIO.WriteTextAsync(outFile, BuildKernelReproductionFeaturesCsv(inputFileName, observedRows), Windows.Storage.Streams.UnicodeEncoding.Utf8);
+
+            await new ContentDialog
+            {
+                Title = "カーネル再現特徴CSV",
+                Content = $"完了: 再現特徴CSVを書き出しました。\n\ninput={file.Name}\noutput={outFile.Path}\np_count={observedRows.Count}",
+                CloseButtonText = "OK"
+            }.ShowAsync();
+        }
+
+        private static string BuildKernelReproductionFeaturesCsv(string inputFileName, IReadOnlyList<KernelObservedMetrics> rows)
+        {
+            var sb = new StringBuilder(capacity: Math.Max(4 * 1024, rows.Count * 128));
+            sb.Append("# source=kernel reproduction features").AppendLine();
+            sb.Append("# input_file=").Append(inputFileName).AppendLine();
+
+            // Header: p_header, p_value, then key features correlated with P
+            sb.Append("p_header,p_value,joint_count,joint_step,joint_span");
+            for (var i = 1; i < LocalSlopeVectorAnchors.Length; i++)
+            {
+                sb.Append(",local_slope_").Append(BuildLocalSlopeAnchorLabel(LocalSlopeVectorAnchors[i]));
+            }
+            sb.Append(",curvature_budget,terminal_headroom").AppendLine();
+
+            for (var i = 0; i < rows.Count; i++)
+            {
+                var row = rows[i];
+                sb.AppendLine();
+                sb.Append(row.PressureHeaderSuffix).Append(',');
+                sb.Append(row.PressureValue.ToString("0.###", CultureInfo.InvariantCulture)).Append(',');
+                sb.Append(row.JointCount.ToString(CultureInfo.InvariantCulture)).Append(',');
+                sb.Append(row.JointStep.ToString("0.##########", CultureInfo.InvariantCulture)).Append(',');
+                sb.Append(row.JointSpan.ToString("0.########", CultureInfo.InvariantCulture)).Append(',');
+                for (var j = 1; j < LocalSlopeVectorAnchors.Length; j++)
+                {
+                    var slope = row.LocalSlopeVector != null && j < row.LocalSlopeVector.Count
+                        ? row.LocalSlopeVector[j]
+                        : null;
+                    AppendNullableDouble(sb, slope, "0.##########");
+                    sb.Append(',');
+                }
+                AppendNullableDouble(sb, row.CurvatureBudget, "0.########"); sb.Append(',');
+                AppendNullableDouble(sb, row.TerminalHeadroom, "0.########");
+            }
+
+            return sb.ToString();
+        }
+
         internal static async Task ExportKernelSweepWideCsvAsync(MainPage page)
         {
             if (page == null) throw new ArgumentNullException(nameof(page));
