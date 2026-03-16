@@ -201,6 +201,7 @@
                     <Button x:Name="ExportKernelSweepWideCsvButton" Content="カーネル断面CSV(wide集約)" Click="ExportKernelSweepWideCsvButton_Click" />
                     <Button x:Name="ExportKernelSweepStairAnalysisButton" Content="カーネル断面CSV(階段解析)" Click="ExportKernelSweepStairAnalysisButton_Click" />
                     <Button x:Name="ExportKernelSweepPredictionComparisonButton" Content="カーネル断面CSV(予測比較)" Click="ExportKernelSweepPredictionComparisonButton_Click" />
+                    <Button x:Name="ExportKernelReproductionFeaturesCsvButton" Content="カーネル再現特徴CSV" Click="ExportKernelReproductionFeaturesCsvButton_Click" />
                     <Button x:Name="ExportKernelCanceledDotPngButton" Content="紙目ベース単点PNG" Click="ExportKernelCanceledDotPngButton_Click" />
                     <Button x:Name="ExportKernelCanceledDotOffsetPngButton" Content="紙目ベース単点PNG(Offset)" Click="ExportKernelCanceledDotOffsetPngButton_Click" />
                     <Button x:Name="ExportNormalizedFalloffFromKernelSweepButton" Content="normalized-falloff CSV" Click="ExportNormalizedFalloffFromKernelSweepButton_Click" />

@@ -110,6 +110,11 @@ namespace InkDrawGen
       await Helpers.KernelSweepExportService.ExportKernelSweepPredictionComparisonAsync(this);
     }
 
+    private async void ExportKernelReproductionFeaturesCsvButton_Click(object sender, RoutedEventArgs e)
+    {
+      await Helpers.KernelSweepExportService.ExportKernelReproductionFeaturesCsvAsync(this);
+    }
+
     private async void ExportKernelDebugPngButton_Click(object sender, RoutedEventArgs e)
     {
       await Helpers.KernelSweepExportService.ExportKernelDebugPngAsync(this);

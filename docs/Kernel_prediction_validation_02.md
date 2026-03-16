@@ -29,12 +29,14 @@
 
 ---
 
-## 入力ファイル
+## 入力ファイル（C# 実装）
 
 | 優先度 | ファイル | 用途 |
 |---|---|---|
-| 1 | `*-stair-prediction-compare.csv` | `obs_*` 列から直接観測値を取得 |
-| 2 | `*-stair-summary.csv` | compare に `obs_*` 列がない場合のフォールバック計算 |
+| 1 | `*-stair-detail.csv` | plateau 情報を復元し、sibling の `*-stair-summary.csv` と組み合わせて観測指標を算出 |
+| 2 | wide CSV（`kernel-sweep-*.csv`）| `WideKernelAnalysisSource` として直接読み込んで指標を算出 |
+
+> sibling の summary CSV は `*-stair-detail.csv` と同じディレクトリに存在する必要があります。
 
 ---
 
@@ -54,15 +56,36 @@ curvature_budget, terminal_headroom
 
 ---
 
-## 実装スクリプト
+## 実装
+
+### C# 実装（主）
+
+`InkDrawGen/Helpers/KernelSweepExportService.cs`
+
+- **`ExportKernelReproductionFeaturesCsvAsync(MainPage page)`** — UI から呼び出されるエントリポイント
+  - ユーザーが `*-stair-detail.csv`（または wide CSV）を選択する
+  - stair-detail の場合は sibling の `*-stair-summary.csv` を自動解決
+  - `BuildKernelObservedMetricsFromStairRows` で観測指標を構築
+  - `BuildKernelReproductionFeaturesCsv` で CSV テキストを生成
+  - 出力ファイル名: `*-reproduction-features.csv`
+
+`InkDrawGen/MainPage.xaml`
+
+- `カーネル再現特徴CSV` ボタンを「カーネル断面CSV(予測比較)」ボタンの直後に追加
+
+`InkDrawGen/MainPage.xaml.cs`
+
+- `ExportKernelReproductionFeaturesCsvButton_Click` ハンドラ（1行委譲）
+
+### Python ユーティリティ（補助）
 
 `DotLab/Analysis/extract_reproduction_features.py`
 
-### 使い方
+アプリを起動せずにコマンドラインから既存 CSV を直接処理できるユーティリティ。
+入力は `*-stair-prediction-compare.csv`（主）または `*-stair-summary.csv`（フォールバック）。
 
 ```bash
-# 引数なし — DotLab/Kernel 以下の全 compare CSV を自動処理。
-# compare CSV がない summary CSV（例: DotLab/Kernel/ 直下の count10）も自動検出して処理する。
+# 引数なし — DotLab/Kernel 以下の全 compare CSV を自動処理
 python extract_reproduction_features.py
 
 # compare CSV を直接指定（summary は自動解決）
@@ -79,19 +102,6 @@ python extract_reproduction_features.py --summary <summary_csv>
 python extract_reproduction_features.py --summary <summary_csv> <output_csv>
 ```
 
-### フォールバック動作
-
-compare CSV に `obs_joint_count` 等の列が存在しない場合（旧フォーマットの compare CSV）は
-sibling の `*-stair-summary.csv` を読み込み、以下の計算でフォールバックする:
-
-- `joint_count` ← `plateau_count`
-- `joint_step`  ← `mean_riser01 / p_value`
-- `joint_span`  ← `median_tread_px`
-- `terminal_headroom` ← `100 - last_nonzero_r_norm`
-
-`local_slope_u*` と `curvature_budget` は compare CSV の `obs_*` 列にしか存在しないため、
-旧フォーマットでは空欄になる。
-
 ---
 
 ## セッション記録
@@ -106,12 +116,28 @@ sibling の `*-stair-summary.csv` を読み込み、以下の計算でフォー�
 > `local_slope_u250〜u850`、`curvature_budget`、`terminal_headroom`）の抽出で、
 > 実装後はその変更を Git に反映して push したい。
 
-**Copilot 要約**
+**Copilot 要約（第1回: Python スクリプト）**
 - `DotLab/Analysis/extract_reproduction_features.py` を新規作成した。
-- 入力は `*-stair-prediction-compare.csv`（優先）と `*-stair-summary.csv`（フォールバック）。
-- 出力は同ディレクトリの `*-reproduction-features.csv`。
-- 対象列は `joint_count` / `joint_step` / `joint_span` /
-  `local_slope_u250`〜`u850` / `curvature_budget` / `terminal_headroom`。
-- 旧フォーマット（`obs_joint_count` 列なし）では summary から自動フォールバック計算する。
-- 引数なしで実行すると `DotLab/Kernel` 以下の compare CSV を自動検出する。
-- 本ファイル `docs/Kernel_prediction_validation_02.md` を新規作成して方針と記録を追記した。
+- `DotLab/Kernel` 配下の全 compare CSV を自動処理し、各 CSV と同ディレクトリに `*-reproduction-features.csv` を出力する。
+
+### 2. 対象CSVの明確化
+
+**User**
+> 現在対象にするべきCSVはDotLab/Kernel 配下にあります。
+
+**Copilot 要約**
+- Python スクリプトの自動検出を `DotLab/Kernel` 配下全域に対応した。
+- compare CSV がない summary CSV（例: `DotLab/Kernel/` 直下の count10）も自動検出して処理するよう対応した。
+- `--summary` フラグで summary-only モードにも対応した。
+
+### 3. InkDrawGen への機能追加依頼
+
+**User**
+> 機能はInkDrawGenに追加してください。
+
+**Copilot 要約**
+- `InkDrawGen/Helpers/KernelSweepExportService.cs` に以下を追加した。
+  - `ExportKernelReproductionFeaturesCsvAsync(MainPage page)` — 入力は `*-stair-detail.csv`（または wide CSV）、出力は `*-reproduction-features.csv`
+  - `BuildKernelReproductionFeaturesCsv(inputFileName, rows)` — 再現特徴 CSV を組み立てるプライベートメソッド
+- `InkDrawGen/MainPage.xaml` に「カーネル再現特徴CSV」ボタンを追加した。
+- `InkDrawGen/MainPage.xaml.cs` に1行委譲のクリックハンドラを追加した。

@@ -268,34 +268,6 @@ def extract_from_summary(summary_path, output_path=None):
 
     print(f"wrote {len(out_rows)} rows -> {output_path}")
     return output_path
-    """Compute a feature value from stair-summary columns when the compare CSV
-    does not carry the corresponding obs_* column."""
-    if not summary_row:
-        return ""
-
-    if feat == "joint_count":
-        return summary_row.get("plateau_count", "")
-
-    if feat == "joint_step":
-        try:
-            p = float(p_value_str)
-            mean_riser = float(summary_row.get("mean_riser01", ""))
-            return str(mean_riser / p) if p != 0 else ""
-        except (ValueError, ZeroDivisionError):
-            return ""
-
-    if feat == "joint_span":
-        return summary_row.get("median_tread_px", "")
-
-    if feat == "terminal_headroom":
-        try:
-            last_norm = float(summary_row.get("last_nonzero_r_norm", ""))
-            return str(100.0 - last_norm)
-        except ValueError:
-            return ""
-
-    # local_slope_u* and curvature_budget have no simple summary-based fallback
-    return ""
 
 
 def main():
